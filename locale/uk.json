@@ -1,0 +1,24 @@
+{
+  "home": {
+    "toAirport": "До аеропорту",
+    "fromAirport": "З аеропорту",
+    "title": "Замов трансфер до/з аеропорту",
+    "fromPlaceholder": "Звідки?",
+    "dropoffPlaceholder": "Місце висадки (готель, адреса...)",
+    "luggagePlaceholder": "Кількість одиниць багажу",
+    "dateLabel": "Дата",
+    "timeLabel": "Час",
+    "passengersLabel": "К-сть пасажирів",
+    "individualTransfer": "Індивідуальний трансфер",
+    "groupTransfer": "Груповий трансфер",
+    "travelingWithPet": "Подорожує тварина",
+    "petSubtext": "(наприклад, кішка або собака)",
+    "orderButton": "Замовити трансфер"
+    },
+     "authScreen.title": "AirChat: Трансфери до та з аеропорту",
+    "authScreen.subtitle": "Зареєструйтесь або увійдіть, щоб замовити трансфер" ,
+  "auth": {
+    "register": "Зареєструватись",
+    "login": "Увійти"
+  }
+}

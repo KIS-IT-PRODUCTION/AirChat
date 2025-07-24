@@ -1,0 +1,22 @@
+{
+  "home": {
+    "toAirport": "To the airport",
+    "fromAirport": "From the airport",
+    "title": "Order a transfer to/from the airport",
+    "fromPlaceholder": "From?",
+    "dropoffPlaceholder": "Drop-off location (hotel, address...)",
+    "luggagePlaceholder": "Number of luggage units",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "passengersLabel": "Passengers",
+    "individualTransfer": "Individual transfer",
+    "groupTransfer": "Group transfer",
+    "travelingWithPet": "Traveling with a pet",
+    "petSubtext": "(e.g., a cat or a dog)",
+    "orderButton": "Order transfer"
+  },
+  "auth": {
+    "register": "Register",
+    "login": "Login"
+  }
+}

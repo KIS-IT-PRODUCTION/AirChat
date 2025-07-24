@@ -1,0 +1,22 @@
+{
+  "home": {
+    "toAirport": "La aeroport",
+    "fromAirport": "De la aeroport",
+    "title": "Comandați un transfer la/de la aeroport",
+    "fromPlaceholder": "De unde?",
+    "dropoffPlaceholder": "Locația de destinație (hotel, adresă...)",
+    "luggagePlaceholder": "Numărul de bagaje",
+    "dateLabel": "Data",
+    "timeLabel": "Ora",
+    "passengersLabel": "Pasageri",
+    "individualTransfer": "Transfer individual",
+    "groupTransfer": "Transfer de grup",
+    "travelingWithPet": "Călătorind cu un animal de companie",
+    "petSubtext": "(de exemplu, o pisică sau un câine)",
+    "orderButton": "Comandați transferul"
+  },
+  "auth": {
+    "register": "Înregistrare",
+    "login": "Autentificare"
+  }
+}

@@ -18,5 +18,34 @@
   "auth": {
     "register": "Înregistrare",
     "login": "Autentificare"
+  },
+  "registration": {
+  "title": "Înregistrare",
+  "subtitle": "Cufundați-vă în lumea transportului!",
+  "fullNameLabel": "Numele complet",
+  "fullNamePlaceholder": "Introduceți Numele Dvs.",
+  "emailLabel": "Email",
+  "emailPlaceholder": "Introduceți adresa de email",
+  "passwordLabel": "Parola",
+  "passwordPlaceholder": "Introduceți parola",
+  "phoneLabel": "Telefon",
+  "phonePlaceholder": "Introduceți numărul de telefon",
+  "registerButton": "Înregistrare",
+  "alreadyRegistered": "Deja înregistrat?",
+  "loginLink": "Autentificare"
+},
+  "login": {
+    "title": "Autentificare",
+    "subtitle": "Bine ați revenit!",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Introduceți adresa de email",
+    "passwordLabel": "Parola",
+    "passwordPlaceholder": "Introduceți parola",
+    "loginButton": "Autentificare",
+    "notRegistered": "Nu sunteți înregistrat?",
+    "registerLink": "Înregistrare"
+  },
+  "authScreen": {
+    "title": "AirChat: Transferuri la/de la aeroport"
   }
 }

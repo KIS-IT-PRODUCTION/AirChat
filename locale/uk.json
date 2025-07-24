@@ -17,6 +17,51 @@
     },
      "authScreen.title": "AirChat: Трансфери до та з аеропорту",
     "authScreen.subtitle": "Зареєструйтесь або увійдіть, щоб замовити трансфер" ,
+    "registration": {
+  "title": "Реєстрація",
+  "subtitle": "Пориньте у світ перевезинь!",
+  "fullNameLabel": "Повне Ім'я",
+  "fullNamePlaceholder": "Ведіть Ваше Ім'я",
+  "emailLabel": "Пошта",
+  "emailPlaceholder": "Ведіть Вашу електронну пошту",
+  "passwordLabel": "Пароль",
+  "passwordPlaceholder": "Ведіть Ваш пароль",
+  "phoneLabel": "Телефон",
+  "phonePlaceholder": "Ведіть Ваш номер телефону",
+  "registerButton": "Зареєструватися",
+  "alreadyRegistered": "Вже зареєстровані?",
+  "loginLink": "Увійти"
+},
+  "login": {
+    "title": "Увійти",
+    "subtitle": "Ласкаво просимо назад!",
+    "emailLabel": "Пошта",
+    "emailPlaceholder": "Введіть Вашу електронну пошту",
+    "passwordLabel": "Пароль",
+    "passwordPlaceholder": "Введіть Ваш пароль",
+    "loginButton": "Увійти",
+    "notRegistered": "Ще не зареєстровані?",
+    "registerLink": "Зареєструватись"
+  },
+  "profile": {
+  "title": "Мій профіль",
+  "role": "Роль",
+  "adsCount": "Кількість поданих оголошень",
+  "yearsInApp": "У додатку",
+  "completedTrips": "Завершених поїздок",
+  "phone": "Тел",
+  "settings": "Налаштування"
+},
+"tabs": {
+  "home": "Головна",
+  "transfers": "Мої трансфери",
+  "messages": "Повідомлення",
+  "profile": "Профіль"
+},
+"footer": {
+  "question": "Не знаєте як працює додаток?",
+  "link": "Інструкція та знайомство з функціями"
+},
   "auth": {
     "register": "Зареєструватись",
     "login": "Увійти"

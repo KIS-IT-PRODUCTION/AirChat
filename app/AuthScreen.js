@@ -5,20 +5,12 @@ import { useTranslation } from 'react-i18next';
 
 // 1. ВИПРАВЛЕНО: Всі хуки імпортуються з єдиної папки 'app/context/'
 import { useTheme } from './ThemeContext';
-import { useAuth } from '../provider/AuthContext';
 
 export default function AuthScreen() {
   // --- Отримуємо дані з контекстів ---
   const { colors } = useTheme();
-  const auth = useAuth();
-  const { t } = useTranslation(); // 2. ВИПРАВЛЕНО: Використовуємо useTranslation
+  const { t } = useTranslation();
   const navigation = useNavigation();
-
-  // Функція для симуляції входу та повернення на попередній екран
-  const handleLogin = async () => {
-    await auth.login();
-    navigation.goBack();
-  };
 
   // Генеруємо стилі на основі теми
   const styles = getStyles(colors);
@@ -34,12 +26,16 @@ export default function AuthScreen() {
       </View>
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.primaryButton}>
+        {/* 2. ВИПРАВЛЕНО: Кнопка тепер веде на екран реєстрації */}
+        <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('RegistrationScreen')}>
           <Text style={styles.buttonText}>{t('auth.register')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.primaryButton, styles.secondaryButton]} onPress={handleLogin}>
+        
+        {/* 3. ВИПРАВЛЕНО: Кнопка тепер веде на екран входу */}
+        <TouchableOpacity style={[styles.primaryButton, styles.secondaryButton]} onPress={() => navigation.navigate('LoginScreen')}>
           <Text style={[styles.buttonText, { color: colors.text }]}>{t('auth.login')}</Text>
         </TouchableOpacity>
+
         <TouchableOpacity>
           <Text style={styles.driverLink}>{t('authScreen.driverLogin', { defaultValue: 'Are you a driver? Login to your cabinet' })}</Text>
         </TouchableOpacity>

@@ -15,6 +15,32 @@
     "petSubtext": "(e.g., a cat or a dog)",
     "orderButton": "Order transfer"
   },
+  "registration": {
+  "title": "Registration",
+  "subtitle": "Immerse yourself in the world of transportation!",
+  "fullNameLabel": "Full Name",
+  "fullNamePlaceholder": "Enter Your Name",
+  "emailLabel": "Email",
+  "emailPlaceholder": "Enter Your Email",
+  "passwordLabel": "Password",
+  "passwordPlaceholder": "Enter Your Password",
+  "phoneLabel": "Phone",
+  "phonePlaceholder": "Enter Your Phone Number",
+  "registerButton": "Register",
+  "alreadyRegistered": "Already registered?",
+  "loginLink": "Login"
+},
+  "login": {
+    "title": "Login",
+    "subtitle": "Welcome back!",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Enter Your Email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter Your Password",
+    "loginButton": "Login",
+    "notRegistered": "Not registered?",
+    "registerLink": "Register"
+  },
   "auth": {
     "register": "Register",
     "login": "Login"

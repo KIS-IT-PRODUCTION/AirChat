@@ -1,51 +1,62 @@
+// app/context/AuthContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/supabase'; // Import our configured Supabase client
 
-// Створюємо контекст
 export const AuthContext = createContext();
 
-// Компонент-провайдер
 export const AuthProvider = ({ children }) => {
+  const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userToken, setUserToken] = useState(null);
-
-  // Функція "входу"
-  const login = async () => {
-    // У реальному додатку тут буде запит до сервера
-    const fakeToken = 'dummy-auth-token';
-    setUserToken(fakeToken);
-    await AsyncStorage.setItem('userToken', fakeToken);
-  };
-
-  // Функція "виходу"
-  const logout = async () => {
-    setUserToken(null);
-    await AsyncStorage.removeItem('userToken');
-  };
-
-  // Перевірка при запуску, чи є збережений токен
-  const isLoggedIn = async () => {
-    try {
-      setIsLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      setUserToken(token);
-      setIsLoading(false);
-    } catch (e) {
-      console.error('Failed to fetch user token', e);
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
-    isLoggedIn();
+    // Check for an existing session on app startup
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setIsLoading(false);
+    };
+
+    fetchSession();
+
+    // Listen for auth state changes (login, logout, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    // Clean up the listener on unmount
+    return () => subscription.unsubscribe();
   }, []);
 
+  const authContextValue = {
+    // Function to sign up a new user
+    signUp: async ({ email, password }) => {
+      return supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+    },
+    // Function to sign in an existing user
+    signIn: async ({ email, password }) => {
+      return supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+    },
+    // Function to sign out the current user
+    signOut: async () => {
+      return supabase.auth.signOut();
+    },
+    session,
+    isLoading,
+    isAuthenticated: !!session, // User is authenticated if a session exists
+  };
+
   return (
-    <AuthContext.Provider value={{ login, logout, isLoading, isAuthenticated: !!userToken }}>
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Кастомний хук для легкого доступу
+// Custom hook for easy access
 export const useAuth = () => useContext(AuthContext);

@@ -3,8 +3,10 @@
     "toAirport": "До аеропорту",
     "fromAirport": "З аеропорту",
     "title": "Замов трансфер до/з аеропорту",
-    "fromPlaceholder": "Звідки?",
+    "fromPlaceholder": "Звідки? (аеропорт)",
+    "fromPlaceholderAddress": "Звідки? (адреса, готель...)",
     "dropoffPlaceholder": "Місце висадки (готель, адреса...)",
+    "dropoffPlaceholderAirport": "Куди? (аеропорт)",
     "luggagePlaceholder": "Кількість одиниць багажу",
     "dateLabel": "Дата",
     "timeLabel": "Час",
@@ -14,56 +16,87 @@
     "travelingWithPet": "Подорожує тварина",
     "petSubtext": "(наприклад, кішка або собака)",
     "orderButton": "Замовити трансфер"
-    },
-     "authScreen.title": "AirChat: Трансфери до та з аеропорту",
-    "authScreen.subtitle": "Зареєструйтесь або увійдіть, щоб замовити трансфер" ,
-    "registration": {
-  "title": "Реєстрація",
-  "subtitle": "Пориньте у світ перевезинь!",
-  "fullNameLabel": "Повне Ім'я",
-  "fullNamePlaceholder": "Ведіть Ваше Ім'я",
-  "emailLabel": "Пошта",
-  "emailPlaceholder": "Ведіть Вашу електронну пошту",
-  "passwordLabel": "Пароль",
-  "passwordPlaceholder": "Ведіть Ваш пароль",
-  "phoneLabel": "Телефон",
-  "phonePlaceholder": "Ведіть Ваш номер телефону",
-  "registerButton": "Зареєструватися",
-  "alreadyRegistered": "Вже зареєстровані?",
-  "loginLink": "Увійти"
-},
-  "login": {
-    "title": "Увійти",
-    "subtitle": "Ласкаво просимо назад!",
+  },
+  "authScreen": {
+    "title": "AirChat: Трансфери в аеропорт та з аеропорту",
+    "driverLogin": "Ви водій? Увійти в кабінет"
+  },
+  "registration": {
+    "title": "Реєстрація",
+    "subtitle": "Пориньте у світ перевезень!",
+    "fullNameLabel": "Повне Ім'я",
+    "fullNamePlaceholder": "Введіть Ваше Ім'я",
     "emailLabel": "Пошта",
     "emailPlaceholder": "Введіть Вашу електронну пошту",
     "passwordLabel": "Пароль",
     "passwordPlaceholder": "Введіть Ваш пароль",
-    "loginButton": "Увійти",
-    "notRegistered": "Ще не зареєстровані?",
-    "registerLink": "Зареєструватись"
+    "phoneLabel": "Телефон",
+    "phonePlaceholder": "Введіть Ваш номер телефону",
+    "registerButton": "Зареєструватися",
+    "alreadyRegistered": "Вже зареєстровані?",
+    "loginLink": "Увійти",
+    "emailPasswordRequired": "Електронна пошта та пароль є обов'язковими",
+    "confirmationEmail": "Успішно! Будь ласка, перевірте свою пошту для підтвердження реєстрації."
+  },
+  "login": {
+    "title": "Вхід",
+    "emailPlaceholder": "Введіть Вашу електронну пошту",
+    "passwordPlaceholder": "Введіть Ваш пароль"
   },
   "profile": {
-  "title": "Мій профіль",
-  "role": "Роль",
-  "adsCount": "Кількість поданих оголошень",
-  "yearsInApp": "У додатку",
-  "completedTrips": "Завершених поїздок",
-  "phone": "Тел",
-  "settings": "Налаштування"
-},
-"tabs": {
-  "home": "Головна",
-  "transfers": "Мої трансфери",
-  "messages": "Повідомлення",
-  "profile": "Профіль"
-},
-"footer": {
-  "question": "Не знаєте як працює додаток?",
-  "link": "Інструкція та знайомство з функціями"
-},
+    "title": "Мій профіль",
+    "role": "Роль",
+    "adsCount": "Кількість поданих оголошень",
+    "yearsInApp": "У додатку",
+    "completedTrips": "Завершених поїздок",
+    "phone": "Тел",
+    "settings": "Налаштування",
+    "loggedInMessage": "Ви увійшли в систему!"
+  },
+  "settings": {
+    "title": "Налаштування",
+    "changePhoto": "Змінити",
+    "language": "Мова застосунку",
+    "changePassword": "Змінити пароль?",
+    "saveProfile": "Зберегти профіль",
+    "darkTheme": "Темна тема",
+    "editFullName": "Редагувати повне ім'я",
+    "editPhone": "Редагувати телефон",
+    "emailCannotBeChanged": "Електронну пошту не можна змінити",
+    "profileSaved": "Профіль успішно збережено!",
+    "uk": "Українська",
+    "en": "English",
+    "ro": "Română"
+  },
+  "tabs": {
+    "home": "Головна",
+    "transfers": "Мої трансфери",
+    "messages": "Повідомлення",
+    "profile": "Профіль"
+  },
+  "footer": {
+    "question": "Не знаєте як працює додаток?",
+    "link": "Інструкція та знайомство з функціями"
+  },
   "auth": {
     "register": "Зареєструватись",
     "login": "Увійти"
-  }
+  },
+  "common": {
+    "error": "Помилка",
+    "success": "Успіх",
+    "loading": "Завантаження...",
+    "confirm": "Підтвердити",
+    "cancel": "Скасувати"
+  },
+"support": {
+  "title": "Підтримка",
+  "formTitle": "Допоможіть нам стати кращими!",
+  "formSubtitle": "Залиште свій відгук, повідомте про проблему або запропонуйте ідею.",
+  "messageLabel": "Повідомлення",
+  "messagePlaceholder": "Ваш відгук тут...",
+  "sendButton": "Надіслати",
+  "messageEmpty": "Поле повідомлення не може бути порожнім.",
+  "messageSent": "Дякуємо! Ваш відгук було надіслано."
+}
 }

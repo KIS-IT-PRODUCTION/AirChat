@@ -8,8 +8,7 @@ import { useTranslation } from 'react-i18next';
 import HomeScreen from '../HomeScreen';
 import TransfersScreen from '../TransfersScreen';
 import MessagesScreen from '../MessagesScreen';
-import ProfileScreen from '../ProfileScreen'; // You can add Profile here or keep it in a stack
-
+import ProfileStack from '../navigation/ProfileStack'; 
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -45,14 +44,14 @@ export default function TabNavigator() {
       {/* For simplicity, we add Profile as a tab. It can also be a screen in a Stack. */}
       <Tab.Screen 
         name="ProfileTab" 
-        component={ProfileScreen} 
+        component={ProfileStack} // 👈 Use the stack here instead of the screen
         options={{ 
           title: t('tabs.profile'),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} />
           )
         }}
-      />
+    />
     </Tab.Navigator>
   );
 }

@@ -2,10 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
-
+import { useNavigation } from '@react-navigation/native';
 // Reusable component for a profile detail row
 const DetailRow = ({ label, value }) => {
   const { colors } = useTheme();
@@ -23,7 +22,7 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const { signOut } = useAuth(); // We'll use this for the settings button for now
   const styles = getStyles(colors);
-
+  const navigation = useNavigation();
   // In a real app, this data would come from your user session or a database query
   const userData = {
     fullName: "Мазничка Артур Ігорович",
@@ -42,7 +41,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <Image source={require('../assets/icon.png')} style={styles.logo} />
           <Text style={styles.headerTitle}>{t('profile.title')}</Text>
-          <TouchableOpacity style={styles.supportButton}>
+          <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
             <Ionicons name="headset-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -61,7 +60,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Settings Button */}
-        <TouchableOpacity style={styles.settingsButton} onPress={signOut}>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
           <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
           <Text style={styles.settingsButtonText}>{t('profile.settings')}</Text>
         </TouchableOpacity>

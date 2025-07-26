@@ -18,6 +18,7 @@ import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
 import LoginScreen from './app/LoginScreen';
 import TabNavigator from './app/navigation/TabNavigator'; // 👈 Додано імпорт TabNavigator
+import  Settings  from './app/Settings'; // Import Settings if needed in the Profile tab
 
 const Stack = createStackNavigator();
 
@@ -35,7 +36,7 @@ function AuthStack({ isFirstLaunch }) {
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
-
+      <Stack.Screen name="Settings" component={Settings} /> {/* Додано Settings */}
 
     </Stack.Navigator>
   );

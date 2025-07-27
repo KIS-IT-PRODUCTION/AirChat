@@ -1,51 +1,104 @@
 {
   "home": {
-    "toAirport": "To the airport",
-    "fromAirport": "From the airport",
-    "title": "Order a transfer to/from the airport",
-    "fromPlaceholder": "From?",
+    "toAirport": "To Airport",
+    "fromAirport": "From Airport",
+    "title": "Book a transfer to/from the airport",
+    "fromPlaceholder": "From? (airport)",
+    "fromPlaceholderAddress": "From? (address, hotel...)",
     "dropoffPlaceholder": "Drop-off location (hotel, address...)",
-    "luggagePlaceholder": "Number of luggage units",
+    "dropoffPlaceholderAirport": "To? (airport)",
+    "luggagePlaceholder": "Number of luggage items",
     "dateLabel": "Date",
     "timeLabel": "Time",
     "passengersLabel": "Passengers",
-    "individualTransfer": "Individual transfer",
-    "groupTransfer": "Group transfer",
+    "individualTransfer": "Individual Transfer",
+    "groupTransfer": "Group Transfer",
     "travelingWithPet": "Traveling with a pet",
     "petSubtext": "(e.g., a cat or a dog)",
-    "orderButton": "Order transfer"
+    "orderButton": "Order Transfer"
+  },
+  "authScreen": {
+    "title": "AirChat: Airport transfers to and from the airport",
+    "driverLogin": "Are you a driver? Log in to your account"
   },
   "registration": {
-  "title": "Registration",
-  "subtitle": "Immerse yourself in the world of transportation!",
-  "fullNameLabel": "Full Name",
-  "fullNamePlaceholder": "Enter Your Name",
-  "emailLabel": "Email",
-  "emailPlaceholder": "Enter Your Email",
-  "passwordLabel": "Password",
-  "passwordPlaceholder": "Enter Your Password",
-  "phoneLabel": "Phone",
-  "phonePlaceholder": "Enter Your Phone Number",
-  "registerButton": "Register",
-  "alreadyRegistered": "Already registered?",
-  "loginLink": "Login"
-},
+    "title": "Registration",
+    "subtitle": "Dive into the world of transportation!",
+    "fullNameLabel": "Full Name",
+    "fullNamePlaceholder": "Enter your Name",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "Enter your phone number",
+    "registerButton": "Register",
+    "alreadyRegistered": "Already registered?",
+    "loginLink": "Log In",
+    "emailPasswordRequired": "Email and password are required",
+    "confirmationEmail": "Success! Please check your email to confirm your registration."
+  },
   "login": {
     "title": "Login",
-    "subtitle": "Welcome back!",
-    "emailLabel": "Email",
-    "emailPlaceholder": "Enter Your Email",
-    "passwordLabel": "Password",
-    "passwordPlaceholder": "Enter Your Password",
-    "loginButton": "Login",
-    "notRegistered": "Not registered?",
-    "registerLink": "Register"
+    "emailPlaceholder": "Enter your email",
+    "passwordPlaceholder": "Enter your password"
+  },
+  "profile": {
+    "title": "My Profile",
+    "role": "Role",
+    "adsCount": "Number of listings posted",
+    "yearsInApp": "In the app",
+    "completedTrips": "Completed trips",
+    "phone": "Phone",
+    "settings": "Settings",
+    "loggedInMessage": "You are logged in!"
+  },
+  "settings": {
+    "title": "Settings",
+    "changePhoto": "Change",
+    "language": "App Language",
+    "changePassword": "Change password?",
+    "saveProfile": "Save Profile",
+    "darkTheme": "Dark Theme",
+    "editFullName": "Edit full name",
+    "editPhone": "Edit phone",
+    "emailCannotBeChanged": "Email cannot be changed",
+    "profileSaved": "Profile saved successfully!",
+    "uk": "Ukrainian",
+    "en": "English",
+    "ro": "Romanian"
+  },
+  "tabs": {
+    "home": "Home",
+    "transfers": "My Transfers",
+    "messages": "Messages",
+    "profile": "Profile"
+  },
+  "footer": {
+    "question": "Don't know how the app works?",
+    "link": "Instructions and feature overview"
   },
   "auth": {
     "register": "Register",
-    "login": "Login"
+    "login": "Log In"
   },
-  
+  "common": {
+    "error": "Error",
+    "success": "Success",
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "support": {
+    "title": "Support",
+    "formTitle": "Help us get better!",
+    "formSubtitle": "Leave your feedback, report an issue, or suggest an idea.",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Your feedback here...",
+    "sendButton": "Send",
+    "messageEmpty": "The message field cannot be empty.",
+    "messageSent": "Thank you! Your feedback has been sent."
+  },
   "transferDetail": {
     "title": "Transfer",
     "from": "From",
@@ -69,6 +122,43 @@
     "tripCompleted": "Trip Completed",
     "chooseThisDriver": "Choose this driver",
     "reviews": "{{count}} reviews"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welcome!",
+    "welcomeText": "Our app will help you easily book a transfer.",
+    "configureTitle": "Customize your trip",
+    "configureText": "Choose the date, time, number of passengers, and luggage.",
+    "readyTitle": "All set!",
+    "readyText": "Press the button below to get started.",
+    "startButton": "Start"
+  },
+  "successModal": {
+    "title": "Request Sent!",
+    "subtitle": "Your transfer has been successfully sent. Please wait for offers from drivers.",
+    "commentTitle": "What should the driver know?",
+    "commentPlaceholder": "e.g., child seat, large luggage...",
+    "closeButton": "Close",
+    "sendButton": "Send comment"
+  },
+  "languageModal": {
+    "uk": "Ukrainian",
+    "en": "English",
+    "ro": "Romanian"
+  },
+  "chatList": {
+    "title": "Messages"
+  },
+  "chat": {
+    "onlineStatus": "online 5 min ago",
+    "placeholder": "Write a message",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "takePhoto": "Take Photo",
+    "pickFromGallery": "Choose from Gallery",
+    "shareLocation": "Share Location",
+    "locationLabel": "Location",
+    "galleryPermissionError": "Permission to access the gallery is required.",
+    "cameraPermissionError": "Permission to access the camera is required.",
+    "locationPermissionError": "Permission to access location is required."
   }
-
 }

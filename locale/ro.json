@@ -1,54 +1,105 @@
 {
   "home": {
-    "toAirport": "La aeroport",
-    "fromAirport": "De la aeroport",
-    "title": "Comandați un transfer la/de la aeroport",
-    "fromPlaceholder": "De unde?",
-    "dropoffPlaceholder": "Locația de destinație (hotel, adresă...)",
-    "luggagePlaceholder": "Numărul de bagaje",
+    "toAirport": "La Aeroport",
+    "fromAirport": "De la Aeroport",
+    "title": "Rezervați un transfer la/de la aeroport",
+    "fromPlaceholder": "De la? (aeroport)",
+    "fromPlaceholderAddress": "De la? (adresă, hotel...)",
+    "dropoffPlaceholder": "Destinație (hotel, adresă...)",
+    "dropoffPlaceholderAirport": "La? (aeroport)",
+    "luggagePlaceholder": "Număr de bagaje",
     "dateLabel": "Data",
     "timeLabel": "Ora",
     "passengersLabel": "Pasageri",
-    "individualTransfer": "Transfer individual",
-    "groupTransfer": "Transfer de grup",
-    "travelingWithPet": "Călătorind cu un animal de companie",
-    "petSubtext": "(de exemplu, o pisică sau un câine)",
-    "orderButton": "Comandați transferul"
+    "individualTransfer": "Transfer Individual",
+    "groupTransfer": "Transfer de Grup",
+    "travelingWithPet": "Călătorie cu animal de companie",
+    "petSubtext": "(de ex., o pisică sau un câine)",
+    "orderButton": "Comandați Transfer"
+  },
+  "authScreen": {
+    "title": "AirChat: Transferuri la și de la aeroport",
+    "driverLogin": "Sunteți șofer? Conectați-vă la cont"
+  },
+  "registration": {
+    "title": "Înregistrare",
+    "subtitle": "Pătrundeți în lumea transportului!",
+    "fullNameLabel": "Nume complet",
+    "fullNamePlaceholder": "Introduceți numele dvs.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Introduceți adresa de email",
+    "passwordLabel": "Parolă",
+    "passwordPlaceholder": "Introduceți parola",
+    "phoneLabel": "Telefon",
+    "phonePlaceholder": "Introduceți numărul de telefon",
+    "registerButton": "Înregistrați-vă",
+    "alreadyRegistered": "Deja înregistrat?",
+    "loginLink": "Autentificare",
+    "emailPasswordRequired": "Emailul și parola sunt obligatorii",
+    "confirmationEmail": "Succes! Vă rugăm să verificați emailul pentru a confirma înregistrarea."
+  },
+  "login": {
+    "title": "Autentificare",
+    "emailPlaceholder": "Introduceți adresa de email",
+    "passwordPlaceholder": "Introduceți parola"
+  },
+  "profile": {
+    "title": "Profilul Meu",
+    "role": "Rol",
+    "adsCount": "Număr de anunțuri postate",
+    "yearsInApp": "În aplicație",
+    "completedTrips": "Călătorii finalizate",
+    "phone": "Tel",
+    "settings": "Setări",
+    "loggedInMessage": "Sunteți autentificat!"
+  },
+  "settings": {
+    "title": "Setări",
+    "changePhoto": "Schimbă",
+    "language": "Limba aplicației",
+    "changePassword": "Schimbă parola?",
+    "saveProfile": "Salvează Profilul",
+    "darkTheme": "Temă întunecată",
+    "editFullName": "Editează numele complet",
+    "editPhone": "Editează telefonul",
+    "emailCannotBeChanged": "Adresa de email nu poate fi schimbată",
+    "profileSaved": "Profil salvat cu succes!",
+    "uk": "Ucraineană",
+    "en": "Engleză",
+    "ro": "Română"
+  },
+  "tabs": {
+    "home": "Acasă",
+    "transfers": "Transferurile Mele",
+    "messages": "Mesaje",
+    "profile": "Profil"
+  },
+  "footer": {
+    "question": "Nu știți cum funcționează aplicația?",
+    "link": "Instrucțiuni și prezentarea funcțiilor"
   },
   "auth": {
     "register": "Înregistrare",
     "login": "Autentificare"
   },
-  "registration": {
-  "title": "Înregistrare",
-  "subtitle": "Cufundați-vă în lumea transportului!",
-  "fullNameLabel": "Numele complet",
-  "fullNamePlaceholder": "Introduceți Numele Dvs.",
-  "emailLabel": "Email",
-  "emailPlaceholder": "Introduceți adresa de email",
-  "passwordLabel": "Parola",
-  "passwordPlaceholder": "Introduceți parola",
-  "phoneLabel": "Telefon",
-  "phonePlaceholder": "Introduceți numărul de telefon",
-  "registerButton": "Înregistrare",
-  "alreadyRegistered": "Deja înregistrat?",
-  "loginLink": "Autentificare"
-},
-  "login": {
-    "title": "Autentificare",
-    "subtitle": "Bine ați revenit!",
-    "emailLabel": "Email",
-    "emailPlaceholder": "Introduceți adresa de email",
-    "passwordLabel": "Parola",
-    "passwordPlaceholder": "Introduceți parola",
-    "loginButton": "Autentificare",
-    "notRegistered": "Nu sunteți înregistrat?",
-    "registerLink": "Înregistrare"
+  "common": {
+    "error": "Eroare",
+    "success": "Succes",
+    "loading": "Se încarcă...",
+    "confirm": "Confirmă",
+    "cancel": "Anulează"
   },
-  "authScreen": {
-    "title": "AirChat: Transferuri la/de la aeroport"
+  "support": {
+    "title": "Suport",
+    "formTitle": "Ajutați-ne să fim mai buni!",
+    "formSubtitle": "Lăsați feedback, raportați o problemă sau sugerați o idee.",
+    "messageLabel": "Mesaj",
+    "messagePlaceholder": "Feedback-ul dvs. aici...",
+    "sendButton": "Trimite",
+    "messageEmpty": "Câmpul de mesaj nu poate fi gol.",
+    "messageSent": "Mulțumim! Feedback-ul dvs. a fost trimis."
   },
-   "transferDetail": {
+  "transferDetail": {
     "title": "Transfer",
     "from": "De la",
     "to": "La",
@@ -71,5 +122,43 @@
     "tripCompleted": "Călătorie finalizată",
     "chooseThisDriver": "Alegeți acest șofer",
     "reviews": "{{count}} recenzii"
+  },
+  "onboarding": {
+    "welcomeTitle": "Bun venit!",
+    "welcomeText": "Aplicația noastră vă va ajuta să rezervați cu ușurință un transfer.",
+    "configureTitle": "Personalizați călătoria",
+    "configureText": "Alegeți data, ora, numărul de pasageri și bagajele.",
+    "readyTitle": "Totul este gata!",
+    "readyText": "Apăsați butonul de mai jos pentru a începe.",
+    "startButton": "Start"
+  },
+  "successModal": {
+    "title": "Cerere Trimisă!",
+    "subtitle": "Transferul dvs. a fost trimis cu succes. Vă rugăm așteptați oferte de la șoferi.",
+    "commentTitle": "Ce ar trebui să știe șoferul?",
+    "commentPlaceholder": "de ex., scaun auto pentru copii, bagaje mari...",
+    "closeButton": "Închide",
+    "sendButton": "Trimite comentariu"
+  },
+  "languageModal": {
+    "uk": "Ucraineană",
+    "en": "Engleză",
+    "ro": "Română"
+  },
+  "chatList": {
+    "title": "Mesaje"
+  },
+  "chat": {
+    "onlineStatus": "online acum 5 min",
+    "placeholder": "Scrie un mesaj",
+    "today": "Astăzi",
+    "yesterday": "Ieri",
+    "takePhoto": "Fă o fotografie",
+    "pickFromGallery": "Alege din galerie",
+    "shareLocation": "Distribuie locația",
+    "locationLabel": "Locație",
+    "galleryPermissionError": "Este necesară permisiunea de a accesa galeria.",
+    "cameraPermissionError": "Este necesară permisiunea de a accesa camera foto.",
+    "locationPermissionError": "Este necesară permisiunea de a accesa locația."
   }
 }

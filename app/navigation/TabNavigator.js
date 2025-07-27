@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native'; // ✨ Імпорт для визначення активного екрана
 
 // Імпортуємо екрани та стеки
 import HomeScreen from '../HomeScreen';
@@ -22,11 +23,19 @@ export default function TabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.secondaryText,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-        },
-        // ✨ Логіка для стандартних іконок Ionicons
+        
+        // ✨ ОНОВЛЕНА ЛОГІКА ДЛЯ СТИЛІВ ПАНЕЛІ
+        tabBarStyle: ((route) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? '';
+          if (routeName === 'IndividualChat') {
+            return { display: 'none' }; // Приховуємо панель на екрані чату
+          }
+          return {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+          };
+        })(route),
+
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
@@ -42,6 +51,7 @@ export default function TabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        
       })}
     >
       <Tab.Screen 

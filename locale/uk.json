@@ -89,17 +89,17 @@
     "confirm": "Підтвердити",
     "cancel": "Скасувати"
   },
-"support": {
-  "title": "Підтримка",
-  "formTitle": "Допоможіть нам стати кращими!",
-  "formSubtitle": "Залиште свій відгук, повідомте про проблему або запропонуйте ідею.",
-  "messageLabel": "Повідомлення",
-  "messagePlaceholder": "Ваш відгук тут...",
-  "sendButton": "Надіслати",
-  "messageEmpty": "Поле повідомлення не може бути порожнім.",
-  "messageSent": "Дякуємо! Ваш відгук було надіслано."
-},
-"transferDetail": {
+  "support": {
+    "title": "Підтримка",
+    "formTitle": "Допоможіть нам стати кращими!",
+    "formSubtitle": "Залиште свій відгук, повідомте про проблему або запропонуйте ідею.",
+    "messageLabel": "Повідомлення",
+    "messagePlaceholder": "Ваш відгук тут...",
+    "sendButton": "Надіслати",
+    "messageEmpty": "Поле повідомлення не може бути порожнім.",
+    "messageSent": "Дякуємо! Ваш відгук було надіслано."
+  },
+  "transferDetail": {
     "title": "Трансфер",
     "from": "Звідки",
     "to": "Куди",
@@ -120,7 +120,46 @@
     "driverOffers": "Заявки водіїв",
     "yourDriver": "Ваш водій",
     "tripCompleted": "Поїздка завершена",
-    "chooseThisDriver": "Обрати цього водіє",
+    "chooseThisDriver": "Обрати цього водія",
     "reviews": "{{count}} відгуків"
+  },
+  "onboarding": {
+    "welcomeTitle": "Ласкаво просимо!",
+    "welcomeText": "Наш додаток допоможе вам легко замовити трансфер.",
+    "configureTitle": "Налаштуйте поїздку",
+    "configureText": "Оберіть дату, час, кількість пасажирів та багажу.",
+    "readyTitle": "Все готово!",
+    "readyText": "Натисніть кнопку нижче, щоб почати.",
+    "startButton": "Почати"
+  },
+  "successModal": {
+    "title": "Запит надіслано!",
+    "subtitle": "Ваш трансфер успішно надіслано. Очікуйте пропозиції від водіїв",
+    "commentTitle": "Що варто знати водієві?",
+    "commentPlaceholder": "Наприклад: дитяче крісло, великий багаж...",
+    "closeButton": "Закрити",
+    "sendButton": "Відправити коментар"
+  },
+  "languageModal": {
+    "uk": "Українська",
+    "en": "English",
+    "ro": "Română"
+  },
+  "chatList": {
+    "title": "Повідомлення"
+  },
+
+  "chat": {
+    "onlineStatus": "у мережі 5 хв тому",
+    "placeholder": "Напишіть повідомлення",
+    "today": "Сьогодні",
+    "yesterday": "Учора",
+    "takePhoto": "Зробити фото",
+    "pickFromGallery": "Обрати з галереї",
+    "shareLocation": "Поділитися геолокацією",
+    "locationLabel": "Місцезнаходження",
+    "galleryPermissionError": "Для доступу до галереї потрібен ваш дозвіл.",
+    "cameraPermissionError": "Для доступу до камери потрібен ваш дозвіл.",
+    "locationPermissionError": "Для доступу до геолокації потрібен ваш дозвіл."
   }
 }

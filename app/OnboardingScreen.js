@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-na
 import Swiper from 'react-native-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../app/ThemeContext'; // 1. Імпортуємо useTheme
+import { useTheme } from '../app/ThemeContext';
+import { useTranslation } from 'react-i18next'; // ✨ Імпорт
 
-// Компонент слайду тепер теж приймає кольори
+// Компонент слайду
 const Slide = ({ icon, title, text, colors }) => {
   const styles = getStyles(colors);
   return (
@@ -19,8 +20,8 @@ const Slide = ({ icon, title, text, colors }) => {
 
 
 export default function OnboardingScreen({ navigation }) {
-  // 2. Отримуємо кольори та генеруємо стилі
   const { colors } = useTheme();
+  const { t } = useTranslation(); // ✨
   const styles = getStyles(colors);
 
   const onDone = async () => {
@@ -42,23 +43,22 @@ export default function OnboardingScreen({ navigation }) {
       >
         <Slide
           icon="airplane-outline"
-          title="Ласкаво просимо!"
-          text="Наш додаток допоможе вам легко замовити трансфер."
+          title={t('onboarding.welcomeTitle')}
+          text={t('onboarding.welcomeText')}
           colors={colors}
         />
         <Slide
           icon="options-outline"
-          title="Налаштуйте поїздку"
-          text="Оберіть дату, час, кількість пасажирів та багажу."
+          title={t('onboarding.configureTitle')}
+          text={t('onboarding.configureText')}
           colors={colors}
         />
-       
         <View style={styles.slide}>
             <Ionicons name="checkmark-done-circle-outline" size={100} color={colors.primary} />
-            <Text style={styles.title}>Все готово!</Text>
-            <Text style={styles.text}>Натисніть кнопку нижче, щоб почати.</Text>
+            <Text style={styles.title}>{t('onboarding.readyTitle')}</Text>
+            <Text style={styles.text}>{t('onboarding.readyText')}</Text>
             <TouchableOpacity style={styles.doneButton} onPress={onDone}>
-                <Text style={styles.doneButtonText}>Почати</Text>
+                <Text style={styles.doneButtonText}>{t('onboarding.startButton')}</Text>
             </TouchableOpacity>
         </View>
       </Swiper>
@@ -66,11 +66,10 @@ export default function OnboardingScreen({ navigation }) {
   );
 }
 
-// 3. Перетворюємо стилі на динамічну функцію
 const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background, // Динамічний колір
+    backgroundColor: colors.background,
   },
   wrapper: {},
   slide: {
@@ -78,23 +77,23 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: colors.background, // Динамічний колір
+    backgroundColor: colors.background,
   },
   title: {
-    color: colors.text, // Динамічний колір
+    color: colors.text,
     fontSize: 24,
     fontWeight: 'bold',
     marginTop: 20,
     textAlign: 'center',
   },
   text: {
-    color: colors.secondaryText, // Динамічний колір
+    color: colors.secondaryText,
     fontSize: 16,
     marginTop: 12,
     textAlign: 'center',
   },
   dot: {
-    backgroundColor: 'rgba(174, 174, 178, 0.5)', // Можна залишити або теж зробити динамічним
+    backgroundColor: 'rgba(174, 174, 178, 0.5)',
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -102,7 +101,7 @@ const getStyles = (colors) => StyleSheet.create({
     marginRight: 3,
   },
   activeDot: {
-    backgroundColor: colors.primary, // Динамічний колір
+    backgroundColor: colors.primary,
     width: 16,
     height: 8,
     borderRadius: 4,
@@ -110,14 +109,14 @@ const getStyles = (colors) => StyleSheet.create({
     marginRight: 3,
   },
   doneButton: {
-    backgroundColor: colors.primary, // Динамічний колір
+    backgroundColor: colors.primary,
     paddingHorizontal: 40,
     paddingVertical: 12,
     borderRadius: 25,
     marginTop: 40,
   },
   doneButtonText: {
-    color: '#FFFFFF', // Зазвичай текст на кнопці залишається білим
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
   }

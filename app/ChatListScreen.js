@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Image
 import { useTheme } from './ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import Logo from '../assets/icon.svg';
+import { useTranslation } from 'react-i18next'; // ✨ Імпорт
 
 const mockChats = [
     { id: '1', name: 'Esther', avatar: 'https://i.pravatar.cc/150?u=esther', lastMessage: 'Чекаю вас біля вокзалу...', time: '22:59', unreadCount: 3 },
@@ -46,13 +47,14 @@ const ChatListItem = ({ item }) => {
 
 export default function ChatListScreen() {
     const { colors } = useTheme();
+    const { t } = useTranslation(); // ✨
     const styles = getStyles(colors);
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Повідомлення</Text>
-                <Logo width={80} height={40} />
+                <Text style={styles.title}>{t('chatList.title', 'Повідомлення')}</Text>
+                <Logo width={40} height={40} />
             </View>
             <FlatList
                 data={mockChats}

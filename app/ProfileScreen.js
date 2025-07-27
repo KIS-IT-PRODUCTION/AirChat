@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import Logo from '../assets/icon.svg'; // Імпортуємо векторний логотип
+
 // Reusable component for a profile detail row
 const DetailRow = ({ label, value }) => {
   const { colors } = useTheme();
@@ -39,7 +41,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Header */}
         <View style={styles.header}>
-          <Image source={require('../assets/icon.png')} style={styles.logo} />
+            <Logo width={40} height={40} />
           <Text style={styles.headerTitle}>{t('profile.title')}</Text>
           <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
             <Ionicons name="headset-outline" size={24} color={colors.text} />
@@ -82,6 +84,7 @@ const getStyles = (colors) => StyleSheet.create({
     scrollContainer: { padding: 16 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     logo: { width: 40, height: 40, resizeMode: 'contain' },
+
     headerTitle: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center' },

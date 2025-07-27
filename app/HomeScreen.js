@@ -12,19 +12,71 @@ import {
   Pressable,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import moment from 'moment';
-import { useNavigation } from '@react-navigation/native';
-
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
+import Logo from '../assets/icon.svg';
 
-// Self-contained InputRow component
+// --- КОМПОНЕНТ МОДАЛЬНОГО ВІКНА (з перекладами) ---
+const SuccessModal = ({ visible, onClose }) => {
+  const { colors } = useTheme();
+  const { t } = useTranslation(); // ✨ Додано хук перекладів
+  const styles = getStyles(colors);
+  const [comment, setComment] = useState('');
+
+  const handleSendComment = () => {
+    // Тут буде ваша логіка відправки коментаря
+    console.log('Sending comment:', comment);
+    onClose(); // Закриваємо вікно після відправки
+  };
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.successModalBackdrop}>
+        <View style={styles.successModalContent}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
+            <Ionicons name="close" size={28} color={colors.secondaryText} />
+          </TouchableOpacity>
+          
+          <Text style={styles.modalTitle}>{t('successModal.title')}</Text>
+          <Text style={styles.modalSubtitle}>{t('successModal.subtitle')}</Text>
+          
+          <Text style={styles.modalSectionTitle}>{t('successModal.commentTitle')}</Text>
+          <TextInput
+            style={styles.modalCommentInput}
+            placeholder={t('successModal.commentPlaceholder')}
+            placeholderTextColor={colors.secondaryText}
+            value={comment}
+            onChangeText={setComment}
+            multiline
+          />
+
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}>
+              <Text style={styles.modalSecondaryButtonText}>{t('successModal.closeButton')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalPrimaryButton} onPress={handleSendComment}>
+              <Text style={styles.modalPrimaryButtonText}>{t('successModal.sendButton')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+
 const InputRow = ({ icon, placeholderKey }) => {
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors, theme);
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.inputRow}>
@@ -38,7 +90,7 @@ const InputRow = ({ icon, placeholderKey }) => {
   );
 };
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const { colors, theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const { t, i18n } = useTranslation();
@@ -51,7 +103,9 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isPickerVisible, setPickerVisibility] = useState(false);
   const [pickerMode, setPickerMode] = useState('date');
-  const navigation = useNavigation();
+  
+  const [isSuccessModalVisible, setSuccessModalVisible] = useState(false);
+
   const showPicker = (mode) => {
     setPickerMode(mode);
     setPickerVisibility(true);
@@ -75,12 +129,16 @@ export default function HomeScreen() {
     i18n.changeLanguage(lang);
     setLanguageModalVisible(false);
   };
+  
+  const handleOrderPress = () => {
+    setSuccessModalVisible(true);
+  };
 
   const styles = getStyles(colors, theme);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Language Selection Modal */}
+      {/* ✨ Модальне вікно вибору мови */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -90,36 +148,48 @@ export default function HomeScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)}>
           <View style={styles.modalContent}>
             <TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('uk')}>
-              <Text style={styles.langButtonText}>Українська</Text>
+              <Text style={styles.langButtonText}>{t('languageModal.uk', 'Українська')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('en')}>
-              <Text style={styles.langButtonText}>English</Text>
+              <Text style={styles.langButtonText}>{t('languageModal.en', 'English')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('ro')}>
-              <Text style={styles.langButtonText}>Română</Text>
+              <Text style={styles.langButtonText}>{t('languageModal.ro', 'Română')}</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
+
+      <SuccessModal 
+        visible={isSuccessModalVisible} 
+        onClose={() => setSuccessModalVisible(false)} 
+      />
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
-          <Image source={require('../assets/icon.png')} style={styles.logo} />  <TouchableOpacity style={styles.iconButton} onPress={() => setLanguageModalVisible(true)}>
+            <Logo width={40} height={40} />
+          <View style={styles.headerCenter}>
+            <TouchableOpacity style={styles.iconButton} onPress={() => setLanguageModalVisible(true)}>
               <Ionicons name="globe-outline" size={20} color={colors.text} />
               <Text style={styles.iconButtonText}>{i18n.language.toUpperCase()}</Text>
             </TouchableOpacity>
+          </View>
           <View style={styles.headerIcons}>
-                     <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('ProfileTab', { screen: 'Support' })}>
-  <Ionicons name="headset-outline" size={24} color={colors.text} />
-</TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('ProfileTab', { screen: 'Support' })}>
+              <Ionicons name="headset-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={handleProfilePress}>
-              <Image source={require('../assets/profile.png')} style={styles.profilePic} />
+              {isAuthenticated ? (
+                <Image source={require('../assets/profile.png')} style={styles.profilePic} />
+              ) : (
+                <View style={[styles.profilePic, styles.profilePlaceholder]}>
+                  <Ionicons name="person-outline" size={24} color={colors.secondaryText} />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'to' && styles.activeTab]}
@@ -134,8 +204,6 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.title}>{t('home.title')}</Text>
-
-        {/* Main Form Card */}
         <View style={styles.card}>
           <InputRow
             icon={activeTab === 'to' ? 'home-outline' : 'airplane-outline'}
@@ -180,8 +248,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-        
-        {/* --- ОНОВЛЕНИЙ БЛОК ВИБОРУ ТИПУ ТРАНСФЕРУ --- */}
         <View style={styles.radioGroupContainer}>
             <TouchableOpacity 
                 style={[styles.radioContainer, transferType === 'individual' && styles.radioContainerActive]} 
@@ -200,8 +266,6 @@ export default function HomeScreen() {
                 </Text>
             </TouchableOpacity>
         </View>
-        
-        {/* Pet Checkbox */}
         <TouchableOpacity style={[styles.card, styles.checkboxRow]} onPress={() => setWithPet(!withPet)}>
           <Ionicons name={withPet ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} />
           <View>
@@ -209,23 +273,20 @@ export default function HomeScreen() {
             <Text style={styles.checkboxSubtext}>{t('home.petSubtext')}</Text>
           </View>
         </TouchableOpacity>
-
-        {/* Order Button */}
-        <TouchableOpacity style={styles.submitButton}>
+        <TouchableOpacity style={styles.submitButton} onPress={handleOrderPress}>
           <Text style={styles.submitButtonText}>{t('home.orderButton')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Date/Time Picker Modal */}
       <DateTimePickerModal
         isVisible={isPickerVisible}
         mode={pickerMode}
         onConfirm={handleConfirm}
         onCancel={hidePicker}
         is24Hour={true}
-        locale="uk_UA"
-        confirmTextIOS={t('common.confirm', { defaultValue: 'Confirm' })}
-        cancelTextIOS={t('common.cancel', { defaultValue: 'Cancel' })}
+        locale={i18n.language}
+        confirmTextIOS={t('common.confirm')}
+        cancelTextIOS={t('common.cancel')}
         date={selectedDate}
       />
     </SafeAreaView>
@@ -242,16 +303,29 @@ const shadowStyle = {
 };
 
 const getStyles = (colors, theme) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  container: { flex: 1,  backgroundColor: colors.background },
+  scrollContent: { padding: 15, paddingBottom: 40,  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between', 
     marginBottom: 24,
   },
-  logo: { width: 50, height: 50, resizeMode: 'contain' },
-  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerCenter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  logo: {
+    width: 40,
+    height: 40,
+  },
+  headerIcons: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12 
+  },
   iconButton: {
     backgroundColor: colors.card,
     borderRadius: 20,
@@ -265,6 +339,16 @@ const getStyles = (colors, theme) => StyleSheet.create({
   },
   iconButtonText: { color: colors.text, marginLeft: 6, fontWeight: '600' },
   profilePic: { width: 40, height: 40, borderRadius: 20 },
+  profilePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -310,8 +394,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
   verticalDivider: { height: '60%', width: 1, backgroundColor: colors.border || '#3A3A3C' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   passengerCount: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
-  
-  // --- НОВІ СТИЛІ ДЛЯ ВИБОРУ ТИПУ ТРАНСФЕРУ ---
   radioGroupContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -339,7 +421,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
   radioTextActive: {
     color: colors.primary,
   },
-  
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,6 +440,102 @@ const getStyles = (colors, theme) => StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+
+  // --- СТИЛІ МОДАЛЬНИХ ВІКОН ---
+  successModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  successModalContent: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    alignItems: 'center',
+    ...shadowStyle,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: colors.secondaryText,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  modalCommentInput: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    width: '100%',
+    height: 100,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+    textAlignVertical: 'top',
+    marginBottom: 24,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalSecondaryButton: {
+    backgroundColor: colors.background,
+    paddingVertical: 14,
+    borderRadius: 12,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  modalSecondaryButtonText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  modalPrimaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalPrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  
+  // Стилі для модального вікна вибору мови
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',

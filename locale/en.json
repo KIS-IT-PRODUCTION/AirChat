@@ -44,5 +44,31 @@
   "auth": {
     "register": "Register",
     "login": "Login"
+  },
+  
+  "transferDetail": {
+    "title": "Transfer",
+    "from": "From",
+    "to": "To",
+    "detailsTitle": "Transfer Details",
+    "date": "Date",
+    "time": "Time",
+    "passengers": "passengers",
+    "luggage": "Luggage",
+    "withPet": "Traveling with a pet",
+    "yes": "Yes",
+    "transferType": "Transfer Type",
+    "clientComment": "Client's request",
+    "route": "Plotted Route",
+    "mapPlaceholder": "Map will be here",
+    "start": "Start",
+    "finish": "Finish",
+    "cancelTransfer": "Cancel Transfer",
+    "driverOffers": "Driver offers",
+    "yourDriver": "Your Driver",
+    "tripCompleted": "Trip Completed",
+    "chooseThisDriver": "Choose this driver",
+    "reviews": "{{count}} reviews"
   }
+
 }

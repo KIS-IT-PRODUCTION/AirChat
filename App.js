@@ -7,22 +7,24 @@ import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator } from 'react-native';
 
-// Ваші існуючі імпорти (шляхи збережено)
+// Ваші існуючі імпорти
 import { ThemeProvider } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
 
-// Імпортуємо всі екрани та новий навігатор
+// Імпортуємо всі екрани та навігатори
 import HomeScreen from './app/HomeScreen';
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
 import LoginScreen from './app/LoginScreen';
-import TabNavigator from './app/navigation/TabNavigator'; // 👈 Додано імпорт TabNavigator
-import  Settings  from './app/Settings'; // Import Settings if needed in the Profile tab
+import TabNavigator from './app/navigation/TabNavigator';
+import Settings from './app/Settings';
+import TransferDetailScreen from './app/TransferDetailScreen'; // ✨ ІМПОРТ НОВОГО ЕКРАНА
 
 const Stack = createStackNavigator();
+const RootStack = createStackNavigator(); // ✨ СТВОРЮЄМО КОРЕНЕВИЙ СТЕК
 
-// --- Створюємо окремий навігатор для потоку автентифікації ---
+// --- Навігатор для потоку автентифікації (без змін) ---
 function AuthStack({ isFirstLaunch }) {
   return (
     <Stack.Navigator 
@@ -36,11 +38,23 @@ function AuthStack({ isFirstLaunch }) {
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
-      <Stack.Screen name="Settings" component={Settings} /> {/* Додано Settings */}
-
+      <Stack.Screen name="Settings" component={Settings} />
     </Stack.Navigator>
   );
 }
+
+// --- ✨ НОВИЙ КОРЕНЕВИЙ НАВІГАТОР ДЛЯ ЗАЛОГІНЕНОГО КОРИСТУВАЧА ---
+// Він включає в себе TabNavigator і екрани, що мають бути поверх вкладок
+function RootStackNavigator() {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="MainTabs" component={TabNavigator} />
+      <RootStack.Screen name="TransferDetail" component={TransferDetailScreen} />
+      {/* Тут можна додати інші екрани, які мають відкриватися поверх вкладок */}
+    </RootStack.Navigator>
+  );
+}
+
 
 // --- Компонент, що вирішує, який навігатор показати ---
 function AppContent() {
@@ -74,9 +88,8 @@ function AppContent() {
   return (
     <NavigationContainer>
       {session && session.user ? (
-        // Якщо користувач залогінений, показуємо головний додаток з табами
-        <TabNavigator />
-
+        // ✨ Якщо користувач залогінений, показуємо КОРЕНЕВИЙ навігатор
+        <RootStackNavigator />
       ) : (
         // Якщо ні - показуємо потік реєстрації/входу
         <AuthStack isFirstLaunch={isFirstLaunch} />
@@ -86,7 +99,7 @@ function AppContent() {
 }
 
 
-// --- Головний компонент App, що огортає все в провайдери ---
+// --- Головний компонент App (без змін) ---
 export default function App() {
   return (
     <ThemeProvider>

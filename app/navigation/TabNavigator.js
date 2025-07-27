@@ -4,11 +4,12 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
-// Import your
+// Імпортуємо екрани та стеки
 import HomeScreen from '../HomeScreen';
 import TransfersScreen from '../TransfersScreen';
-import MessagesScreen from '../MessagesScreen';
 import ProfileStack from '../navigation/ProfileStack'; 
+import MessagesStack from './MessagesStack';
+
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -25,33 +26,49 @@ export default function TabNavigator() {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
         },
+        // ✨ Логіка для стандартних іконок Ionicons
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
+
           if (route.name === 'HomeTab') {
-            iconName = focused ? 'search' : 'search-outline';
+            iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'TransfersTab') {
-            iconName = focused ? 'airplane' : 'airplane-outline';
+            iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
           } else if (route.name === 'MessagesTab') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+          } else if (route.name === 'ProfileTab') {
+            iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
+
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: t('tabs.home') }}/>
-      <Tab.Screen name="TransfersTab" component={TransfersScreen} options={{ title: t('tabs.transfers') }}/>
-      <Tab.Screen name="MessagesTab" component={MessagesScreen} options={{ title: t('tabs.messages'), tabBarBadge: 3 }}/>
-      {/* For simplicity, we add Profile as a tab. It can also be a screen in a Stack. */}
+      <Tab.Screen 
+        name="HomeTab" 
+        component={HomeScreen} 
+        options={{ title: t('tabs.home', 'Головна') }}
+      />
+      <Tab.Screen 
+        name="TransfersTab" 
+        component={TransfersScreen} 
+        options={{ title: t('tabs.transfers', 'Трансфери') }}
+      />
+      <Tab.Screen 
+        name="MessagesTab" 
+        component={MessagesStack}
+        options={{ 
+          title: t('tabs.messages', 'Повідомлення'), 
+          tabBarBadge: 3,
+        }}
+      />      
       <Tab.Screen 
         name="ProfileTab" 
-        component={ProfileStack} // 👈 Use the stack here instead of the screen
+        component={ProfileStack}
         options={{ 
-          title: t('tabs.profile'),
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} />
-          )
+          title: t('tabs.profile', 'Профіль'),
         }}
-    />
+      />
     </Tab.Navigator>
   );
 }

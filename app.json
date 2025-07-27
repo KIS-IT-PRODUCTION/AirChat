@@ -5,28 +5,57 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.airchat.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Додатку потрібен доступ до вашої геолокації для відображення маршрутів на карті.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.airchat.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
+        }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-localization"
-    ]
+      "expo-localization",
+      "expo-dev-client",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
+          "cameraPermission": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e5ae05a0-322d-4a51-84d9-84738230258b"
+      }
+    }
   }
 }

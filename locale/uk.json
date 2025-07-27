@@ -98,5 +98,29 @@
   "sendButton": "Надіслати",
   "messageEmpty": "Поле повідомлення не може бути порожнім.",
   "messageSent": "Дякуємо! Ваш відгук було надіслано."
-}
+},
+"transferDetail": {
+    "title": "Трансфер",
+    "from": "Звідки",
+    "to": "Куди",
+    "detailsTitle": "Деталі трансферу",
+    "date": "Дата",
+    "time": "Час",
+    "passengers": "осіб",
+    "luggage": "Багаж",
+    "withPet": "Подорож з твариною",
+    "yes": "Так",
+    "transferType": "Тип трансферу",
+    "clientComment": "Побажання від клієнта",
+    "route": "Прокладений маршрут",
+    "mapPlaceholder": "Карта буде тут",
+    "start": "Старт",
+    "finish": "Фініш",
+    "cancelTransfer": "Скасувати трансфер",
+    "driverOffers": "Заявки водіїв",
+    "yourDriver": "Ваш водій",
+    "tripCompleted": "Поїздка завершена",
+    "chooseThisDriver": "Обрати цього водіє",
+    "reviews": "{{count}} відгуків"
+  }
 }

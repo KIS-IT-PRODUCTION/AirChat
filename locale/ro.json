@@ -47,5 +47,29 @@
   },
   "authScreen": {
     "title": "AirChat: Transferuri la/de la aeroport"
+  },
+   "transferDetail": {
+    "title": "Transfer",
+    "from": "De la",
+    "to": "La",
+    "detailsTitle": "Detalii transfer",
+    "date": "Data",
+    "time": "Ora",
+    "passengers": "persoane",
+    "luggage": "Bagaj",
+    "withPet": "Călătorie cu animal de companie",
+    "yes": "Da",
+    "transferType": "Tipul transferului",
+    "clientComment": "Solicitarea clientului",
+    "route": "Traseu planificat",
+    "mapPlaceholder": "Harta va fi aici",
+    "start": "Start",
+    "finish": "Finish",
+    "cancelTransfer": "Anulați transferul",
+    "driverOffers": "Ofertele șoferilor",
+    "yourDriver": "Șoferul dvs.",
+    "tripCompleted": "Călătorie finalizată",
+    "chooseThisDriver": "Alegeți acest șofer",
+    "reviews": "{{count}} recenzii"
   }
 }

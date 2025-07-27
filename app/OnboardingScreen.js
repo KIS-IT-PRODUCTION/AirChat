@@ -26,7 +26,7 @@ export default function OnboardingScreen({ navigation }) {
   const onDone = async () => {
     try {
       await AsyncStorage.setItem('hasOnboarded', 'true');
-      navigation.replace('Home');
+      navigation.replace('HomeScreen');
     } catch (e) {
       console.error('Failed to save onboarding status', e);
     }

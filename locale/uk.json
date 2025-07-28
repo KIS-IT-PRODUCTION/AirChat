@@ -41,7 +41,12 @@
   "login": {
     "title": "Вхід",
     "emailPlaceholder": "Введіть Вашу електронну пошту",
-    "passwordPlaceholder": "Введіть Ваш пароль"
+    "passwordPlaceholder": "Введіть Ваш пароль",
+    "subtitle": "З поверненням!",
+    "fillAllFields": "Будь ласка, заповніть усі поля.",
+    "forgotPassword": "Забули пароль?",
+    "featureComingSoon": "Ця функція скоро з'явиться.",
+    "noAccount": "Немає облікового запису?"
   },
   "profile": {
     "title": "Мій профіль",
@@ -66,7 +71,9 @@
     "profileSaved": "Профіль успішно збережено!",
     "uk": "Українська",
     "en": "English",
-    "ro": "Română"
+    "ro": "Română",
+    "logout": "Вийти",
+    "logoutConfirm": "Ви впевнені, що хочете вийти?"
   },
   "tabs": {
     "home": "Головна",

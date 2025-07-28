@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import Logo from '../assets/icon.svg'; // Імпортуємо векторний логотип
 
 // 1. ВИПРАВЛЕНО: Всі хуки імпортуються з єдиної папки 'app/context/'
 import { useTheme } from './ThemeContext';
@@ -18,10 +19,8 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Image
-          source={require('../assets/icon.png')} // Переконайтесь, що шлях правильний
-          style={styles.logo}
-        />
+                   <Logo width={100} height={100} style={{marginBottom: 24}} />
+       
         <Text style={styles.title}>{t('authScreen.title', { defaultValue: 'AirChat: Transfers to and from the airport' })}</Text>
       </View>
 
@@ -55,12 +54,6 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-    marginBottom: 24,
   },
   title: {
     color: colors.text,

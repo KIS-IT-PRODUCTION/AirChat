@@ -19,17 +19,53 @@ import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import Logo from '../assets/icon.svg';
 
-// --- КОМПОНЕНТ МОДАЛЬНОГО ВІКНА (з перекладами) ---
+// --- НОВЕ МОДАЛЬНЕ ВІКНО ДЛЯ АВТОРИЗАЦІЇ ---
+const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const styles = getStyles(colors);
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.successModalBackdrop}>
+        <View style={styles.successModalContent}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
+            <Ionicons name="close" size={28} color={colors.secondaryText} />
+          </TouchableOpacity>
+          
+          <Text style={styles.modalTitle}>{t('authPrompt.title', 'Потрібна авторизація')}</Text>
+          <Text style={styles.modalSubtitle}>{t('authPrompt.subtitle', 'Щоб замовити трансфер, будь ласка, увійдіть або зареєструйтеся.')}</Text>
+          
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}>
+              <Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalPrimaryButton} onPress={onLogin}>
+              <Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+
+// --- КОМПОНЕНТ МОДАЛЬНОГО ВІКНА УСПІХУ (без змін) ---
 const SuccessModal = ({ visible, onClose }) => {
   const { colors } = useTheme();
-  const { t } = useTranslation(); // ✨ Додано хук перекладів
+  const { t } = useTranslation();
   const styles = getStyles(colors);
   const [comment, setComment] = useState('');
 
   const handleSendComment = () => {
-    // Тут буде ваша логіка відправки коментаря
     console.log('Sending comment:', comment);
-    onClose(); // Закриваємо вікно після відправки
+    onClose();
   };
 
   return (
@@ -92,7 +128,7 @@ const InputRow = ({ icon, placeholderKey }) => {
 
 export default function HomeScreen({ navigation }) {
   const { colors, theme } = useTheme();
-  const { isAuthenticated } = useAuth();
+  const { session } = useAuth(); // ✨ Отримуємо сесію для перевірки
   const { t, i18n } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('from');
@@ -105,6 +141,7 @@ export default function HomeScreen({ navigation }) {
   const [pickerMode, setPickerMode] = useState('date');
   
   const [isSuccessModalVisible, setSuccessModalVisible] = useState(false);
+  const [isAuthModalVisible, setAuthModalVisible] = useState(false); // ✨ Стан для нового модального вікна
 
   const showPicker = (mode) => {
     setPickerMode(mode);
@@ -118,7 +155,8 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleProfilePress = () => {
-    if (isAuthenticated) {
+    // ✨ Використовуємо сесію для перевірки
+    if (session?.user) {
       navigation.navigate('ProfileTab');
     } else {
       navigation.navigate('Auth');
@@ -130,15 +168,32 @@ export default function HomeScreen({ navigation }) {
     setLanguageModalVisible(false);
   };
   
+  // ✨ ОНОВЛЕНА ЛОГІКА КНОПКИ ЗАМОВЛЕННЯ
   const handleOrderPress = () => {
-    setSuccessModalVisible(true);
+    if (session?.user) {
+      // Якщо користувач залогінений, показуємо вікно успіху
+      setSuccessModalVisible(true);
+    } else {
+      // Якщо ні - показуємо вікно з пропозицією увійти/зареєструватися
+      setAuthModalVisible(true);
+    }
+  };
+
+  // ✨ Функції для навігації з модального вікна
+  const handleGoToLogin = () => {
+    setAuthModalVisible(false);
+    navigation.navigate('LoginScreen');
+  };
+
+  const handleGoToRegister = () => {
+    setAuthModalVisible(false);
+    navigation.navigate('RegistrationScreen');
   };
 
   const styles = getStyles(colors, theme);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ✨ Модальне вікно вибору мови */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -164,6 +219,14 @@ export default function HomeScreen({ navigation }) {
         visible={isSuccessModalVisible} 
         onClose={() => setSuccessModalVisible(false)} 
       />
+
+      {/* ✨ ДОДАНО НОВЕ МОДАЛЬНЕ ВІКНО */}
+      <AuthPromptModal
+        visible={isAuthModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onLogin={handleGoToLogin}
+        onRegister={handleGoToRegister}
+      />
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
@@ -179,7 +242,7 @@ export default function HomeScreen({ navigation }) {
               <Ionicons name="headset-outline" size={24} color={colors.text} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleProfilePress}>
-              {isAuthenticated ? (
+              {session?.user ? (
                 <Image source={require('../assets/profile.png')} style={styles.profilePic} />
               ) : (
                 <View style={[styles.profilePic, styles.profilePlaceholder]}>
@@ -511,7 +574,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
   },
   modalSecondaryButtonText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -528,7 +591,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
   },
   modalPrimaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

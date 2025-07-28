@@ -10,7 +10,8 @@ import HomeScreen from '../HomeScreen';
 import TransfersScreen from '../TransfersScreen';
 import ProfileStack from '../navigation/ProfileStack'; 
 import MessagesStack from './MessagesStack';
-
+import Home from '../../assets/panel/home.svg'
+import Home2 from '../../assets/panel/home2.svg';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -40,14 +41,20 @@ export default function TabNavigator() {
           let iconName;
 
           if (route.name === 'HomeTab') {
-            iconName = focused ? 'home' : 'home-outline';
+            if (focused) {
+              return <Home2 width={size} height={size} fill={color} />;
+            } else {
+              return <Home width={size} height={size} fill={color} />;
+            }
+            iconName = 'home-outline';
           } else if (route.name === 'TransfersTab') {
-            iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
+            iconName = focused ? 'airplane' : 'airplane';
           } else if (route.name === 'MessagesTab') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
+          
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },

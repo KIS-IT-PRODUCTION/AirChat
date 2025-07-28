@@ -61,7 +61,7 @@ const EditableField = ({ labelKey, icon, value, isEditing, onToggleEdit, onChang
 const ThemeSwitcher = () => {
   const { colors, theme, toggleTheme } = useTheme();
   const styles = getStyles(colors);
-const { t } = useTranslation();
+  const { t } = useTranslation();
   const handlePress = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     toggleTheme();
@@ -86,7 +86,8 @@ const { t } = useTranslation();
 export default function SettingsScreen({ navigation }) {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
-  const { session } = useAuth();
+  // Destructure signOut from the useAuth hook
+  const { session, signOut } = useAuth();
   const styles = getStyles(colors);
 
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -129,6 +130,26 @@ export default function SettingsScreen({ navigation }) {
   
   const toggleEdit = (fieldName) => {
     setEditingField(prevField => prevField === fieldName ? null : fieldName);
+  };
+  
+  // Handle the logout action
+  const handleLogout = () => {
+    Alert.alert(
+      t('settings.logout'),
+      t('settings.logoutConfirm'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.confirm'),
+          onPress: () => signOut(), // Call the signOut function from AuthContext
+          style: 'destructive',
+        },
+      ],
+      { cancelable: false }
+    );
   };
 
   return (
@@ -224,8 +245,14 @@ export default function SettingsScreen({ navigation }) {
         
         {/* Save Button */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges} disabled={loading}>
-          <Ionicons name="menu-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="save-outline" size={24} color="#FFFFFF" />
           <Text style={styles.saveButtonText}>{loading ? t('common.loading') : t('settings.saveProfile')}</Text>
+        </TouchableOpacity>
+        
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+          <Text style={styles.logoutButtonText}>{t('settings.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -253,6 +280,23 @@ const getStyles = (colors) => StyleSheet.create({
     changePasswordLink: { color: colors.primary, textAlign: 'right', marginTop: 8, fontWeight: '600' },
     saveButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 32 },
     saveButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+    // Logout Button Styles
+    logoutButton: {
+        flexDirection: 'row',
+        backgroundColor: '#D9534F', // A distinct red color for logout
+        borderRadius: 12,
+        paddingVertical: 16,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 16,
+    },
+    logoutButtonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
     modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
     modalContent: { backgroundColor: colors.card, padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 },
     langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },

@@ -21,6 +21,10 @@
     "title": "AirChat: Airport transfers to and from the airport",
     "driverLogin": "Are you a driver? Log in to your account"
   },
+  "authPrompt": {
+    "title": "Authorization Required",
+    "subtitle": "To order a transfer, please log in or register."
+  },
   "registration": {
     "title": "Registration",
     "subtitle": "Dive into the world of transportation!",
@@ -40,8 +44,13 @@
   },
   "login": {
     "title": "Login",
+    "subtitle": "Welcome back!",
     "emailPlaceholder": "Enter your email",
-    "passwordPlaceholder": "Enter your password"
+    "passwordPlaceholder": "Enter your password",       
+    "fillAllFields": "Please fill in all fields.",
+    "forgotPassword": "Forgot Password?",
+    "featureComingSoon": "This feature is coming soon.",
+    "noAccount": "Don't have an account?"
   },
   "profile": {
     "title": "My Profile",
@@ -66,7 +75,9 @@
     "profileSaved": "Profile saved successfully!",
     "uk": "Ukrainian",
     "en": "English",
-    "ro": "Romanian"
+    "ro": "Romanian",
+      "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to log out?"
   },
   "tabs": {
     "home": "Home",

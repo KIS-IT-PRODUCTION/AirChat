@@ -11,7 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
+ "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.airchat.app",
       "config": {
@@ -19,6 +19,8 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Додатку потрібен доступ до вашої геолокації для відображення маршрутів на карті.",
+        "NSCameraUsageDescription": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото.",
+        "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

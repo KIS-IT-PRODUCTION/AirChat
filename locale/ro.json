@@ -21,6 +21,10 @@
     "title": "AirChat: Transferuri la și de la aeroport",
     "driverLogin": "Sunteți șofer? Conectați-vă la cont"
   },
+    "authPrompt": {
+    "title": "Autorizare necesară",
+    "subtitle": "Pentru a comanda un transfer, vă rugăm să vă autentificați sau să vă înregistrați."
+  },
   "registration": {
     "title": "Înregistrare",
     "subtitle": "Pătrundeți în lumea transportului!",
@@ -41,7 +45,12 @@
   "login": {
     "title": "Autentificare",
     "emailPlaceholder": "Introduceți adresa de email",
-    "passwordPlaceholder": "Introduceți parola"
+    "passwordPlaceholder": "Introduceți parola",
+    "subtitle": "Bine ai revenit!",
+    "fillAllFields": "Vă rugăm să completați toate câmpurile.",
+    "forgotPassword": "Ați uitat parola?",
+    "featureComingSoon": "Această funcție va fi disponibilă în curând.",
+    "noAccount": "Nu ai un cont?"
   },
   "profile": {
     "title": "Profilul Meu",
@@ -66,7 +75,9 @@
     "profileSaved": "Profil salvat cu succes!",
     "uk": "Ucraineană",
     "en": "Engleză",
-    "ro": "Română"
+    "ro": "Română",
+    "logout": "Deconectare",
+    "logoutConfirm": "Sunteți sigur că doriți să vă deconectați?"
   },
   "tabs": {
     "home": "Acasă",
@@ -122,6 +133,7 @@
     "tripCompleted": "Călătorie finalizată",
     "chooseThisDriver": "Alegeți acest șofer",
     "reviews": "{{count}} recenzii"
+
   },
   "onboarding": {
     "welcomeTitle": "Bun venit!",

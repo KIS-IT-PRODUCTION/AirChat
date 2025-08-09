@@ -1,3 +1,4 @@
+// app/RegistrationScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -5,54 +6,34 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  TextInput,
   ScrollView,
-  Alert, // 1. Import Alert for user feedback
+  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Імпорт для адаптації
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
+import InputWithIcon from './components/InputWithIcon'; // Переконайтесь, що шлях правильний
 
-// Reusable component for an input field with an icon
-const InputWithIcon = ({ icon, placeholderKey, value, onChangeText, secureTextEntry = false, autoCapitalize = 'sentences' }) => {
+export default function RegistrationScreen({ navigation, route }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const insets = useSafeAreaInsets(); // Отримуємо безпечні відступи екрана
+  const styles = getStyles(colors, insets); // Передаємо відступи в стилі
+  const { signUp } = useAuth();
 
-  return (
-    <View style={styles.inputContainer}>
-      <Ionicons name={icon} size={20} color={colors.secondaryText} style={styles.inputIcon} />
-      <TextInput
-        style={styles.input}
-        placeholder={t(placeholderKey)}
-        placeholderTextColor={colors.secondaryText}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        autoCapitalize={autoCapitalize}
-      />
-    </View>
-  );
-};
-
-export default function RegistrationScreen({ navigation }) {
-  const { colors } = useTheme();
-  const { t } = useTranslation();
-  const { signUp } = useAuth(); // 3. Get the signUp function from the context
-  const styles = getStyles(colors);
+  const { role } = route.params || { role: 'client' };
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false); // 4. Add loading state
+  const [loading, setLoading] = useState(false);
 
-  // 5. Create the handler function for registration
   const handleRegister = async () => {
-    if (!email || !password) {
-      Alert.alert(t('common.error'), t('registration.emailPasswordRequired'));
+    if (!email || !password || !fullName) {
+      Alert.alert(t('common.error'), t('registration.fillAllFields', 'Please fill in your full name, email, and password.'));
       return;
     }
     setLoading(true);
@@ -60,10 +41,10 @@ export default function RegistrationScreen({ navigation }) {
       email: email,
       password: password,
       options: {
-        // You can pass additional user metadata here
         data: {
           full_name: fullName,
           phone: phone,
+          role: role,
         }
       }
     });
@@ -71,23 +52,34 @@ export default function RegistrationScreen({ navigation }) {
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
-      // Supabase sends a confirmation email by default.
-      Alert.alert(t('common.success'), t('registration.confirmationEmail'));
-      navigation.goBack(); // Go back to the previous screen
+      Alert.alert(t('common.success'), t('registration.confirmationEmail', 'Please check your email to confirm your registration.'));
+      navigation.navigate('LoginScreen');
     }
     setLoading(false);
   };
+  
+  const title = role === 'driver' 
+    ? t('registration.driverTitle', 'Driver Registration') 
+    : t('registration.title', 'Create Account');
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Адаптивна кнопка "скасувати" */}
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => navigation.navigate('HomeScreen')}
+      >
+        <Ionicons name="close-outline" size={32} color={colors.text} />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Text style={styles.title}>{t('registration.title')}</Text>
-          <Text style={styles.subtitle}>{t('registration.subtitle')}</Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{t('registration.subtitle', 'Let\'s get you started!')}</Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>{t('registration.fullNameLabel')}</Text>
+           <Text style={styles.label}>{t('registration.fullNameLabel', 'Full Name')}</Text>
           <InputWithIcon
             icon="person-outline"
             placeholderKey="registration.fullNamePlaceholder"
@@ -95,7 +87,7 @@ export default function RegistrationScreen({ navigation }) {
             onChangeText={setFullName}
           />
 
-          <Text style={styles.label}>{t('registration.emailLabel')}</Text>
+          <Text style={styles.label}>{t('registration.emailLabel', 'Email')}</Text>
           <InputWithIcon
             icon="mail-outline"
             placeholderKey="registration.emailPlaceholder"
@@ -104,7 +96,7 @@ export default function RegistrationScreen({ navigation }) {
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>{t('registration.passwordLabel')}</Text>
+          <Text style={styles.label}>{t('registration.passwordLabel', 'Password')}</Text>
           <InputWithIcon
             icon="lock-closed-outline"
             placeholderKey="registration.passwordPlaceholder"
@@ -113,7 +105,7 @@ export default function RegistrationScreen({ navigation }) {
             secureTextEntry
           />
 
-          <Text style={styles.label}>{t('registration.phoneLabel')}</Text>
+          <Text style={styles.label}>{t('registration.phoneLabel', 'Phone (Optional)')}</Text>
           <InputWithIcon
             icon="call-outline"
             placeholderKey="registration.phonePlaceholder"
@@ -123,16 +115,16 @@ export default function RegistrationScreen({ navigation }) {
         </View>
 
         <View style={styles.footer}>
-          {/* 6. Update the button to use the handler and loading state */}
           <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
             <Text style={styles.registerButtonText}>
-              {loading ? t('common.loading') : t('registration.registerButton')}
+              {loading ? t('common.loading', 'Registering...') : t('registration.registerButton', 'Register')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
+          <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')} disabled={loading}>
             <Text style={styles.loginLink}>
-              {t('registration.alreadyRegistered')}{' '}
-              <Text style={{ color: colors.primary }}>{t('registration.loginLink')}</Text>
+              {t('registration.alreadyRegistered', 'Already have an account?')}
+              {' '}
+              <Text style={{ color: colors.primary }}>{t('registration.loginLink', 'Log In')}</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -141,20 +133,28 @@ export default function RegistrationScreen({ navigation }) {
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = (colors, insets) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
+    closeButton: {
+      position: 'absolute',
+      // Використовуємо відступ зверху від безпечної зони + невеликий зазор
+      top: insets.top + 10, 
+      right: 20,
+      zIndex: 10,
+      padding: 5, // Збільшуємо область натискання для зручності
+    },
     scrollContainer: {
       flexGrow: 1,
       justifyContent: 'space-between',
       padding: 24,
+      paddingTop: 60, // Залишаємо місце для кнопки та заголовка
     },
     header: {
       alignItems: 'center',
-      marginTop: 20,
     },
     title: {
       color: colors.text,
@@ -174,23 +174,6 @@ const getStyles = (colors) =>
       fontSize: 14,
       marginBottom: 8,
       marginLeft: 4,
-    },
-    inputContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: 12,
-      marginBottom: 20,
-      paddingHorizontal: 12,
-    },
-    inputIcon: {
-      marginRight: 8,
-    },
-    input: {
-      flex: 1,
-      color: colors.text,
-      fontSize: 16,
-      height: 50,
     },
     footer: {
       alignItems: 'center',

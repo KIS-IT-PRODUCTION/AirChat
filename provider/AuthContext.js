@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for an existing session on app startup
     const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -18,37 +17,37 @@ export const AuthProvider = ({ children }) => {
 
     fetchSession();
 
-    // Listen for auth state changes (login, logout, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    // Clean up the listener on unmount
     return () => subscription.unsubscribe();
   }, []);
 
   const authContextValue = {
-    // Function to sign up a new user
-    signUp: async ({ email, password }) => {
+    // ОНОВЛЕНО: signUp тепер приймає об'єкт з метаданими
+    signUp: async ({ email, password, options = {} }) => {
       return supabase.auth.signUp({
         email: email,
         password: password,
+        options: {
+          // Дані, які будуть використані нашим тригером в базі даних
+          data: options.data,
+        },
       });
     },
-    // Function to sign in an existing user
     signIn: async ({ email, password }) => {
       return supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
     },
-    // Function to sign out the current user
     signOut: async () => {
       return supabase.auth.signOut();
     },
     session,
     isLoading,
-    isAuthenticated: !!session, // User is authenticated if a session exists
+    isAuthenticated: !!session,
   };
 
   return (
@@ -58,5 +57,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook for easy access
 export const useAuth = () => useContext(AuthContext);

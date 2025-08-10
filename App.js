@@ -10,7 +10,7 @@ import { View, ActivityIndicator, Text } from 'react-native';
 // --- Імпорти ---
 import { ThemeProvider } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
-import { supabase } from './config/supabase'; // Перевірте шлях до вашого файлу конфігурації
+import { supabase } from './config/supabase';
 
 // --- Екрани та навігатори ---
 import HomeScreen from './app/HomeScreen';
@@ -18,20 +18,20 @@ import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
 import LoginScreen from './app/LoginScreen';
-import TabNavigator from './app/navigation/TabNavigator';
+import TabNavigator from './app/navigation/TabNavigator'; // Панель пасажира
+import DriverTabNavigator from './app/navigation/DriverTabNavigator'; // ✨ ПАНЕЛЬ ВОДІЯ
 import Settings from './app/Settings';
 import TransferDetailScreen from './app/TransferDetailScreen';
+import DriverRequestDetailScreen from './app/driver/DriverRequestDetailScreen';
 
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 const DriverStack = createStackNavigator();
 
 // --- Навігатор для НЕ залогінених користувачів (Гостьовий режим) ---
-// Зберігаємо суть початкового файлу: HomeScreen доступний для всіх.
 function GuestAppStack({ isFirstLaunch }) {
   return (
     <Stack.Navigator
-      // Якщо перший запуск -> Onboarding. В іншому випадку -> HomeScreen.
       initialRouteName={isFirstLaunch ? 'Onboarding' : 'HomeScreen'}
       screenOptions={{ headerShown: false }}
     >
@@ -42,13 +42,11 @@ function GuestAppStack({ isFirstLaunch }) {
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
-      {/* Settings та інші захищені екрани тут відсутні, оскільки вони для залогінених користувачів */}
     </Stack.Navigator>
   );
 }
 
 // --- Навігатор для КЛІЄНТА (залогінений стан) ---
-// Зберігаємо назву RootStackNavigator, як у вашій версії.
 function RootStackNavigator() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -59,22 +57,17 @@ function RootStackNavigator() {
   );
 }
 
-// --- Навігатор для ВОДІЯ (залогінений стан) ---
-const DriverDashboardScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ fontSize: 24 }}>Панель водія</Text>
-  </View>
-);
-
+// --- ✨ ОНОВЛЕНИЙ НАВІГАТОР ДЛЯ ВОДІЯ ---
+// Тепер він використовує навігаційну панель
 function DriverStackNavigator() {
     return (
-        <DriverStack.Navigator>
-            <DriverStack.Screen
-                name="DriverDashboard"
-                component={DriverDashboardScreen}
-                options={{ title: 'Мої поїздки' }}
+        <DriverStack.Navigator screenOptions={{ headerShown: false }}>
+            <DriverStack.Screen 
+                name="DriverMainTabs" 
+                component={DriverTabNavigator} 
             />
-            {/* Тут можна додати інші екрани для водія, наприклад, налаштування */}
+            <DriverStack.Screen name="DriverRequest" component={DriverRequestDetailScreen} />
+    
         </DriverStack.Navigator>
     );
 }
@@ -138,12 +131,10 @@ function AppContent() {
   return (
     <NavigationContainer>
       {session && userProfile ? (
-        // Якщо користувач залогінений і профіль завантажено
         userProfile.role === 'driver'
-          ? <DriverStackNavigator />   // Показуємо навігатор водія
-          : <RootStackNavigator />     // Показуємо навігатор клієнта
+          ? <DriverStackNavigator />
+          : <RootStackNavigator />
       ) : (
-        // Якщо користувач не залогінений (гість)
         <GuestAppStack isFirstLaunch={isFirstLaunch} />
       )}
     </NavigationContainer>

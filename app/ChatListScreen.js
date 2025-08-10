@@ -1,17 +1,13 @@
-import React from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Image } from 'react-native';
+// app/ChatListScreen.js
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useTheme } from './ThemeContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; // useFocusEffect тут
+import { useAuth } from '../provider/AuthContext';
+import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
-import { useTranslation } from 'react-i18next'; // ✨ Імпорт
-
-const mockChats = [
-    { id: '1', name: 'Esther', avatar: 'https://i.pravatar.cc/150?u=esther', lastMessage: 'Чекаю вас біля вокзалу...', time: '22:59', unreadCount: 3 },
-    { id: '2', name: 'Aubrey', avatar: 'https://i.pravatar.cc/150?u=aubrey', lastMessage: 'Мені потрібна ваша до...', time: '14:36', unreadCount: 1 },
-    { id: '3', name: 'Randall', avatar: 'https://i.pravatar.cc/150?u=randall', lastMessage: 'Останнім часом їздив у ...', time: '10:39', unreadCount: 2 },
-    { id: '4', name: 'Shane', avatar: 'https://i.pravatar.cc/150?u=shane', lastMessage: 'Добрий день, хочу поїхати...', time: '9:40', unreadCount: 0 },
-    // ... інші чати
-];
+import { useTranslation } from 'react-i18next';
+import moment from 'moment';
 
 const ChatListItem = ({ item }) => {
     const { colors } = useTheme();
@@ -22,21 +18,24 @@ const ChatListItem = ({ item }) => {
         <TouchableOpacity 
             style={styles.chatItem}
             onPress={() => navigation.navigate('IndividualChat', { 
-                userName: item.name, 
-                userAvatar: item.avatar 
+                roomId: item.room_id,
+                recipientId: item.other_participant_id,
+                recipientName: item.other_participant_name, 
+                recipientAvatar: item.other_participant_avatar,
+                recipientLastSeen: item.other_participant_last_seen,
             })}
         >
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            <Image source={item.other_participant_avatar ? { uri: item.other_participant_avatar } : require('../assets/default-avatar.png')} style={styles.avatar} />
             <View style={styles.chatContent}>
                 <View style={styles.chatHeader}>
-                    <Text style={styles.userName}>{item.name}</Text>
-                    <Text style={styles.time}>{item.time}</Text>
+                    <Text style={styles.userName}>{item.other_participant_name}</Text>
+                    <Text style={styles.time}>{item.last_message_time ? moment(item.last_message_time).format('HH:mm') : ''}</Text>
                 </View>
                 <View style={styles.chatFooter}>
-                    <Text style={styles.lastMessage} numberOfLines={1}>{item.lastMessage}</Text>
-                    {item.unreadCount > 0 && (
+                    <Text style={styles.lastMessage} numberOfLines={1}>{item.last_message || '...'}</Text>
+                    {item.unread_count > 0 && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{item.unreadCount}</Text>
+                            <Text style={styles.badgeText}>{item.unread_count}</Text>
                         </View>
                     )}
                 </View>
@@ -47,20 +46,77 @@ const ChatListItem = ({ item }) => {
 
 export default function ChatListScreen() {
     const { colors } = useTheme();
-    const { t } = useTranslation(); // ✨
+    const { t } = useTranslation();
+    const { session } = useAuth();
     const styles = getStyles(colors);
+    
+    const [chats, setChats] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchChats = useCallback(async () => {
+        if (!session) {
+            setLoading(false);
+            return;
+        }
+        try {
+            const { data, error } = await supabase.rpc('get_my_chats');
+            if (error) throw error;
+            setChats(data);
+        } catch (error) {
+            console.error("Error fetching chats:", error.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [session]);
+
+    // ✨ ВИПРАВЛЕНО: Використовуємо useFocusEffect замість useEffect
+    // Це гарантує, що дані будуть оновлюватися щоразу, коли екран стає активним.
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            fetchChats();
+        }, [fetchChats])
+    );
+
+    // Ми все ще можемо залишити підписку на Realtime, щоб отримувати
+    // нові повідомлення, поки користувач перебуває на цьому екрані.
+    useEffect(() => {
+        if (!session) return;
+        const subscription = supabase
+            .channel('public:messages')
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'messages' },
+                (payload) => {
+                    // Коли приходить нове повідомлення, оновлюємо список
+                    fetchChats();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(subscription);
+        };
+    }, [session, fetchChats]);
+
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}><Text style={styles.title}>{t('chatList.title', 'Повідомлення')}</Text><Logo width={40} height={40} /></View>
+                <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>{t('chatList.title', 'Повідомлення')}</Text>
-                <Logo width={40} height={40} />
-            </View>
+            <View style={styles.header}><Text style={styles.title}>{t('chatList.title', 'Повідомлення')}</Text><Logo width={40} height={40} /></View>
             <FlatList
-                data={mockChats}
+                data={chats}
                 renderItem={({ item }) => <ChatListItem item={item} />}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.room_id}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('chatList.noChats', 'У вас ще немає чатів.')}</Text></View>}
             />
         </SafeAreaView>
     );
@@ -71,14 +127,16 @@ const getStyles = (colors) => StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 28, fontWeight: 'bold', color: colors.text },
     chatItem: { flexDirection: 'row', padding: 16, alignItems: 'center' },
-    avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+    avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12, backgroundColor: colors.border },
     chatContent: { flex: 1 },
     chatHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
     userName: { fontSize: 16, fontWeight: 'bold', color: colors.text },
     time: { fontSize: 12, color: colors.secondaryText },
     chatFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     lastMessage: { fontSize: 14, color: colors.secondaryText, flex: 1 },
-    badge: { backgroundColor: colors.primary, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+    badge: { backgroundColor: colors.primary, borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 8, paddingHorizontal: 6 },
     badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
     separator: { height: 1, backgroundColor: colors.border, marginLeft: 80 },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
+    emptyText: { color: colors.secondaryText, fontSize: 16 },
 });

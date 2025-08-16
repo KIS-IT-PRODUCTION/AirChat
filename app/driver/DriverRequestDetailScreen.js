@@ -1,9 +1,9 @@
 // app/DriverRequestDetailScreen.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Polyline, Marker } from 'react-native-maps';
+import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
 import { useTranslation } from 'react-i18next';
 import moment from 'moment';
@@ -11,10 +11,10 @@ import { supabase } from '../../config/supabase';
 import { useAuth } from '../../provider/AuthContext';
 import Logo from '../../assets/icon.svg';
 
-// --- Допоміжний компонент ---
+// --- Допоміжні компоненти ---
 const InfoRow = ({ icon, label, value, colors }) => {
   const styles = getStyles(colors);
-  if (!value) return null;
+  if (!value && value !== 0) return null;
   return (
     <View style={styles.infoRowContainer}>
       <Ionicons name={icon} size={24} color={colors.secondaryText} style={styles.infoRowIcon} />
@@ -24,6 +24,19 @@ const InfoRow = ({ icon, label, value, colors }) => {
       </View>
     </View>
   );
+};
+
+const OtherDriverOffer = ({ offer, isChosen }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    return (
+        <View style={[styles.otherOfferRow, isChosen && styles.chosenOffer]}>
+            <Image source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')} style={styles.otherOfferAvatar} />
+            <Text style={[styles.otherOfferName, isChosen && styles.chosenOfferText]} numberOfLines={1}>{offer.driver_name}</Text>
+            <Text style={[styles.otherOfferPrice, isChosen && styles.chosenOfferText]}>{offer.price} грн</Text>
+            {isChosen && <Ionicons name="checkmark-circle" size={24} color={colors.primary} style={{ marginLeft: 8 }} />}
+        </View>
+    );
 };
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
@@ -36,6 +49,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const mapViewRef = useRef(null);
 
   const [transferData, setTransferData] = useState(null);
+  const [otherOffers, setOtherOffers] = useState([]);
   const [hasAlreadyOffered, setHasAlreadyOffered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,36 +61,38 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
 
   const fetchData = useCallback(async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
+    if (!session?.user) { setLoading(false); return; }
     try {
       setLoading(true);
-      const { data: transferDetails, error: transferError } = await supabase.rpc('get_transfer_details', { p_transfer_id: transferId }).single();
-      if (transferError) throw transferError;
-      setTransferData(transferDetails);
+      const { data, error } = await supabase.rpc('get_driver_request_details', { p_transfer_id: transferId }).single();
+      if (error) throw error;
       
-      const { data: existingOffer, error: offerError } = await supabase
-        .from('transfer_offers')
-        .select('id')
-        .eq('transfer_id', transferId)
-        .eq('driver_id', session.user.id)
-        .maybeSingle();
-      if (offerError) throw offerError;
-      if (existingOffer) {
-        setHasAlreadyOffered(true);
-      }
+      setTransferData(data);
+      const offers = data.other_offers || [];
+      setOtherOffers(offers);
+      
+      const alreadyOffered = offers.some(offer => offer.driver_id === session.user.id);
+      setHasAlreadyOffered(alreadyOffered);
 
-      if (transferDetails) { fetchRoute(transferDetails.from_location, transferDetails.to_location); }
+      if (data) { fetchRoute(data.from_location, data.to_location); }
     } catch (error) { Alert.alert(t('common.error'), error.message); } 
     finally { setLoading(false); }
   }, [transferId, session, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  
+  // ✨ ВИПРАВЛЕНО: Цей useEffect надійно центрує карту на маршруті,
+  // як тільки координати стають доступними.
+  useEffect(() => {
+    if (mapViewRef.current && routeCoordinates.length > 1) {
+      mapViewRef.current.fitToCoordinates(routeCoordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+    }
+  }, [routeCoordinates]);
 
   const fetchRoute = async (origin, destination) => {
-    if (MAPS_API_KEY === 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo') { return; }
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}&language=${i18n.language}`;
       const response = await fetch(url);
@@ -90,12 +106,6 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
       }
     } catch (error) { console.error("Error fetching route:", error); }
   };
-
-  const fitMapToRoute = () => {
-    if (mapViewRef.current && routeCoordinates.length > 1) {
-      mapViewRef.current.fitToCoordinates(routeCoordinates, { edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true });
-    }
-  };
   
   const handleSubmitOffer = async () => {
     if (!price || isNaN(parseFloat(price))) {
@@ -104,12 +114,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
     setIsSubmitting(true);
     try {
-        const offerData = {
-            transfer_id: transferId,
-            driver_id: session.user.id,
-            price: parseFloat(price),
-            driver_comment: comment,
-        };
+        const offerData = { transfer_id: transferId, driver_id: session.user.id, price: parseFloat(price), driver_comment: comment };
         const { error } = await supabase.from('transfer_offers').insert([offerData]);
         if (error) throw error;
         
@@ -125,6 +130,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   if (loading) { return <View style={styles.container}><ActivityIndicator size="large" color={colors.primary} /></View>; }
   if (!transferData) { return <View style={styles.container}><Text style={styles.sectionTitle}>{t('transferDetail.notFound', 'Заявку не знайдено.')}</Text></View>; }
 
+  const isRequestClosed = transferData.status === 'accepted';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -135,31 +142,64 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.userInfoSection}><Image source={transferData.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} /><Text style={styles.userName}>{transferData.passenger_name}</Text></View>
         <View style={styles.infoCard}><InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData.to_location} colors={colors} /></View>
-        <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle', 'Деталі поїздки')}</Text><View style={styles.detailsGrid}><View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('D MMM')}</Text></View><View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('HH:mm')}</Text></View><View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{transferData.passenger_count} {t('transferDetail.passengers', 'пас.')}</Text></View></View><View style={styles.divider} /><InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData.luggage_info} colors={colors} />{transferData.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }<InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData.transfer_type} colors={colors} /></View>
+        <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle', 'Деталі поїздки')}</Text>
+            <View style={styles.detailsGrid}>
+                <View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('D MMM')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('HH:mm')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{transferData.total_passengers} {t('transferDetail.passengers', 'пас.')}</Text></View>
+            </View>
+            <View style={styles.divider} />
+            <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData.luggage_info} colors={colors} />
+            {transferData.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }
+            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData.transfer_type} colors={colors} />
+        </View>
         {transferData.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Коментар пасажира')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
-        <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.route', 'Маршрут на карті')}</Text><View style={styles.mapContainer}><MapView ref={mapViewRef} style={StyleSheet.absoluteFill} onMapReady={fitMapToRoute}>{routeCoordinates.length > 0 && (<><Marker coordinate={routeCoordinates[0]} /><Marker coordinate={routeCoordinates[routeCoordinates.length - 1]} /><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></>)}</MapView></View>{routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View></View>)}</View>
-
-        <View style={styles.offerSection}>
-            <Text style={styles.sectionTitle}>{hasAlreadyOffered ? t('driverOffer.alreadyOffered', 'Ви вже надіслали пропозицію') : t('driverOffer.yourOffer', 'Ваша пропозиція')}</Text>
-            {hasAlreadyOffered ? (
-                <View style={styles.alreadyOfferedContainer}>
-                    <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                    <Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified', 'Пасажир отримав вашу пропозицію. Очікуйте на відповідь.')}</Text>
+        <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>{t('transferDetail.route', 'Маршрут на карті')}</Text>
+            <View style={styles.mapContainer}>
+                <MapView ref={mapViewRef} style={StyleSheet.absoluteFill} provider={PROVIDER_GOOGLE}>
+                    {routeCoordinates.length > 0 && (<><Marker coordinate={routeCoordinates[0]} /><Marker coordinate={routeCoordinates[routeCoordinates.length - 1]} /><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></>)}
+                </MapView>
+            </View>
+            {routeInfo && (
+                <View style={styles.routeInfoContainer}>
+                    <View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View>
+                    {/* ✨ ВІДОБРАЖАЄМО НАПРЯМОК */}
+                    <View style={styles.routeInfoItem}><Ionicons name={transferData.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData.direction === 'from_airport' ? t('transferDetail.fromAirport', 'З аеропорту') : t('transferDetail.toAirport', 'В аеропорт')}</Text></View>
                 </View>
-            ) : (
-                <>
-                    <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /><Text style={styles.currencyText}>грн</Text></View>
-                    <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder', 'Ваш коментар (необов\'язково)')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
-                    <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton', 'Надіслати пропозицію')}</Text>}</TouchableOpacity>
-                </>
             )}
         </View>
+
+        {otherOffers.length > 0 && (
+            <View style={styles.infoCard}>
+                <Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle', 'Пропозиції інших водіїв')}</Text>
+                {otherOffers.map((offer, index) => (
+                    <OtherDriverOffer key={index} offer={offer} isChosen={offer.driver_id === transferData.accepted_driver_id} />
+                ))}
+            </View>
+        )}
+
+        {!isRequestClosed && (
+            <View style={styles.offerSection}>
+                <Text style={styles.sectionTitle}>{hasAlreadyOffered ? t('driverOffer.alreadyOffered', 'Ви вже надіслали пропозицію') : t('driverOffer.yourOffer', 'Ваша пропозиція')}</Text>
+                {hasAlreadyOffered ? (
+                    <View style={styles.alreadyOfferedContainer}><Ionicons name="checkmark-circle" size={24} color={colors.primary} /><Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified', 'Пасажир отримав вашу пропозицію. Очікуйте на відповідь.')}</Text></View>
+                ) : (
+                    <>
+                        <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /><Text style={styles.currencyText}>грн</Text></View>
+                        <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder', 'Ваш коментар (необов\'язково)')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
+                        <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton', 'Надіслати пропозицію')}</Text>}</TouchableOpacity>
+                    </>
+                )}
+            </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 const getStyles = (colors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center' },
+    container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,  borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
     scrollContent: { paddingBottom: 40 },
@@ -191,4 +231,10 @@ const getStyles = (colors) => StyleSheet.create({
     submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     alreadyOfferedContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, gap: 12 },
     alreadyOfferedText: { flex: 1, color: colors.text, fontSize: 16 },
+    otherOfferRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 8, borderRadius: 8 },
+    otherOfferAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
+    otherOfferName: { flex: 1, color: colors.text, fontSize: 16 },
+    otherOfferPrice: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
+    chosenOffer: { backgroundColor: `${colors.primary}20`, borderColor: colors.primary },
+    chosenOfferText: { color: colors.primary, fontWeight: 'bold' },
 });

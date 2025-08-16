@@ -1,18 +1,18 @@
 // app/LoginScreen.js
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Імпорт для адаптації
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import InputWithIcon from './components/InputWithIcon'; // Переконайтесь, що шлях правильний
 
 export default function LoginScreen({ navigation }) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets(); // Отримуємо безпечні відступи екрана
-  const styles = getStyles(colors, insets); // Передаємо відступи в стилі
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(colors, insets, theme);
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -25,13 +25,15 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     setLoading(true);
+    // Виклик signIn з AuthContext
     const { error } = await signIn({ email, password });
+    setLoading(false);
+
     if (error) {
       Alert.alert(t('common.error'), error.message);
     }
-    setLoading(false);
   };
-  
+
   const handleForgotPassword = () => {
     Alert.alert(t('login.forgotPassword', 'Forgot Password?'), t('login.featureComingSoon', 'This feature is coming soon.'));
   };
@@ -57,6 +59,7 @@ export default function LoginScreen({ navigation }) {
             placeholder={t('registration.emailPlaceholder', 'Email')}
             value={email}
             onChangeText={setEmail}
+            keyboardType="email-address"
             autoCapitalize="none"
           />
           <InputWithIcon
@@ -72,7 +75,11 @@ export default function LoginScreen({ navigation }) {
         </View>
         <View style={styles.footer}>
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-            <Text style={styles.buttonText}>{loading ? t('common.loading', 'Loading...') : t('auth.login', 'Login')}</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.text} />
+            ) : (
+              <Text style={styles.buttonText}>{t('auth.login', 'Login')}</Text>
+            )}
           </TouchableOpacity>
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>{t('login.noAccount', "Don't have an account?")} </Text>
@@ -86,19 +93,18 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const getStyles = (colors, insets) => StyleSheet.create({
+const getStyles = (colors, insets, theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   closeButton: {
     position: 'absolute',
-    // Використовуємо відступ зверху від безпечної зони + невеликий зазор
     top: insets.top + 10,
     right: 20,
     zIndex: 10,
-    padding: 5, // Збільшуємо область натискання для зручності
+    padding: 5,
   },
-  scrollContainer: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 24,
   },
   header: { alignItems: 'center', marginBottom: 40 },
@@ -112,7 +118,13 @@ const getStyles = (colors, insets) => StyleSheet.create({
     marginBottom: 20,
   },
   footer: { width: '100%', alignItems: 'center' },
-  button: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center' },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
   buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
   signupContainer: {
     flexDirection: 'row',

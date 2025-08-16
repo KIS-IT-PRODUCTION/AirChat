@@ -2,7 +2,7 @@
   "home": {
     "toAirport": "To Airport",
     "fromAirport": "From Airport",
-    "title": "Book a transfer to/from the airport",
+    "title": "Order a transfer to/from the airport",
     "fromPlaceholder": "From? (airport)",
     "fromPlaceholderAddress": "From? (address, hotel...)",
     "dropoffPlaceholder": "Drop-off location (hotel, address...)",
@@ -14,80 +14,111 @@
     "individualTransfer": "Individual Transfer",
     "groupTransfer": "Group Transfer",
     "travelingWithPet": "Traveling with a pet",
-    "petSubtext": "(e.g., a cat or a dog)",
-    "orderButton": "Order Transfer"
+    "petSubtext": "(e.g., cat or dog)",
+    "orderButton": "Order Transfer",
+    "error": {
+      "fillFields": "Please fill in the 'From' and 'To' fields.",
+      "noAdults": "There must be at least one adult passenger."
+    }
+  },
+   "addCommentModal": {
+    "title": "Wishes for the trip",
+    "subtitle": "You can add a comment for the driver, for example, about a child seat or large luggage.",
+    "commentPlaceholder": "For example, a child seat...",
+    "skipButton": "Skip",
+    "sendButton": "Send"
+  },
+  "transferSuccess": {
+    "title": "Request sent successfully!",
+    "subtitle": "We will notify you when a driver accepts your order.",
+    "viewTransfersButton": "View My Transfers",
+    "closeButton": "Close"
   },
   "authScreen": {
-    "title": "AirChat: Airport transfers to and from the airport",
-    "driverLogin": "Are you a driver? Log in to your account"
-  },
-  "authPrompt": {
-    "title": "Authorization Required",
-    "subtitle": "To order a transfer, please log in or register."
+    "title": "AirChat: Transfers to and from the airport",
+    "driverLogin": "Are you a driver? Login to your cabinet"
   },
   "registration": {
-    "title": "Registration",
+    "title": "Create Account",
+    "driverTitle": "Driver Registration",
     "subtitle": "Dive into the world of transportation!",
     "fullNameLabel": "Full Name",
-    "fullNamePlaceholder": "Enter your Name",
+    "fullNamePlaceholder": "Enter Your Name",
     "emailLabel": "Email",
-    "emailPlaceholder": "Enter your email",
+    "emailPlaceholder": "Enter Your Email",
     "passwordLabel": "Password",
-    "passwordPlaceholder": "Enter your password",
-    "phoneLabel": "Phone",
-    "phonePlaceholder": "Enter your phone number",
+    "passwordPlaceholder": "Enter Your Password",
+    "phoneLabel": "Phone (optional)",
+    "phonePlaceholder": "Enter Your Phone Number",
     "registerButton": "Register",
     "alreadyRegistered": "Already registered?",
     "loginLink": "Log In",
     "emailPasswordRequired": "Email and password are required",
+    "fillAllFields": "Please fill in your name, email, and password.",
     "confirmationEmail": "Success! Please check your email to confirm your registration."
   },
   "login": {
     "title": "Login",
     "subtitle": "Welcome back!",
-    "emailPlaceholder": "Enter your email",
-    "passwordPlaceholder": "Enter your password",       
     "fillAllFields": "Please fill in all fields.",
     "forgotPassword": "Forgot Password?",
     "featureComingSoon": "This feature is coming soon.",
     "noAccount": "Don't have an account?"
   },
   "profile": {
-    "title": "My Profile",
+    "myProfile": "My Profile",
+    "noData": "Failed to load profile.",
+    "noName": "Unnamed User",
+    "noPhone": "Not specified",
+    "rating": "Rating",
+    "completedTrips": "Completed Trips",
+    "experience": "Experience",
+    "totalMileage": "Total Mileage",
     "role": "Role",
-    "adsCount": "Number of listings posted",
-    "yearsInApp": "In the app",
-    "completedTrips": "Completed trips",
-    "phone": "Phone",
-    "settings": "Settings",
-    "loggedInMessage": "You are logged in!"
+    "adsCount": "Number of ads posted",
+    "yearsInApp": "In the app for",
+    "phone": "Tel",
+    "settings": "Settings"
   },
   "settings": {
     "title": "Settings",
+    "personalInfo": "Personal Information",
+    "carInfo": "Vehicle Information",
+    "account": "Account",
     "changePhoto": "Change",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "phone": "Phone Number",
+    "phonePlaceholder": "Enter your phone number",
+    "carMake": "Car Make",
+    "carModel": "Car Model",
+    "carPlate": "License Plate",
+    "experience": "Experience (years)",
     "language": "App Language",
     "changePassword": "Change password?",
-    "saveProfile": "Save Profile",
+    "saveProfile": "Save",
+    "profileUpdated": "Profile updated successfully!",
     "darkTheme": "Dark Theme",
-    "editFullName": "Edit full name",
-    "editPhone": "Edit phone",
     "emailCannotBeChanged": "Email cannot be changed",
     "profileSaved": "Profile saved successfully!",
     "uk": "Ukrainian",
     "en": "English",
     "ro": "Romanian",
-      "logout": "Logout",
+    "logout": "Log Out",
     "logoutConfirm": "Are you sure you want to log out?"
   },
   "tabs": {
     "home": "Home",
     "transfers": "My Transfers",
     "messages": "Messages",
-    "profile": "Profile"
+    "profile": "Profile",
+    "driver": {
+      "home": "Transfers"
+    }
   },
   "footer": {
     "question": "Don't know how the app works?",
-    "link": "Instructions and feature overview"
+    "link": "Instructions and introduction to the features"
   },
   "auth": {
     "register": "Register",
@@ -98,46 +129,77 @@
     "success": "Success",
     "loading": "Loading...",
     "confirm": "Confirm",
-    "cancel": "Cancel"
-  },
-  "support": {
-    "title": "Support",
-    "formTitle": "Help us get better!",
-    "formSubtitle": "Leave your feedback, report an issue, or suggest an idea.",
-    "messageLabel": "Message",
-    "messagePlaceholder": "Your feedback here...",
-    "sendButton": "Send",
-    "messageEmpty": "The message field cannot be empty.",
-    "messageSent": "Thank you! Your feedback has been sent."
+    "cancel": "Cancel",
+    "done": "Done",
+    "no": "No",
+    "yes": "Yes",
+    "comingSoon": "This section is under development"
   },
   "transferDetail": {
-    "title": "Transfer",
+    "title": "Request Details",
+    "notFound": "Request not found.",
     "from": "From",
     "to": "To",
-    "detailsTitle": "Transfer Details",
+    "detailsTitle": "Trip Details",
     "date": "Date",
     "time": "Time",
-    "passengers": "passengers",
+    "passengers": "pers.",
     "luggage": "Luggage",
-    "withPet": "Traveling with a pet",
+    "withPet": "With a pet",
     "yes": "Yes",
     "transferType": "Transfer Type",
-    "clientComment": "Client's request",
-    "route": "Plotted Route",
-    "mapPlaceholder": "Map will be here",
+    "clientComment": "Passenger's Comment",
+    "route": "Route on map",
     "start": "Start",
     "finish": "Finish",
-    "cancelTransfer": "Cancel Transfer",
-    "driverOffers": "Driver offers",
-    "yourDriver": "Your Driver",
-    "tripCompleted": "Trip Completed",
-    "chooseThisDriver": "Choose this driver",
-    "reviews": "{{count}} reviews"
+    "cancelTransfer": "Cancel Request",
+    "cancelledSuccess": "Request successfully cancelled.",
+    "cancelConfirmTitle": "Cancel request?",
+    "cancelConfirmText": "This action cannot be undone.",
+    "driverOffers": "Driver Offers",
+    "noOffers": "No offers yet. Please wait, drivers will respond soon.",
+    "chosenDriver": "Your Driver",
+    "acceptOffer": "Accept",
+    "driverConfirmed": "Driver confirmed!",
+    "changeDriver": "Change Driver",
+    "changeDriverConfirmTitle": "Change driver?",
+    "changeDriverConfirmText": "Your trip will become available for offers from other drivers again.",
+    "fromAirport": "From Airport",
+    "toAirport": "To Airport"
+  },
+
+  "transfersScreen": {
+    "title": "My Transfers",
+    "emptyState": "You have no transfer requests yet.",
+    "writeButton": "Message"
+  },
+  "transferStatus": {
+    "pending": "Searching for driver",
+    "accepted": "Driver found",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "transferCard": {
+    "pendingFooter": "Awaiting offers from drivers"
+  },
+  "alerts": {
+    "errorTitle": "Error",
+    "callFailedCheckDevice": "Could not make the call. Please check if your device supports calls.",
+    "chatFailed": "Could not open chat.",
+    "phoneNotFoundTitle": "Number Not Found",
+    "phoneNotFoundBody": "This driver has no phone number listed.",
+    "confirmCallTitle": "Confirm Call",
+    "confirmCallBody": "Are you sure you want to call the driver ({{phoneNumber}})?",
+    "cancelButton": "Cancel",
+    "callButton": "Call"
+  },
+  "timeFormats": {
+    "cardDate": "D MMMM, HH:mm"
   },
   "onboarding": {
     "welcomeTitle": "Welcome!",
-    "welcomeText": "Our app will help you easily book a transfer.",
-    "configureTitle": "Customize your trip",
+    "welcomeText": "Our app helps you easily book a transfer.",
+    "configureTitle": "Configure your trip",
     "configureText": "Choose the date, time, number of passengers, and luggage.",
     "readyTitle": "All set!",
     "readyText": "Press the button below to get started.",
@@ -145,11 +207,11 @@
   },
   "successModal": {
     "title": "Request Sent!",
-    "subtitle": "Your transfer has been successfully sent. Please wait for offers from drivers.",
-    "commentTitle": "What should the driver know?",
+    "subtitle": "Your transfer request has been sent. Expect offers from drivers.",
+    "commentTitle": "Anything the driver should know?",
     "commentPlaceholder": "e.g., child seat, large luggage...",
     "closeButton": "Close",
-    "sendButton": "Send comment"
+    "sendButton": "Send Comment"
   },
   "languageModal": {
     "uk": "Ukrainian",
@@ -157,19 +219,58 @@
     "ro": "Romanian"
   },
   "chatList": {
-    "title": "Messages"
+    "title": "Messages",
+    "noChats": "You have no chats yet."
   },
   "chat": {
-    "onlineStatus": "online 5 min ago",
-    "placeholder": "Write a message",
-    "today": "Today",
-    "yesterday": "Yesterday",
+    "onlineStatus": "online",
+    "offlineStatus": "offline",
+    "typingStatus": "typing...",
+    "placeholder": "Type a message...",
+    "locationLabel": "Location",
     "takePhoto": "Take Photo",
     "pickFromGallery": "Choose from Gallery",
     "shareLocation": "Share Location",
-    "locationLabel": "Location",
     "galleryPermissionError": "Permission to access the gallery is required.",
     "cameraPermissionError": "Permission to access the camera is required.",
-    "locationPermissionError": "Permission to access location is required."
-  }
+    "locationPermissionError": "Permission to access location is required.",
+    "readStatus": "Read"
+  },
+  "driverHome": {
+    "title": "Available Transfers",
+    "noRequests": "There are no available requests at the moment.",
+    "driverSelected": "Driver selected",
+    "date": "Date",
+    "time": "Time",
+    "people": "People"
+  },
+  "driverOffer": {
+    "requestDetails": "Request Details",
+    "priceRequired": "Please enter a price.",
+    "offerSent": "Your offer has been sent to the passenger!",
+    "otherOffersTitle": "Other Drivers' Offers",
+    "noOtherOffers": "You are the first to make an offer!",
+    "alreadyOffered": "You have already sent an offer",
+    "yourOffer": "Your Offer",
+    "passengerNotified": "The passenger has received your offer. Please wait for a response.",
+    "pricePlaceholder": "0",
+    "commentPlaceholder": "Your comment (optional)",
+    "submitButton": "Send Offer",
+    "chosenDriver": "Chosen Driver"
+  },
+  "passengers": {
+    "title": "Passengers",
+    "adults": "Adults",
+    "adultsAge": "12+ years",
+    "children": "Children",
+    "childrenAge": "2-12 years",
+    "infants": "Infants",
+    "infantsAge": "under 2 years"
+  },
+  "authPrompt": {
+      "title": "Authorization Required",
+      "subtitle": "To order a transfer, please log in or register."
+  },
+    "home.flightNumberPlaceholder": "Flight number"
+
 }

@@ -1,14 +1,16 @@
 // app/navigation/DriverTabNavigator.js
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute, useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../../config/supabase'; // ✨ Імпорт
+import { useAuth } from '../../provider/AuthContext'; // ✨ Імпорт
 
 // Імпортуємо екрани та стеки для водія
 import DriverHomeScreen from '../DriverHomeScreen';
-import MessagesStack from './MessagesStack'; // Можна перевикористовувати
+import MessagesStack from './MessagesStack';
 import DriverProfileStack from './DriverProfileStack';
 
 const Tab = createBottomTabNavigator();
@@ -16,6 +18,47 @@ const Tab = createBottomTabNavigator();
 export default function DriverTabNavigator() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { session } = useAuth(); // ✨ Отримуємо сесію
+
+  const [unreadCount, setUnreadCount] = useState(0); // ✨ Стан для лічильника
+
+  // ✨ Функція для завантаження кількості непрочитаних повідомлень
+  const fetchUnreadCount = useCallback(async () => {
+    if (!session) return;
+    try {
+      const { data, error } = await supabase.rpc('get_total_unread_count');
+      if (error) throw error;
+      setUnreadCount(data);
+    } catch (error) {
+      console.error("Error fetching unread count:", error.message);
+    }
+  }, [session]);
+
+  // ✨ Оновлюємо лічильник, коли екран стає активним
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
+
+  // ✨ Підписуємось на зміни в таблиці повідомлень в реальному часі
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('public:messages:driver_tab_navigator')
+      .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'messages' },
+          () => {
+            fetchUnreadCount();
+          }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, fetchUnreadCount]);
 
   return (
     <Tab.Navigator
@@ -25,7 +68,6 @@ export default function DriverTabNavigator() {
         tabBarInactiveTintColor: colors.secondaryText,
         tabBarStyle: ((route) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? '';
-          // Приховуємо панель на екрані індивідуального чату
           if (routeName === 'IndividualChat') {
             return { display: 'none' };
           }
@@ -50,14 +92,15 @@ export default function DriverTabNavigator() {
       <Tab.Screen 
         name="DriverHomeTab" 
         component={DriverHomeScreen} 
-        options={{ title: t('tabs.driver.home', 'Заявки') }}
+        options={{ title: t('tabs.driver.home', 'Трансфери') }}
       />
       <Tab.Screen 
         name="MessagesTab" 
         component={MessagesStack}
         options={{ 
           title: t('tabs.messages', 'Повідомлення'), 
-          tabBarBadge: 3, // Приклад
+          // ✨ Динамічно показуємо лічильник
+          tabBarBadge: unreadCount > 0 ? unreadCount : null,
         }}
       />      
       <Tab.Screen 

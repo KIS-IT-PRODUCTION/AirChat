@@ -1,6 +1,6 @@
 // app/TransfersScreen.js
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, Image, Linking, Alert } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, Image, Linking, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
@@ -9,81 +9,60 @@ import { supabase } from '../config/supabase';
 import moment from 'moment';
 import 'moment/locale/uk';
 import Logo from '../assets/icon.svg';
+import { useTranslation } from 'react-i18next';
 
-const statusDetails = {
-  pending: { text: 'Пошук водія', color: '#0288D1', icon: 'hourglass-outline' },
-  accepted: { text: 'Водія знайдено', color: '#2E7D32', icon: 'checkmark-circle-outline' },
-  completed: { text: 'Завершено', color: '#4CAF50', icon: 'checkmark-done-outline' },
-  cancelled: { text: 'Скасовано', color: '#8A8A8A', icon: 'ban-outline' },
-};
+const statusDetails = (t) => ({
+  pending: { text: t('transferStatus.pending', 'Пошук водія'), color: '#0288D1', icon: 'hourglass-outline' },
+  accepted: { text: t('transferStatus.accepted', 'Водія знайдено'), color: '#2E7D32', icon: 'checkmark-circle-outline' },
+  completed: { text: t('transferStatus.completed', 'Завершено'), color: '#4CAF50', icon: 'checkmark-done-outline' },
+  cancelled: { text: t('transferStatus.cancelled', 'Скасовано'), color: '#8A8A8A', icon: 'ban-outline' },
+});
 
-// ✨ КОМПОНЕНТ КАРТКИ ТЕПЕР ПРИЙМАЄ `navigation`
-const TransferCard = ({ item, navigation }) => {
+const TransferCard = ({ item }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const status = statusDetails[item.status] || statusDetails.pending;
+  const navigation = useNavigation();
+  const { session } = useAuth();
+  const { t } = useTranslation();
+  const status = statusDetails(t)[item.status] || statusDetails(t).pending;
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   const handleCall = (phoneNumber) => {
-    if (phoneNumber) {
-      Linking.openURL(`tel:${phoneNumber}`).catch(err => Alert.alert("Не вдалося виконати дзвінок", err.toString()));
-    }
+    if (!phoneNumber) { Alert.alert(t('alerts.phoneNotFoundTitle'), t('alerts.phoneNotFoundBody')); return; }
+    const url = `tel:${phoneNumber}`;
+    Alert.alert( t('alerts.confirmCallTitle'), t('alerts.confirmCallBody', { phoneNumber }), [ { text: t('alerts.cancelButton'), style: "cancel" }, { text: t('alerts.callButton'), onPress: () => { Linking.openURL(url).catch(() => Alert.alert(t('alerts.errorTitle'), t('alerts.callFailedCheckDevice'))); } } ]);
   };
 
-  // ✨ ОНОВЛЕНА ФУНКЦІЯ ДЛЯ ПЕРЕХОДУ В ЧАТ
-  const handleMessage = () => {
-    if (item.driver_id) {
-      // Переходимо на вкладку повідомлень, а звідти на екран індивідуального чату,
-      // передаючи дані про водія.
-      navigation.navigate('MessagesTab', {
-        screen: 'IndividualChat', // Переконайтесь, що назва екрана чату правильна
-        params: {
-          recipientId: item.driver_id,
-          recipientName: item.driver_name,
-          recipientAvatar: item.driver_avatar_url,
-        },
-      });
-    }
+  const handleMessage = async () => {
+    if (!item.driver_id || !session?.user?.id) return;
+    setIsCreatingChat(true);
+    try {
+      const { data: roomId, error } = await supabase.rpc('find_or_create_chat_room', { user_1_id: session.user.id, user_2_id: item.driver_id });
+      if (error) throw error;
+      navigation.navigate('MessagesTab', { screen: 'IndividualChat', params: { roomId, recipientId: item.driver_id, recipientName: item.driver_name, recipientAvatar: item.driver_avatar_url } });
+    } catch (error) { Alert.alert(t('alerts.errorTitle'), t('alerts.chatFailed')); console.error("Error finding or creating chat room:", error); } 
+    finally { setIsCreatingChat(false); }
   };
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: `${status.color}20` }]}>
-          <Ionicons name={status.icon} size={14} color={status.color} />
-          <Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text>
-        </View>
-        <Text style={styles.dateText}>{moment(item.transfer_datetime).format('D MMMM, HH:mm')}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: `${status.color}20` }]}><Ionicons name={status.icon} size={14} color={status.color} /><Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text></View>
+        <Text style={styles.dateText}>{moment(item.transfer_datetime).format(t('timeFormats.cardDate', 'D MMMM, HH:mm'))}</Text>
       </View>
-
       <View style={styles.routeContainer}>
         <View style={styles.locationRow}><View style={styles.routeIconContainer}><Ionicons name="airplane-outline" size={20} color={colors.secondaryText} /></View><Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text></View>
         <View style={styles.dottedLine} />
         <View style={styles.locationRow}><View style={styles.routeIconContainer}><Ionicons name="location-outline" size={20} color={colors.secondaryText} /></View><Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text></View>
       </View>
-      
-      {item.status === 'pending' && (
-        <View style={styles.pendingFooter}><Ionicons name="notifications-outline" size={18} color={colors.secondaryText} /><Text style={styles.pendingFooterText}>Очікуємо на пропозиції від водіїв</Text></View>
-      )}
-
+      {item.status === 'pending' && ( <View style={styles.pendingFooter}><Ionicons name="notifications-outline" size={18} color={colors.secondaryText} /><Text style={styles.pendingFooterText}>{t('transferCard.pendingFooter', 'Очікуємо на пропозиції від водіїв')}</Text>{item.unread_offers_count > 0 && (<View style={styles.badge}><Text style={styles.badgeText}>{item.unread_offers_count}</Text></View>)}</View> )}
       {(item.status === 'accepted' || item.status === 'completed') && item.driver_name && (
         <View style={styles.driverFooter}>
-          <View style={styles.driverInfo}>
-            <Image source={item.driver_avatar_url ? { uri: item.driver_avatar_url } : require('../assets/default-avatar.png')} style={styles.driverAvatar} />
-            <View>
-              <Text style={styles.driverName}>{item.driver_name}</Text>
-              <Text style={styles.driverCar}>{item.car_make} {item.car_model} · <Text style={styles.carPlate}>{item.car_plate}</Text></Text>
-            </View>
-          </View>
+          <View style={styles.driverInfo}><Image source={item.driver_avatar_url ? { uri: item.driver_avatar_url } : require('../assets/default-avatar.png')} style={styles.driverAvatar} /><View><Text style={styles.driverName}>{item.driver_name}</Text><Text style={styles.driverCar}>{item.car_make} {item.car_model} · <Text style={styles.carPlate}>{item.car_plate}</Text></Text></View></View>
           {item.status === 'accepted' && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.callButton} onPress={() => handleCall(item.driver_phone)}>
-                <Ionicons name="call" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              {/* ✨ КНОПКА ТЕПЕР ВИКЛИКАЄ НОВУ ФУНКЦІЮ */}
-              <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-                <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
-                <Text style={styles.messageButtonText}>Написати</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={styles.callButton} onPress={() => handleCall(item.driver_phone)}><Ionicons name="call" size={20} color="#FFFFFF" /></TouchableOpacity>
+              <TouchableOpacity style={styles.messageButton} onPress={handleMessage} disabled={isCreatingChat}>{isCreatingChat ? <ActivityIndicator size="small" color={colors.primary} /> : <><Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} /><Text style={styles.messageButtonText}>{t('transfersScreen.writeButton', 'Написати')}</Text></> }</TouchableOpacity>
             </View>
           )}
         </View>
@@ -96,6 +75,7 @@ export default function TransfersScreen({ navigation }) {
   const { colors } = useTheme();
   const { session } = useAuth();
   const styles = getStyles(colors);
+  const { t } = useTranslation();
   
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +84,11 @@ export default function TransfersScreen({ navigation }) {
     if (!session?.user) { setLoading(false); return; }
     try {
       setLoading(true);
+      // ✨ КРОК 1: Викликаємо функцію для оновлення статусів застарілих поїздок
+      const { error: updateError } = await supabase.rpc('auto_complete_transfers', { p_id: session.user.id });
+      if (updateError) throw updateError;
+
+      // ✨ КРОК 2: Завантажуємо вже оновлений список трансферів
       const { data, error } = await supabase.rpc('get_my_transfers', { p_id: session.user.id });
       if (error) throw error;
       setTransfers(data);
@@ -116,7 +101,7 @@ export default function TransfersScreen({ navigation }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}><Text style={styles.title}>Мої трансфери</Text><Logo width={40} height={40} /></View>
+        <View style={styles.header}><Text style={styles.title}>{t('transfersScreen.title', 'Мої трансфери')}</Text><Logo width={40} height={40} /></View>
         <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -124,7 +109,7 @@ export default function TransfersScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}><Text style={styles.title}>Мої трансфери</Text><Logo width={40} height={40} /></View>
+      <View style={styles.header}><Text style={styles.title}>{t('transfersScreen.title', 'Мої трансфери')}</Text><Logo width={40} height={40} /></View>
       <FlatList
         data={transfers}
         renderItem={({ item }) => (
@@ -133,20 +118,18 @@ export default function TransfersScreen({ navigation }) {
             disabled={item.status === 'cancelled'}
             style={item.status === 'cancelled' && styles.disabledCard}
           >
-            {/* ✨ ПЕРЕДАЄМО `navigation` В КОМПОНЕНТ КАРТКИ */}
-            <TransferCard item={item} navigation={navigation} />
+            <TransferCard item={item} />
           </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ paddingHorizontal: 16 }}
-        ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.emptyText}>У вас ще немає створених заявок.</Text></View>}
+        ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.emptyText}>{t('transfersScreen.emptyState', 'У вас ще немає створених заявок.')}</Text></View>}
       />
     </SafeAreaView>
   );
 }
-
 const getStyles = (colors) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
   card: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
@@ -160,8 +143,10 @@ const getStyles = (colors) => StyleSheet.create({
   routeIconContainer: { width: 30, alignItems: 'center' },
   locationText: { color: colors.text, fontSize: 16, marginLeft: 12, fontWeight: '500' },
   dottedLine: { height: 24, width: 2, backgroundColor: colors.border, marginLeft: 14, marginVertical: 4 },
-  pendingFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
-  pendingFooterText: { color: colors.secondaryText, fontSize: 14, marginLeft: 8, fontStyle: 'italic' },
+  pendingFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
+  pendingFooterText: { color: colors.secondaryText, fontSize: 14, fontStyle: 'italic' },
+  badge: { backgroundColor: '#D32F2F', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
   emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
   driverFooter: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },

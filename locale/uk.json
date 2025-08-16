@@ -10,19 +10,37 @@
     "luggagePlaceholder": "Кількість одиниць багажу",
     "dateLabel": "Дата",
     "timeLabel": "Час",
-    "passengersLabel": "К-сть пасажирів",
+    "passengersLabel": "Пасажири",
     "individualTransfer": "Індивідуальний трансфер",
     "groupTransfer": "Груповий трансфер",
     "travelingWithPet": "Подорожує тварина",
     "petSubtext": "(наприклад, кішка або собака)",
-    "orderButton": "Замовити трансфер"
+    "orderButton": "Замовити трансфер",
+    "error": {
+      "fillFields": "Будь ласка, заповніть поля \"Звідки\" та \"Куди\".",
+      "noAdults": "Має бути принаймні один дорослий пасажир."
+    }
+  },
+   "addCommentModal": {
+    "title": "Побажання до поїздки",
+    "subtitle": "Ви можете додати коментар для водія, наприклад, про дитяче крісло або великий багаж.",
+    "commentPlaceholder": "Наприклад, дитяче крісло...",
+    "skipButton": "Пропустити",
+    "sendButton": "Надіслати"
+  },
+  "transferSuccess": {
+    "title": "Заявку успішно надіслано!",
+    "subtitle": "Ми повідомимо вас, коли водій прийме ваше замовлення.",
+    "viewTransfersButton": "Переглянути мої трансфери",
+    "closeButton": "Закрити"
   },
   "authScreen": {
     "title": "AirChat: Трансфери в аеропорт та з аеропорту",
     "driverLogin": "Ви водій? Увійти в кабінет"
   },
   "registration": {
-    "title": "Реєстрація",
+    "title": "Створити акаунт",
+    "driverTitle": "Реєстрація водія",
     "subtitle": "Пориньте у світ перевезень!",
     "fullNameLabel": "Повне Ім'я",
     "fullNamePlaceholder": "Введіть Ваше Ім'я",
@@ -30,18 +48,17 @@
     "emailPlaceholder": "Введіть Вашу електронну пошту",
     "passwordLabel": "Пароль",
     "passwordPlaceholder": "Введіть Ваш пароль",
-    "phoneLabel": "Телефон",
+    "phoneLabel": "Телефон (необов'язково)",
     "phonePlaceholder": "Введіть Ваш номер телефону",
     "registerButton": "Зареєструватися",
     "alreadyRegistered": "Вже зареєстровані?",
     "loginLink": "Увійти",
     "emailPasswordRequired": "Електронна пошта та пароль є обов'язковими",
+    "fillAllFields": "Будь ласка, заповніть ім'я, пошту та пароль.",
     "confirmationEmail": "Успішно! Будь ласка, перевірте свою пошту для підтвердження реєстрації."
   },
   "login": {
     "title": "Вхід",
-    "emailPlaceholder": "Введіть Вашу електронну пошту",
-    "passwordPlaceholder": "Введіть Ваш пароль",
     "subtitle": "З поверненням!",
     "fillAllFields": "Будь ласка, заповніть усі поля.",
     "forgotPassword": "Забули пароль?",
@@ -49,24 +66,39 @@
     "noAccount": "Немає облікового запису?"
   },
   "profile": {
-    "title": "Мій профіль",
+    "myProfile": "Мій профіль",
+    "noData": "Не вдалося завантажити профіль.",
+    "noName": "Безіменний користувач",
+    "noPhone": "Не вказано",
+    "rating": "Рейтинг",
+    "completedTrips": "Завершених рейсів",
+    "experience": "Досвід",
+    "totalMileage": "Загальний пробіг",
     "role": "Роль",
     "adsCount": "Кількість поданих оголошень",
     "yearsInApp": "У додатку",
-    "completedTrips": "Завершених поїздок",
     "phone": "Тел",
-    "settings": "Налаштування",
-    "loggedInMessage": "Ви увійшли в систему!"
+    "settings": "Налаштування"
   },
   "settings": {
     "title": "Налаштування",
+    "personalInfo": "Особиста інформація",
+    "carInfo": "Інформація про авто",
+    "account": "Акаунт",
     "changePhoto": "Змінити",
+    "fullName": "Повне ім'я",
+    "fullNamePlaceholder": "Введіть ваше повне ім'я",
+    "phone": "Номер телефону",
+    "phonePlaceholder": "Введіть ваш номер телефону",
+    "carMake": "Марка авто",
+    "carModel": "Модель авто",
+    "carPlate": "Номерний знак",
+    "experience": "Досвід (років)",
     "language": "Мова застосунку",
     "changePassword": "Змінити пароль?",
-    "saveProfile": "Зберегти профіль",
+    "saveProfile": "Зберегти",
+    "profileUpdated": "Профіль успішно оновлено!",
     "darkTheme": "Темна тема",
-    "editFullName": "Редагувати повне ім'я",
-    "editPhone": "Редагувати телефон",
     "emailCannotBeChanged": "Електронну пошту не можна змінити",
     "profileSaved": "Профіль успішно збережено!",
     "uk": "Українська",
@@ -79,7 +111,10 @@
     "home": "Головна",
     "transfers": "Мої трансфери",
     "messages": "Повідомлення",
-    "profile": "Профіль"
+    "profile": "Профіль",
+    "driver": {
+      "home": "Трансфери"
+    }
   },
   "footer": {
     "question": "Не знаєте як працює додаток?",
@@ -94,7 +129,11 @@
     "success": "Успіх",
     "loading": "Завантаження...",
     "confirm": "Підтвердити",
-    "cancel": "Скасувати"
+    "cancel": "Скасувати",
+    "done": "Готово",
+    "no": "Ні",
+    "yes": "Так",
+    "comingSoon": "Цей розділ у розробці"
   },
   "support": {
     "title": "Підтримка",
@@ -107,28 +146,64 @@
     "messageSent": "Дякуємо! Ваш відгук було надіслано."
   },
   "transferDetail": {
-    "title": "Трансфер",
+    "title": "Деталі заявки",
+    "notFound": "Заявку не знайдено.",
     "from": "Звідки",
     "to": "Куди",
-    "detailsTitle": "Деталі трансферу",
+    "detailsTitle": "Деталі поїздки",
     "date": "Дата",
     "time": "Час",
-    "passengers": "осіб",
+    "passengers": "пас.",
     "luggage": "Багаж",
-    "withPet": "Подорож з твариною",
+    "withPet": "З тваринкою",
     "yes": "Так",
     "transferType": "Тип трансферу",
-    "clientComment": "Побажання від клієнта",
-    "route": "Прокладений маршрут",
-    "mapPlaceholder": "Карта буде тут",
+    "clientComment": "Коментар пасажира",
+    "route": "Маршрут на карті",
     "start": "Старт",
     "finish": "Фініш",
-    "cancelTransfer": "Скасувати трансфер",
-    "driverOffers": "Заявки водіїв",
-    "yourDriver": "Ваш водій",
-    "tripCompleted": "Поїздка завершена",
-    "chooseThisDriver": "Обрати цього водія",
-    "reviews": "{{count}} відгуків"
+    "cancelTransfer": "Скасувати заявку",
+    "cancelledSuccess": "Заявку успішно скасовано.",
+    "cancelConfirmTitle": "Скасувати заявку?",
+    "cancelConfirmText": "Цю дію не можна буде повернути.",
+    "driverOffers": "Пропозиції водіїв",
+    "noOffers": "Ще немає пропозицій. Зачекайте, водії скоро відгукнуться.",
+    "chosenDriver": "Ваш водій",
+    "acceptOffer": "Прийняти",
+    "driverConfirmed": "Водія підтверджено!",
+    "changeDriver": "Змінити водія",
+    "changeDriverConfirmTitle": "Змінити водія?",
+    "changeDriverConfirmText": "Ваша поїздка знову стане доступною для пропозицій від інших водіїв.",
+    "fromAirport": "З аеропорту",
+    "toAirport": "В аеропорт"
+  },
+   "transfersScreen": {
+    "title": "Мої трансфери",
+    "emptyState": "У вас ще немає створених заявок.",
+    "writeButton": "Написати"
+  },
+  "transferStatus": {
+    "pending": "Пошук водія",
+    "accepted": "Водія знайдено",
+    "completed": "Завершено",
+    "cancelled": "Скасовано"
+  },
+  "transferCard": {
+    "pendingFooter": "Очікуємо на пропозиції від водіїв"
+  },
+  "alerts": {
+    "errorTitle": "Помилка",
+    "callFailedCheckDevice": "Не вдалося виконати дзвінок. Перевірте, чи підтримує ваш пристрій дзвінки.",
+    "chatFailed": "Не вдалося відкрити чат.",
+    "phoneNotFoundTitle": "Номер не знайдено",
+    "phoneNotFoundBody": "У цього водія не вказано номер телефону.",
+    "confirmCallTitle": "Підтвердження дзвінка",
+    "confirmCallBody": "Ви впевнені, що хочете зателефонувати водію ({{phoneNumber}})?",
+    "cancelButton": "Скасувати",
+    "callButton": "Зателефонувати"
+  },
+  "timeFormats": {
+    "cardDate": "D MMMM, HH:mm"
   },
   "onboarding": {
     "welcomeTitle": "Ласкаво просимо!",
@@ -140,12 +215,12 @@
     "startButton": "Почати"
   },
   "successModal": {
-    "title": "Запит надіслано!",
-    "subtitle": "Ваш трансфер успішно надіслано. Очікуйте пропозиції від водіїв",
-    "commentTitle": "Що варто знати водієві?",
+    "title": "Заявку створено!",
+    "subtitle": "Ми повідомимо вас, коли водій прийме ваше замовлення.",
+    "commentTitle": "Додати коментар",
     "commentPlaceholder": "Наприклад: дитяче крісло, великий багаж...",
     "closeButton": "Закрити",
-    "sendButton": "Відправити коментар"
+    "sendButton": "Надіслати"
   },
   "languageModal": {
     "uk": "Українська",
@@ -153,20 +228,58 @@
     "ro": "Română"
   },
   "chatList": {
-    "title": "Повідомлення"
+    "title": "Повідомлення",
+    "noChats": "У вас ще немає чатів."
   },
-
   "chat": {
-    "onlineStatus": "у мережі 5 хв тому",
-    "placeholder": "Напишіть повідомлення",
-    "today": "Сьогодні",
-    "yesterday": "Учора",
+    "onlineStatus": "в мережі",
+    "offlineStatus": "не в мережі",
+    "typingStatus": "друкує...",
+    "placeholder": "Напишіть повідомлення...",
+    "locationLabel": "Геолокація",
     "takePhoto": "Зробити фото",
-    "pickFromGallery": "Обрати з галереї",
+    "pickFromGallery": "Вибрати з галереї",
     "shareLocation": "Поділитися геолокацією",
-    "locationLabel": "Місцезнаходження",
-    "galleryPermissionError": "Для доступу до галереї потрібен ваш дозвіл.",
-    "cameraPermissionError": "Для доступу до камери потрібен ваш дозвіл.",
-    "locationPermissionError": "Для доступу до геолокації потрібен ваш дозвіл."
-  }
+    "galleryPermissionError": "Потрібен дозвіл на доступ до галереї.",
+    "cameraPermissionError": "Потрібен дозвіл на доступ до камери.",
+    "locationPermissionError": "Потрібен дозвіл на доступ до геолокації.",
+    "readStatus": "Переглянуто"
+  },
+  "driverHome": {
+    "title": "Доступні трансфери",
+    "noRequests": "Наразі немає доступних заявок.",
+    "driverSelected": "Водія обрано",
+    "date": "Дата",
+    "time": "Час",
+    "people": "Осіб"
+  },
+  "driverOffer": {
+    "requestDetails": "Деталі заявки",
+    "priceRequired": "Будь ласка, вкажіть ціну.",
+    "offerSent": "Вашу пропозицію надіслано пасажиру!",
+    "otherOffersTitle": "Пропозиції інших водіїв",
+    "noOtherOffers": "Ви перший, хто зробив пропозицію!",
+    "alreadyOffered": "Ви вже надіслали пропозицію",
+    "yourOffer": "Ваша пропозиція",
+    "passengerNotified": "Пасажир отримав вашу пропозицію. Очікуйте на відповідь.",
+    "pricePlaceholder": "0",
+    "commentPlaceholder": "Ваш коментар (необов'язково)",
+    "submitButton": "Надіслати пропозицію",
+    "chosenDriver": "Обраний водій"
+  },
+  "passengers": {
+    "title": "Пасажири",
+    "adults": "Дорослі",
+    "adultsAge": "12+ років",
+    "children": "Діти",
+    "childrenAge": "2-12 років",
+    "infants": "Немовлята",
+    "infantsAge": "до 2 років"
+  },
+  "authPrompt": {
+      "title": "Потрібна авторизація",
+      "subtitle": "Щоб замовити трансфер, будь ласка, увійдіть або зареєструйтеся."
+  },
+    "home.flightNumberPlaceholder": "Номер рейсу"
+
 }

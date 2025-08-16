@@ -11,7 +11,7 @@ import { View, ActivityIndicator, Text } from 'react-native';
 import { ThemeProvider } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
 import { supabase } from './config/supabase';
-
+import { usePushNotifications } from './usePushNotifications.js';
 // --- Екрани та навігатори ---
 import HomeScreen from './app/HomeScreen';
 import OnboardingScreen from './app/OnboardingScreen';
@@ -23,7 +23,7 @@ import DriverTabNavigator from './app/navigation/DriverTabNavigator'; // ✨ П�
 import Settings from './app/Settings';
 import TransferDetailScreen from './app/TransferDetailScreen';
 import DriverRequestDetailScreen from './app/driver/DriverRequestDetailScreen';
-
+import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js'; // Профіль водія
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 const DriverStack = createStackNavigator();
@@ -53,6 +53,7 @@ function RootStackNavigator() {
       <RootStack.Screen name="MainTabs" component={TabNavigator} />
       <RootStack.Screen name="TransferDetail" component={TransferDetailScreen} />
       <RootStack.Screen name="Settings" component={Settings} />
+      <RootStack.Screen name="PublicDriverProfile" component={PublicDriverProfileScreen} />
     </RootStack.Navigator>
   );
 }
@@ -79,7 +80,7 @@ function AppContent() {
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
+ usePushNotifications(); 
   useEffect(() => {
     const checkIfFirstLaunch = async () => {
       try {

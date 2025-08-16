@@ -11,7 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
- "ios": {
+    "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.airchat.app",
       "config": {
@@ -22,7 +22,10 @@
         "NSCameraUsageDescription": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото.",
         "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["tel", "sms"]
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "sms"
+        ]
       }
     },
     "android": {
@@ -36,29 +39,12 @@
           "apiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
         }
       },
-       "queries": [
-        {
-          "intent": [
-            {
-              "action": "android.intent.action.DIAL",
-              "data": {
-                "scheme": "tel"
-              }
-            },
-            {
-              "action": "android.intent.action.SENDTO",
-              "data": {
-                "scheme": "sms"
-              }
-            }
-          ]
-        }
-      ]
-    },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ]
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -72,6 +58,19 @@
           "photosPermission": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
           "cameraPermission": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото."
         }
+      ],
+      [
+        "expo-location",
+        {
+            "locationWhenInUsePermission": "Цей застосунок потребує доступу до вашої геолокації, щоб ділитися нею з друзями."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff"
+        }
       ]
     ],
     "extra": {
@@ -80,3 +79,4 @@
       }
     }
   }
+}

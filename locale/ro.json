@@ -1,32 +1,46 @@
 {
   "home": {
-    "toAirport": "La Aeroport",
-    "fromAirport": "De la Aeroport",
-    "title": "Rezervați un transfer la/de la aeroport",
-    "fromPlaceholder": "De la? (aeroport)",
-    "fromPlaceholderAddress": "De la? (adresă, hotel...)",
-    "dropoffPlaceholder": "Destinație (hotel, adresă...)",
-    "dropoffPlaceholderAirport": "La? (aeroport)",
+    "toAirport": "La aeroport",
+    "fromAirport": "De la aeroport",
+    "title": "Comandați un transfer la/de la aeroport",
+    "fromPlaceholder": "De unde? (aeroport)",
+    "fromPlaceholderAddress": "De unde? (adresă, hotel...)",
+    "dropoffPlaceholder": "Locul de debarcare (hotel, adresă...)",
+    "dropoffPlaceholderAirport": "Unde? (aeroport)",
     "luggagePlaceholder": "Număr de bagaje",
     "dateLabel": "Data",
     "timeLabel": "Ora",
     "passengersLabel": "Pasageri",
-    "individualTransfer": "Transfer Individual",
-    "groupTransfer": "Transfer de Grup",
-    "travelingWithPet": "Călătorie cu animal de companie",
-    "petSubtext": "(de ex., o pisică sau un câine)",
-    "orderButton": "Comandați Transfer"
+    "individualTransfer": "Transfer individual",
+    "groupTransfer": "Transfer de grup",
+    "travelingWithPet": "Călătoresc cu un animal de companie",
+    "petSubtext": "(de ex., pisică sau câine)",
+    "orderButton": "Comandați transferul",
+    "error": {
+      "fillFields": "Vă rugăm să completați câmpurile 'De la' și 'La'.",
+      "noAdults": "Trebuie să existe cel puțin un pasager adult."
+    }
+  },
+   "addCommentModal": {
+    "title": "Preferințe pentru călătorie",
+    "subtitle": "Puteți adăuga un comentariu pentru șofer, de exemplu, despre un scaun pentru copii sau bagaje mari.",
+    "commentPlaceholder": "De exemplu, un scaun pentru copii...",
+    "skipButton": "Omite",
+    "sendButton": "Trimite"
+  },
+  "transferSuccess": {
+    "title": "Cerere trimisă cu succes!",
+    "subtitle": "Vă vom anunța când un șofer va accepta comanda dvs.",
+    "viewTransfersButton": "Vezi transferurile mele",
+    "closeButton": "Închide"
   },
   "authScreen": {
     "title": "AirChat: Transferuri la și de la aeroport",
     "driverLogin": "Sunteți șofer? Conectați-vă la cont"
   },
-    "authPrompt": {
-    "title": "Autorizare necesară",
-    "subtitle": "Pentru a comanda un transfer, vă rugăm să vă autentificați sau să vă înregistrați."
-  },
   "registration": {
-    "title": "Înregistrare",
+    "title": "Creați cont",
+    "driverTitle": "Înregistrare șofer",
     "subtitle": "Pătrundeți în lumea transportului!",
     "fullNameLabel": "Nume complet",
     "fullNamePlaceholder": "Introduceți numele dvs.",
@@ -34,44 +48,58 @@
     "emailPlaceholder": "Introduceți adresa de email",
     "passwordLabel": "Parolă",
     "passwordPlaceholder": "Introduceți parola",
-    "phoneLabel": "Telefon",
+    "phoneLabel": "Telefon (opțional)",
     "phonePlaceholder": "Introduceți numărul de telefon",
     "registerButton": "Înregistrați-vă",
     "alreadyRegistered": "Deja înregistrat?",
-    "loginLink": "Autentificare",
+    "loginLink": "Conectați-vă",
     "emailPasswordRequired": "Emailul și parola sunt obligatorii",
+    "fillAllFields": "Vă rugăm să completați numele, emailul și parola.",
     "confirmationEmail": "Succes! Vă rugăm să verificați emailul pentru a confirma înregistrarea."
   },
   "login": {
-    "title": "Autentificare",
-    "emailPlaceholder": "Introduceți adresa de email",
-    "passwordPlaceholder": "Introduceți parola",
-    "subtitle": "Bine ai revenit!",
+    "title": "Conectare",
+    "subtitle": "Bine ați revenit!",
     "fillAllFields": "Vă rugăm să completați toate câmpurile.",
     "forgotPassword": "Ați uitat parola?",
     "featureComingSoon": "Această funcție va fi disponibilă în curând.",
-    "noAccount": "Nu ai un cont?"
+    "noAccount": "Nu aveți cont?"
   },
   "profile": {
-    "title": "Profilul Meu",
+    "myProfile": "Profilul meu",
+    "noData": "Nu s-a putut încărca profilul.",
+    "noName": "Utilizator fără nume",
+    "noPhone": "Nespecificat",
+    "rating": "Rating",
+    "completedTrips": "Curse finalizate",
+    "experience": "Experiență",
+    "totalMileage": "Kilometraj total",
     "role": "Rol",
     "adsCount": "Număr de anunțuri postate",
-    "yearsInApp": "În aplicație",
-    "completedTrips": "Călătorii finalizate",
+    "yearsInApp": "În aplicație de",
     "phone": "Tel",
-    "settings": "Setări",
-    "loggedInMessage": "Sunteți autentificat!"
+    "settings": "Setări"
   },
   "settings": {
     "title": "Setări",
+    "personalInfo": "Informații personale",
+    "carInfo": "Informații vehicul",
+    "account": "Cont",
     "changePhoto": "Schimbă",
+    "fullName": "Nume complet",
+    "fullNamePlaceholder": "Introduceți numele complet",
+    "phone": "Număr de telefon",
+    "phonePlaceholder": "Introduceți numărul de telefon",
+    "carMake": "Marca mașinii",
+    "carModel": "Modelul mașinii",
+    "carPlate": "Număr de înmatriculare",
+    "experience": "Experiență (ani)",
     "language": "Limba aplicației",
-    "changePassword": "Schimbă parola?",
-    "saveProfile": "Salvează Profilul",
+    "changePassword": "Schimbați parola?",
+    "saveProfile": "Salvează",
+    "profileUpdated": "Profil actualizat cu succes!",
     "darkTheme": "Temă întunecată",
-    "editFullName": "Editează numele complet",
-    "editPhone": "Editează telefonul",
-    "emailCannotBeChanged": "Adresa de email nu poate fi schimbată",
+    "emailCannotBeChanged": "Emailul nu poate fi schimbat",
     "profileSaved": "Profil salvat cu succes!",
     "uk": "Ucraineană",
     "en": "Engleză",
@@ -81,9 +109,12 @@
   },
   "tabs": {
     "home": "Acasă",
-    "transfers": "Transferurile Mele",
+    "transfers": "Transferurile mele",
     "messages": "Mesaje",
-    "profile": "Profil"
+    "profile": "Profil",
+    "driver": {
+      "home": "Cereri"
+    }
   },
   "footer": {
     "question": "Nu știți cum funcționează aplicația?",
@@ -91,64 +122,93 @@
   },
   "auth": {
     "register": "Înregistrare",
-    "login": "Autentificare"
+    "login": "Conectare"
   },
   "common": {
     "error": "Eroare",
     "success": "Succes",
     "loading": "Se încarcă...",
     "confirm": "Confirmă",
-    "cancel": "Anulează"
-  },
-  "support": {
-    "title": "Suport",
-    "formTitle": "Ajutați-ne să fim mai buni!",
-    "formSubtitle": "Lăsați feedback, raportați o problemă sau sugerați o idee.",
-    "messageLabel": "Mesaj",
-    "messagePlaceholder": "Feedback-ul dvs. aici...",
-    "sendButton": "Trimite",
-    "messageEmpty": "Câmpul de mesaj nu poate fi gol.",
-    "messageSent": "Mulțumim! Feedback-ul dvs. a fost trimis."
+    "cancel": "Anulează",
+    "done": "Gata",
+    "no": "Nu",
+    "yes": "Da",
+    "comingSoon": "Această secțiune este în dezvoltare"
   },
   "transferDetail": {
-    "title": "Transfer",
+    "title": "Detalii cerere",
+    "notFound": "Cererea nu a fost găsită.",
     "from": "De la",
     "to": "La",
-    "detailsTitle": "Detalii transfer",
+    "detailsTitle": "Detalii călătorie",
     "date": "Data",
     "time": "Ora",
-    "passengers": "persoane",
-    "luggage": "Bagaj",
-    "withPet": "Călătorie cu animal de companie",
+    "passengers": "pers.",
+    "luggage": "Bagaje",
+    "withPet": "Cu animal de companie",
     "yes": "Da",
-    "transferType": "Tipul transferului",
-    "clientComment": "Solicitarea clientului",
-    "route": "Traseu planificat",
-    "mapPlaceholder": "Harta va fi aici",
+    "transferType": "Tip transfer",
+    "clientComment": "Comentariul pasagerului",
+    "route": "Traseu pe hartă",
     "start": "Start",
-    "finish": "Finish",
-    "cancelTransfer": "Anulați transferul",
+    "finish": "Sosire",
+    "cancelTransfer": "Anulează cererea",
+    "cancelledSuccess": "Cererea a fost anulată cu succes.",
+    "cancelConfirmTitle": "Anulați cererea?",
+    "cancelConfirmText": "Această acțiune nu poate fi anulată.",
     "driverOffers": "Ofertele șoferilor",
-    "yourDriver": "Șoferul dvs.",
-    "tripCompleted": "Călătorie finalizată",
-    "chooseThisDriver": "Alegeți acest șofer",
-    "reviews": "{{count}} recenzii"
-
+    "noOffers": "Încă nu există oferte. Vă rugăm așteptați, șoferii vor răspunde în curând.",
+    "chosenDriver": "Șoferul dvs.",
+    "acceptOffer": "Acceptă",
+    "driverConfirmed": "Șofer confirmat!",
+    "changeDriver": "Schimbă șoferul",
+    "changeDriverConfirmTitle": "Schimbați șoferul?",
+    "changeDriverConfirmText": "Călătoria dvs. va deveni din nou disponibilă pentru oferte de la alți șoferi.",
+    "fromAirport": "De la aeroport",
+    "toAirport": "La aeroport"
+  },
+   "transfersScreen": {
+    "title": "Transferurile mele",
+    "emptyState": "Nu aveți încă nicio cerere de transfer.",
+    "writeButton": "Scrie"
+  },
+  "transferStatus": {
+    "pending": "Se caută șofer",
+    "accepted": "Șofer găsit",
+    "completed": "Finalizat",
+    "cancelled": "Anulat"
+  },
+  "transferCard": {
+    "pendingFooter": "Se așteaptă oferte de la șoferi"
+  },
+  "alerts": {
+    "errorTitle": "Eroare",
+    "callFailedCheckDevice": "Apelul nu a putut fi efectuat. Verificați dacă dispozitivul dvs. acceptă apeluri.",
+    "chatFailed": "Chatul nu a putut fi deschis.",
+    "phoneNotFoundTitle": "Număr negăsit",
+    "phoneNotFoundBody": "Acest șofer nu are un număr de telefon listat.",
+    "confirmCallTitle": "Confirmare apel",
+    "confirmCallBody": "Sunteți sigur că doriți să sunați șoferul ({{phoneNumber}})?",
+    "cancelButton": "Anulează",
+    "callButton": "Sună"
+  },
+  "timeFormats": {
+    "cardDate": "D MMMM, HH:mm"
   },
   "onboarding": {
     "welcomeTitle": "Bun venit!",
-    "welcomeText": "Aplicația noastră vă va ajuta să rezervați cu ușurință un transfer.",
-    "configureTitle": "Personalizați călătoria",
-    "configureText": "Alegeți data, ora, numărul de pasageri și bagajele.",
+    "welcomeText": "Aplicația noastră vă ajută să rezervați ușor un transfer.",
+    "configureTitle": "Configurați călătoria",
+    "configureText": "Alegeți data, ora, numărul de pasageri și bagaje.",
     "readyTitle": "Totul este gata!",
     "readyText": "Apăsați butonul de mai jos pentru a începe.",
-    "startButton": "Start"
+    "startButton": "Începe"
   },
   "successModal": {
-    "title": "Cerere Trimisă!",
-    "subtitle": "Transferul dvs. a fost trimis cu succes. Vă rugăm așteptați oferte de la șoferi.",
+    "title": "Cerere trimisă!",
+    "subtitle": "Cererea dvs. de transfer a fost trimisă. Așteptați oferte de la șoferi.",
     "commentTitle": "Ce ar trebui să știe șoferul?",
-    "commentPlaceholder": "de ex., scaun auto pentru copii, bagaje mari...",
+    "commentPlaceholder": "de ex., scaun pentru copil, bagaje mari...",
     "closeButton": "Închide",
     "sendButton": "Trimite comentariu"
   },
@@ -158,19 +218,58 @@
     "ro": "Română"
   },
   "chatList": {
-    "title": "Mesaje"
+    "title": "Mesaje",
+    "noChats": "Nu aveți încă chat-uri."
   },
   "chat": {
-    "onlineStatus": "online acum 5 min",
-    "placeholder": "Scrie un mesaj",
-    "today": "Astăzi",
-    "yesterday": "Ieri",
+    "onlineStatus": "online",
+    "offlineStatus": "offline",
+    "typingStatus": "scrie...",
+    "placeholder": "Scrie un mesaj...",
+    "locationLabel": "Locație",
     "takePhoto": "Fă o fotografie",
     "pickFromGallery": "Alege din galerie",
     "shareLocation": "Distribuie locația",
-    "locationLabel": "Locație",
-    "galleryPermissionError": "Este necesară permisiunea de a accesa galeria.",
-    "cameraPermissionError": "Este necesară permisiunea de a accesa camera foto.",
-    "locationPermissionError": "Este necesară permisiunea de a accesa locația."
-  }
+    "galleryPermissionError": "Este necesară permisiunea pentru a accesa galeria.",
+    "cameraPermissionError": "Este necesară permisiunea pentru a accesa camera.",
+    "locationPermissionError": "Este necesară permisiunea pentru a accesa locația.",
+    "readStatus": "Citit"
+  },
+  "driverHome": {
+    "title": "Cereri disponibile",
+    "noRequests": "Nu există cereri disponibile în acest moment.",
+    "driverSelected": "Șofer selectat",
+    "date": "Data",
+    "time": "Ora",
+    "people": "Persoane"
+  },
+  "driverOffer": {
+    "requestDetails": "Detalii cerere",
+    "priceRequired": "Vă rugăm să introduceți un preț.",
+    "offerSent": "Oferta dvs. a fost trimisă pasagerului!",
+    "otherOffersTitle": "Ofertele altor șoferi",
+    "noOtherOffers": "Sunteți primul care a făcut o ofertă!",
+    "alreadyOffered": "Ați trimis deja o ofertă",
+    "yourOffer": "Oferta dvs.",
+    "passengerNotified": "Pasagerul a primit oferta dvs. Vă rugăm așteptați un răspuns.",
+    "pricePlaceholder": "0",
+    "commentPlaceholder": "Comentariul dvs. (opțional)",
+    "submitButton": "Trimite oferta",
+    "chosenDriver": "Șofer ales"
+  },
+  "passengers": {
+    "title": "Pasageri",
+    "adults": "Adulți",
+    "adultsAge": "12+ ani",
+    "children": "Copii",
+    "childrenAge": "2-12 ani",
+    "infants": "Sugari",
+    "infantsAge": "sub 2 ani"
+  },
+  "authPrompt": {
+      "title": "Este necesară autorizarea",
+      "subtitle": "Pentru a comanda un transfer, vă rugăm să vă conectați sau să vă înregistrați."
+  },
+    "home.flightNumberPlaceholder": "Numărul zborului"
+
 }

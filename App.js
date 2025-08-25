@@ -24,6 +24,8 @@ import Settings from './app/Settings';
 import TransferDetailScreen from './app/TransferDetailScreen';
 import DriverRequestDetailScreen from './app/driver/DriverRequestDetailScreen';
 import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js'; // Профіль водія
+import FlightScheduleScreen from './app/driver/FlightScheduleScreen';
+
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 const DriverStack = createStackNavigator();

@@ -12,7 +12,7 @@ import { useAuth } from '../../provider/AuthContext'; // ✨ Імпорт
 import DriverHomeScreen from '../DriverHomeScreen';
 import MessagesStack from './MessagesStack';
 import DriverProfileStack from './DriverProfileStack';
-
+import DriverReizeStack from './DriverReizeStack'; // ✨ Імпорт стека рейсів
 const Tab = createBottomTabNavigator();
 
 export default function DriverTabNavigator() {
@@ -94,6 +94,11 @@ export default function DriverTabNavigator() {
         component={DriverHomeScreen} 
         options={{ title: t('tabs.driver.home', 'Трансфери') }}
       />
+      <Tab.Screen
+        name="DriverReizeStack" 
+        component={DriverReizeStack}
+        options={{ title: t('tabs.flights', 'Рейси') }}
+      /> 
       <Tab.Screen 
         name="MessagesTab" 
         component={MessagesStack}

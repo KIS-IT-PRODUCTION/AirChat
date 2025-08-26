@@ -271,6 +271,25 @@
       "title": "Authorization Required",
       "subtitle": "To order a transfer, please log in or register."
   },
-    "home.flightNumberPlaceholder": "Flight number"
+    "home.flightNumberPlaceholder": "Flight number",
+     "flights": {
+    "title": "Flight Schedule",
+    "selectDate": "Select date",
+    "selectCountry": "Select country",
+    "selectAirport": "Select airport",
+    "emptyList": "No flights for the selected date",
+    "status": {
+      "scheduled": "Scheduled",
+      "active": "In Flight",
+      "landed": "Landed",
+      "cancelled": "Cancelled",
+      "diverted": "Diverted",
+      "Unknown": "Unknown"
+    }
+  },
+  "errors": {
+    "apiError": "API Error",
+    "unexpectedData": "Unexpected data structure received"
+  },"Departed": "Departed"
 
 }

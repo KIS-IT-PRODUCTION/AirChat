@@ -270,6 +270,24 @@
       "title": "Este necesară autorizarea",
       "subtitle": "Pentru a comanda un transfer, vă rugăm să vă conectați sau să vă înregistrați."
   },
-    "home.flightNumberPlaceholder": "Numărul zborului"
-
+    "home.flightNumberPlaceholder": "Numărul zborului",
+    "flights": {
+    "title": "Orar Zboruri",
+    "selectDate": "Selectați data",
+    "selectCountry": "Selectați țara",
+    "selectAirport": "Selectați aeroportul",
+    "emptyList": "Niciun zbor pentru data selectată",
+    "status": {
+      "scheduled": "Programat",
+      "active": "În zbor",
+      "landed": "Aterizat",
+      "cancelled": "Anulat",
+      "diverted": "Deviat",
+      "Unknown": "Necunoscut"
+    }
+  },
+  "errors": {
+    "apiError": "Eroare API",
+    "unexpectedData": "Structură de date neașteptată primită"
+  }
 }

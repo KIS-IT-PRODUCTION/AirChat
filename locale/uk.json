@@ -280,6 +280,36 @@
       "title": "Потрібна авторизація",
       "subtitle": "Щоб замовити трансфер, будь ласка, увійдіть або зареєструйтеся."
   },
-    "home.flightNumberPlaceholder": "Номер рейсу"
-
+    "home.flightNumberPlaceholder": "Номер рейсу",
+  "flights": {
+    "title": "Розклад рейсів",
+    "selectDate": "Оберіть дату",
+    "selectCountry": "Оберіть країну",
+    "selectAirport": "Оберіть аеропорт",
+    "emptyList": "На обрану дату рейсів немає",
+    "status": {
+      "scheduled": "За розкладом",
+      "active": "В польоті",
+      "landed": "Приземлився",
+      "cancelled": "Скасовано",
+      "diverted": "Перенаправлено",
+      "Unknown": "Невідомо"
+    }
+  },
+  "errors": {
+    "apiError": "Помилка API",
+    "unexpectedData": "Отримано неочікувану структуру даних"
+  },
+  "status": {
+  "scheduled": "За розкладом",
+  "active": "В польоті",
+  "landed": "Приземлився",
+  "cancelled": "Скасовано",
+  "diverted": "Перенаправлено",
+  "Unknown": "Невідомо",
+  "Departed": "Вилетів",
+  "GateClosed": "Вихід закрито",
+  "Boarding": "Посадка",
+  "Expected": "Очікується"
+}
 }

@@ -1,4 +1,3 @@
-// app/DriverRequestDetailScreen.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -29,15 +28,19 @@ const InfoRow = ({ icon, label, value, colors }) => {
 const OtherDriverOffer = ({ offer, isChosen }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
+    // ✨ ВИПРАВЛЕНО: Тепер валюта динамічна
+    const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
     return (
         <View style={[styles.otherOfferRow, isChosen && styles.chosenOffer]}>
             <Image source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')} style={styles.otherOfferAvatar} />
             <Text style={[styles.otherOfferName, isChosen && styles.chosenOfferText]} numberOfLines={1}>{offer.driver_name}</Text>
-            <Text style={[styles.otherOfferPrice, isChosen && styles.chosenOfferText]}>{offer.price} грн</Text>
+            <Text style={[styles.otherOfferPrice, isChosen && styles.chosenOfferText]}>{displayPrice}</Text>
             {isChosen && <Ionicons name="checkmark-circle" size={24} color={colors.primary} style={{ marginLeft: 8 }} />}
         </View>
     );
 };
+
+const CURRENCIES = ['UAH', 'USD', 'EUR'];
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function DriverRequestDetailScreen({ navigation, route }) {
@@ -55,34 +58,49 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
+  
   const [price, setPrice] = useState('');
   const [comment, setComment] = useState('');
+  const [currency, setCurrency] = useState('UAH');
   
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
 
+  useEffect(() => {
+    const markAsViewed = async () => {
+        if (transferId) {
+            await supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: transferId });
+        }
+    };
+    markAsViewed();
+  }, [transferId]);
+
   const fetchData = useCallback(async () => {
-    if (!session?.user) { setLoading(false); return; }
+    if (!session?.user || !transferId) {
+      setLoading(false);
+      return;
+    }
     try {
-      setLoading(true);
       const { data, error } = await supabase.rpc('get_driver_request_details', { p_transfer_id: transferId }).single();
       if (error) throw error;
       
-      setTransferData(data);
-      const offers = data.other_offers || [];
-      setOtherOffers(offers);
-      
-      const alreadyOffered = offers.some(offer => offer.driver_id === session.user.id);
-      setHasAlreadyOffered(alreadyOffered);
+      if (data) {
+        setTransferData(data);
+        const offers = data.other_offers || [];
+        setOtherOffers(offers);
+        setHasAlreadyOffered(offers.some(offer => offer.driver_id === session.user.id));
+        fetchRoute(data.from_location, data.to_location);
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [transferId, session]);
 
-      if (data) { fetchRoute(data.from_location, data.to_location); }
-    } catch (error) { Alert.alert(t('common.error'), error.message); } 
-    finally { setLoading(false); }
-  }, [transferId, session, t]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
-  // ✨ ВИПРАВЛЕНО: Цей useEffect надійно центрує карту на маршруті,
-  // як тільки координати стають доступними.
   useEffect(() => {
     if (mapViewRef.current && routeCoordinates.length > 1) {
       mapViewRef.current.fitToCoordinates(routeCoordinates, {
@@ -108,18 +126,17 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   };
   
   const handleSubmitOffer = async () => {
-    if (!price || isNaN(parseFloat(price))) {
-        Alert.alert(t('common.error'), t('driverOffer.priceRequired', 'Будь ласка, вкажіть ціну.'));
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        Alert.alert(t('common.error'), t('driverOffer.priceRequired', 'Будь ласка, вкажіть коректну ціну.'));
         return;
     }
     setIsSubmitting(true);
     try {
-        const offerData = { transfer_id: transferId, driver_id: session.user.id, price: parseFloat(price), driver_comment: comment };
+        const offerData = { transfer_id: transferId, driver_id: session.user.id, price: parseFloat(price), driver_comment: comment, currency: currency };
         const { error } = await supabase.from('transfer_offers').insert([offerData]);
         if (error) throw error;
-        
         Alert.alert(t('common.success'), t('driverOffer.offerSent', 'Вашу пропозицію надіслано пасажиру!'));
-        navigation.goBack();
+        fetchData();
     } catch (error) {
         Alert.alert(t('common.error'), error.message);
     } finally {
@@ -127,10 +144,22 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
   };
 
-  if (loading) { return <View style={styles.container}><ActivityIndicator size="large" color={colors.primary} /></View>; }
-  if (!transferData) { return <View style={styles.container}><Text style={styles.sectionTitle}>{t('transferDetail.notFound', 'Заявку не знайдено.')}</Text></View>; }
+  if (!loading && !transferData) {
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
+                <Text style={styles.title}>{t('driverOffer.requestDetails')}</Text>
+                <Logo width={40} height={40} />
+            </View>
+            <View style={styles.centeredContainer}>
+                <Text style={styles.sectionTitle}>{t('transferDetail.notFound')}</Text>
+            </View>
+        </SafeAreaView>
+    );
+  }
 
-  const isRequestClosed = transferData.status === 'accepted';
+  const isRequestClosed = transferData?.status === 'accepted';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -139,22 +168,23 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         <Text style={styles.title}>{t('driverOffer.requestDetails', 'Деталі заявки')}</Text>
         <Logo width={40} height={40} />
       </View>
+      
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.userInfoSection}><Image source={transferData.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} /><Text style={styles.userName}>{transferData.passenger_name}</Text></View>
-        <View style={styles.infoCard}><InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData.to_location} colors={colors} /></View>
+        <View style={styles.userInfoSection}><Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} /><Text style={styles.userName}>{transferData?.passenger_name}</Text></View>
+        <View style={styles.infoCard}><InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} /></View>
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle', 'Деталі поїздки')}</Text>
             <View style={styles.detailsGrid}>
-                <View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('D MMM')}</Text></View>
-                <View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData.transfer_datetime).format('HH:mm')}</Text></View>
-                <View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{transferData.total_passengers} {t('transferDetail.passengers', 'пас.')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('D MMM')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('HH:mm')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{transferData?.total_passengers} {t('transferDetail.passengers', 'пас.')}</Text></View>
             </View>
             <View style={styles.divider} />
-            <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData.luggage_info} colors={colors} />
-            {transferData.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }
-            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData.transfer_type} colors={colors} />
+            <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData?.luggage_info} colors={colors} />
+            {transferData?.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }
+            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData?.transfer_type} colors={colors} />
         </View>
-        {transferData.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Коментар пасажира')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
+        {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Коментар пасажира')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('transferDetail.route', 'Маршрут на карті')}</Text>
             <View style={styles.mapContainer}>
@@ -165,8 +195,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
             {routeInfo && (
                 <View style={styles.routeInfoContainer}>
                     <View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View>
-                    {/* ✨ ВІДОБРАЖАЄМО НАПРЯМОК */}
-                    <View style={styles.routeInfoItem}><Ionicons name={transferData.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData.direction === 'from_airport' ? t('transferDetail.fromAirport', 'З аеропорту') : t('transferDetail.toAirport', 'В аеропорт')}</Text></View>
+                    <View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport', 'З аеропорту') : t('transferDetail.toAirport', 'В аеропорт')}</Text></View>
                 </View>
             )}
         </View>
@@ -175,7 +204,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
             <View style={styles.infoCard}>
                 <Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle', 'Пропозиції інших водіїв')}</Text>
                 {otherOffers.map((offer, index) => (
-                    <OtherDriverOffer key={index} offer={offer} isChosen={offer.driver_id === transferData.accepted_driver_id} />
+                    <OtherDriverOffer key={index} offer={offer} isChosen={offer.driver_id === transferData?.accepted_driver_id} />
                 ))}
             </View>
         )}
@@ -187,7 +216,18 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                     <View style={styles.alreadyOfferedContainer}><Ionicons name="checkmark-circle" size={24} color={colors.primary} /><Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified', 'Пасажир отримав вашу пропозицію. Очікуйте на відповідь.')}</Text></View>
                 ) : (
                     <>
-                        <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /><Text style={styles.currencyText}>грн</Text></View>
+                        <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /></View>
+                        <View style={styles.currencySelector}>
+                            {CURRENCIES.map((curr) => (
+                                <TouchableOpacity
+                                    key={curr}
+                                    style={[ styles.currencyButton, { backgroundColor: currency === curr ? colors.primary : colors.card, borderColor: colors.border }]}
+                                    onPress={() => setCurrency(curr)}
+                                >
+                                    <Text style={[styles.currencyButtonText, { color: currency === curr ? '#fff' : colors.text }]}>{curr}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                         <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder', 'Ваш коментар (необов\'язково)')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
                         <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton', 'Надіслати пропозицію')}</Text>}</TouchableOpacity>
                     </>
@@ -195,11 +235,19 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
             </View>
         )}
       </ScrollView>
+
+      {loading && (
+          <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+      )}
     </SafeAreaView>
   );
 }
 const getStyles = (colors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', paddingTop: Platform.OS === 'android' ? 25 : 0  },
+    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
+    centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,  borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
     scrollContent: { paddingBottom: 40 },
@@ -223,10 +271,12 @@ const getStyles = (colors) => StyleSheet.create({
     routeInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     routeInfoText: { color: colors.text, fontSize: 16, fontWeight: '500' },
     offerSection: { margin: 16, marginTop: 24 },
-    priceInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, marginBottom: 16 },
-    priceInput: { flex: 1, color: colors.text, fontSize: 24, fontWeight: 'bold', paddingVertical: 16 },
-    currencyText: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
-    commentInput: { backgroundColor: colors.card, borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', color: colors.text, fontSize: 16, marginBottom: 16 },
+    priceInputContainer: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+    priceInput: { color: colors.text, fontSize: 48, fontWeight: 'bold', paddingVertical: 16, textAlign: 'center' },
+    currencySelector: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16 },
+    currencyButton: { paddingVertical: 10, paddingHorizontal: 30, borderRadius: 20, borderWidth: 1 },
+    currencyButtonText: { fontSize: 16, fontWeight: 'bold' },
+    commentInput: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', color: colors.text, fontSize: 16, marginBottom: 16 },
     submitButton: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
     submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     alreadyOfferedContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, gap: 12 },
@@ -235,6 +285,6 @@ const getStyles = (colors) => StyleSheet.create({
     otherOfferAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
     otherOfferName: { flex: 1, color: colors.text, fontSize: 16 },
     otherOfferPrice: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
-    chosenOffer: { backgroundColor: `${colors.primary}20`, borderColor: colors.primary },
+    chosenOffer: { backgroundColor: `${colors.primary}20` },
     chosenOfferText: { color: colors.primary, fontWeight: 'bold' },
 });

@@ -1,9 +1,7 @@
-// app/HomeScreen.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity,
-  TextInput, Image, Modal, Pressable, ActivityIndicator, Alert, Platform
+  TextInput, Image, Modal, Pressable, ActivityIndicator, Platform
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +12,9 @@ import { useAuth } from '../provider/AuthContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
-
+import GroupTransferIcon from '../assets/group.svg';
+import IndividualTransferIcon from '../assets/identify.svg';
+import Pet from '../assets/pets.png';
 // --- Компоненти модальних вікон ---
 
 const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => {
@@ -29,35 +29,18 @@ const AddCommentModal = ({ visible, onClose, onCommentSubmit }) => {
     const { t } = useTranslation();
     const styles = getStyles(colors);
     const [comment, setComment] = useState('');
-
-    const handleSendComment = () => {
-        onCommentSubmit(comment);
-    };
-
+    const handleSendComment = () => { onCommentSubmit(comment); };
     return (
         <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
             <View style={styles.centeredModalBackdrop}>
                 <View style={styles.modalContent}>
-                    <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-                        <Ionicons name="close" size={28} color={colors.secondaryText} />
-                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity>
                     <Text style={styles.modalTitle}>{t('addCommentModal.title')}</Text>
                     <Text style={styles.modalSubtitle}>{t('addCommentModal.subtitle')}</Text>
-                    <TextInput
-                        style={styles.modalCommentInput}
-                        placeholder={t('addCommentModal.commentPlaceholder')}
-                        placeholderTextColor={colors.secondaryText}
-                        value={comment}
-                        onChangeText={setComment}
-                        multiline
-                    />
+                    <TextInput style={styles.modalCommentInput} placeholder={t('addCommentModal.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
                     <View style={styles.modalButtonRow}>
-                        <TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}>
-                            <Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}>
-                            <Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}><Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text></TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -73,18 +56,12 @@ const TransferSuccessModal = ({ visible, onClose, onViewTransfers }) => {
         <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
             <View style={styles.centeredModalBackdrop}>
                 <View style={styles.modalContent}>
-                    <View style={styles.successIconContainer}>
-                        <Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} />
-                    </View>
+                    <View style={styles.successIconContainer}><Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} /></View>
                     <Text style={styles.modalTitle}>{t('transferSuccess.title')}</Text>
                     <Text style={styles.modalSubtitle}>{t('transferSuccess.subtitle')}</Text>
                     <View style={styles.modalButtonColumn}>
-                        <TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}>
-                            <Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}>
-                            <Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}><Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text></TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -127,7 +104,6 @@ export default function HomeScreen({ navigation }) {
     const { session } = useAuth();
     const { t, i18n } = useTranslation();
     
-    // --- Стани форми та UI (без змін) ---
     const [fromLocation, setFromLocation] = useState('');
     const [toLocation, setToLocation] = useState('');
     const [flightNumber, setFlightNumber] = useState('');
@@ -145,15 +121,12 @@ export default function HomeScreen({ navigation }) {
     const [isPassengerModalVisible, setPassengerModalVisible] = useState(false);
     const [userProfile, setUserProfile] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
-    
-    // --- Стани для двоетапного модального вікна ---
     const [isCommentModalVisible, setCommentModalVisible] = useState(false);
     const [isSuccessModalVisible, setSuccessModalVisible] = useState(false);
     const [lastTransferId, setLastTransferId] = useState(null);
 
     const totalPassengers = passengerCounts.adults + passengerCounts.children + passengerCounts.infants;
 
-    // --- Логіка завантаження профілю (без змін) ---
     const fetchProfile = useCallback(async () => {
         if (!session?.user) {
             setLoadingProfile(false);
@@ -176,7 +149,6 @@ export default function HomeScreen({ navigation }) {
         fetchProfile();
     }, [fetchProfile]));
 
-    // --- Оновлена логіка відправки замовлення ---
     const handleOrderPress = async () => {
         if (!session?.user) {
             setAuthModalVisible(true);
@@ -214,7 +186,6 @@ export default function HomeScreen({ navigation }) {
             setLastTransferId(data.id);
             setCommentModalVisible(true);
             
-            // Очищаємо форму після успішного замовлення
             setFromLocation('');
             setToLocation('');
             setFlightNumber('');
@@ -227,10 +198,8 @@ export default function HomeScreen({ navigation }) {
         }
     };
     
-    // --- Логіка для надсилання коментаря та показу модальних вікон ---
     const handleCommentSubmit = async (comment) => {
         if (!lastTransferId || !comment) {
-            // Якщо коментар пустий, просто переходимо до наступного кроку
             proceedToSuccessModal();
             return;
         }
@@ -254,7 +223,6 @@ export default function HomeScreen({ navigation }) {
         navigation.navigate('TransfersTab');
     };
     
-    // --- Інші функції (без змін) ---
     const handleProfilePress = () => { if (session?.user) { navigation.navigate('ProfileTab'); } else { navigation.navigate('Auth'); } };
     const showPicker = (mode) => { setPickerMode(mode); setPickerVisibility(true); };
     const hidePicker = () => setPickerVisibility(false);
@@ -267,18 +235,9 @@ export default function HomeScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Рендеримо всі модальні вікна */}
             <AuthPromptModal visible={isAuthModalVisible} onClose={() => setAuthModalVisible(false)} onLogin={handleGoToLogin} onRegister={handleGoToRegister} />
-            <AddCommentModal
-                visible={isCommentModalVisible}
-                onClose={() => handleCommentSubmit('')} // Якщо користувач закрив, коментар не надсилаємо
-                onCommentSubmit={handleCommentSubmit}
-            />
-            <TransferSuccessModal 
-                visible={isSuccessModalVisible} 
-                onClose={() => setSuccessModalVisible(false)} 
-                onViewTransfers={handleViewTransfers} 
-            />
+            <AddCommentModal visible={isCommentModalVisible} onClose={() => handleCommentSubmit('')} onCommentSubmit={handleCommentSubmit} />
+            <TransferSuccessModal visible={isSuccessModalVisible} onClose={() => setSuccessModalVisible(false)} onViewTransfers={handleViewTransfers} />
             <Modal animationType="slide" transparent={true} visible={isLanguageModalVisible} onRequestClose={() => setLanguageModalVisible(false)}><Pressable style={styles.bottomModalBackdrop} onPress={() => setLanguageModalVisible(false)}><View style={styles.bottomModalContent}><TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('uk')}><Text style={styles.langButtonText}>{t('languageModal.uk')}</Text></TouchableOpacity><TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('en')}><Text style={styles.langButtonText}>{t('languageModal.en')}</Text></TouchableOpacity><TouchableOpacity style={styles.langButton} onPress={() => handleLanguageChange('ro')}><Text style={styles.langButtonText}>{t('languageModal.ro')}</Text></TouchableOpacity></View></Pressable></Modal>
             <PassengerSelectorModal visible={isPassengerModalVisible} onClose={() => setPassengerModalVisible(false)} passengerCounts={passengerCounts} setPassengerCounts={setPassengerCounts} />
             
@@ -297,15 +256,11 @@ export default function HomeScreen({ navigation }) {
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleProfilePress}>
                             {loadingProfile ? (
-                                <View style={[styles.profilePic, styles.profilePlaceholder]}>
-                                    <ActivityIndicator size="small" color={colors.primary} />
-                                </View>
+                                <View style={[styles.profilePic, styles.profilePlaceholder]}><ActivityIndicator size="small" color={colors.primary} /></View>
                             ) : userProfile?.avatar_url ? (
                                 <Image source={{ uri: userProfile.avatar_url }} style={styles.profilePic} />
                             ) : (
-                                <View style={[styles.profilePic, styles.profilePlaceholder]}>
-                                    <Ionicons name="person-outline" size={24} color={colors.secondaryText} />
-                                </View>
+                                <View style={[styles.profilePic, styles.profilePlaceholder]}><Ionicons name="person-outline" size={24} color={colors.secondaryText} /></View>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -322,25 +277,43 @@ export default function HomeScreen({ navigation }) {
                         <View style={styles.verticalDivider} />
                         <TouchableOpacity style={styles.detailItem} onPress={() => showPicker('time')}><Text style={styles.detailLabel}>{t('home.timeLabel')}</Text><View style={styles.detailValueContainer}><Text style={styles.detailValue}>{moment(selectedDate).format('HH:mm')}</Text><Ionicons name="time-outline" size={20} color={colors.secondaryText} style={{ marginLeft: 5 }} /></View></TouchableOpacity>
                         <View style={styles.verticalDivider} />
-                        <TouchableOpacity style={styles.detailItem} onPress={() => setPassengerModalVisible(true)}>
-                            <Text style={styles.detailLabel}>{t('home.passengersLabel')}</Text>
-                            <View style={styles.detailValueContainer}><Text style={styles.detailValue}>{totalPassengers}</Text><Ionicons name="people-outline" size={20} color={colors.secondaryText} style={{ marginLeft: 5 }} /></View>
-                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.detailItem} onPress={() => setPassengerModalVisible(true)}><Text style={styles.detailLabel}>{t('home.passengersLabel')}</Text><View style={styles.detailValueContainer}><Text style={styles.detailValue}>{totalPassengers}</Text><Ionicons name="people-outline" size={20} color={colors.secondaryText} style={{ marginLeft: 5 }} /></View></TouchableOpacity>
                     </View>
                     <View style={styles.divider} />
                     <InputRow icon="briefcase-outline" placeholderKey="home.luggagePlaceholder" value={luggageInfo} onChangeText={setLuggageInfo} />
                     <View style={styles.divider} />
                     <InputRow icon="barcode-outline" placeholderKey="home.flightNumberPlaceholder" value={flightNumber} onChangeText={setFlightNumber} />
                 </View>
-                <View style={styles.radioGroupContainer}><TouchableOpacity style={[styles.radioContainer, transferType === 'individual' && styles.radioContainerActive]} onPress={() => setTransferType('individual')}><Text style={[styles.radioText, transferType === 'individual' && styles.radioTextActive]}>{t('home.individualTransfer')}</Text></TouchableOpacity><TouchableOpacity style={[styles.radioContainer, transferType === 'group' && styles.radioContainerActive]} onPress={() => setTransferType('group')}><Text style={[styles.radioText, transferType === 'group' && styles.radioTextActive]}>{t('home.groupTransfer')}</Text></TouchableOpacity></View>
-                <TouchableOpacity style={[styles.card, styles.checkboxRow]} onPress={() => setWithPet(!withPet)}><Ionicons name={withPet ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} /><View><Text style={styles.radioText}>{t('home.travelingWithPet')}</Text><Text style={styles.checkboxSubtext}>{t('home.petSubtext')}</Text></View></TouchableOpacity>
+                <View style={styles.radioGroupContainer}>
+                    <TouchableOpacity style={[styles.radioContainer, transferType === 'individual' && styles.radioContainerActive]} onPress={() => setTransferType('individual')}>
+                        <IndividualTransferIcon width={88} height={38} fill={transferType === 'individual' ? colors.primary : colors.secondaryText} />
+                        <Text style={[styles.radioText, transferType === 'individual' && styles.radioTextActive]}>{t('home.individualTransfer')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.radioContainer, transferType === 'group' && styles.radioContainerActive]} onPress={() => setTransferType('group')}>
+                        <GroupTransferIcon width={108} height={48} fill={transferType === 'group' ? colors.primary : colors.secondaryText} />
+                        <Text style={[styles.radioText, transferType === 'group' && styles.radioTextActive]}>{t('home.groupTransfer')}</Text>
+                    </TouchableOpacity>
+                </View>
+               <TouchableOpacity style={[styles.card, styles.checkboxRow]} onPress={() => setWithPet(!withPet)}>
+    {/* Іконка зліва */}
+    <Ionicons name={withPet ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} />
+    
+    {/* Блок з текстом, що займає весь доступний простір */}
+    <View style={styles.checkboxTextContainer}>
+        <Text style={styles.radioText}>{t('home.travelingWithPet')}</Text>
+        <Text style={styles.checkboxSubtext}>{t('home.petSubtext')}</Text> 
+    </View>
+    
+    {/* Ваше зображення справа */}
+    <Image source={Pet} style={styles.petImage} />
+</TouchableOpacity>
                 <TouchableOpacity style={styles.submitButton} onPress={handleOrderPress} disabled={isSubmitting}>{isSubmitting ? (<ActivityIndicator color="#FFFFFF" />) : (<Text style={styles.submitButtonText}>{t('home.orderButton')}</Text>)}</TouchableOpacity>
             </ScrollView>
             <DateTimePickerModal isVisible={isPickerVisible} mode={pickerMode} onConfirm={handleConfirm} onCancel={hidePicker} is24Hour={true} locale={i18n.language} confirmTextIOS={t('common.confirm')} cancelTextIOS={t('common.cancel')} date={selectedDate} />
         </SafeAreaView>
     );
 }
-// --- Стилі ---
+
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3.84, elevation: 5 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container:{flex:1,backgroundColor:colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0},
@@ -372,16 +345,14 @@ const getStyles = (colors, theme) => StyleSheet.create({
     stepper:{flexDirection:'row',alignItems:'center',gap:10},
     passengerCount:{color:colors.text,fontSize:16,fontWeight:'bold'},
     radioGroupContainer:{flexDirection:'row',gap:12,marginBottom:16},
-    radioContainer:{flex:1,padding:16,borderRadius:16,borderWidth:1.5,backgroundColor:colors.card,borderColor:colors.border,alignItems:'center',...(theme==='light'?shadowStyle:{})},
+    radioContainer:{flex:1,padding:16,borderRadius:16,borderWidth:1.5,backgroundColor:colors.card,borderColor:colors.border,alignItems:'center', justifyContent: 'center', gap: 8, minHeight: 110, ...(theme==='light'?shadowStyle:{})},
     radioContainerActive:{backgroundColor:theme==='light'?'#EBF5FF':'rgba(10, 132, 255, 0.2)',borderColor:colors.primary},
-    radioText:{color:colors.text,fontSize:16,fontWeight:'600'},
+    radioText:{color:colors.text,fontSize:16,fontWeight:'600', textAlign: 'center'},
     radioTextActive:{color:colors.primary},
     checkboxRow:{flexDirection:'row',alignItems:'center',padding:16,gap:12},
-    checkboxSubtext:{color:colors.secondaryText,fontSize:14},
+    checkboxSubtext:{color:colors.secondaryText,fontSize:14,textAlign: 'center'},
     submitButton:{backgroundColor:colors.primary,paddingVertical:16,borderRadius:16,alignItems:'center',...(theme==='light'?shadowStyle:{})},
     submitButtonText:{color:'#FFFFFF',fontSize:18,fontWeight:'bold'},
-    
-    // --- Стилі модальних вікон ---
     centeredModalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     bottomModalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
     modalContent: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '90%', alignItems: 'center', ...shadowStyle },
@@ -404,4 +375,18 @@ const getStyles = (colors, theme) => StyleSheet.create({
     stepperSublabel: { color: colors.secondaryText, fontSize: 12 },
     successIconContainer: { marginBottom: 16 },
     modalButtonColumn: { width: '100%', marginTop: 8 },
+     checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+        justifyContent: 'space-between', // Додано для розподілу елементів
+    },
+    checkboxTextContainer: {
+        flex: 1, // Дозволяє тексту зайняти весь вільний простір
+    },
+    petImage: {
+        width: 40,
+        height: 40,
+    },
 });

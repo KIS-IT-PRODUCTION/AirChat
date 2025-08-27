@@ -243,15 +243,32 @@
     "galleryPermissionError": "Потрібен дозвіл на доступ до галереї.",
     "cameraPermissionError": "Потрібен дозвіл на доступ до камери.",
     "locationPermissionError": "Потрібен дозвіл на доступ до геолокації.",
-    "readStatus": "Переглянуто"
-  },
+    "readStatus": "Переглянуто",
+
+    "sentAnImage": "Надіслав(ла) зображення",
+    "sentLocation": "Поділився(лась) геолокацією"
+  ,
+    "lastSeen": {
+      "justNow": "був(ла) щойно",
+      "minutesAgo_one": "був(ла) {{count}} хвилину тому",
+      "minutesAgo_few": "був(ла) {{count}} хвилини тому",
+      "minutesAgo_many": "був(ла) {{count}} хвилин тому",
+      "todayAt": "був(ла) сьогодні о {{time}}",
+      "yesterdayAt": "був(ла) вчора о {{time}}",
+      "onDate": "був(ла) {{date}}"
+  }},
   "driverHome": {
     "title": "Доступні трансфери",
     "noRequests": "Наразі немає доступних заявок.",
     "driverSelected": "Водія обрано",
     "date": "Дата",
     "time": "Час",
-    "people": "Осіб"
+    "people": "Осіб",
+      "noNewRequests": "Немає нових непереглянутих заявок",
+      "newRequests": "Є {{count}} нових непереглянутих заявок",
+  "newRequests_one": "Є {{count}} нова заявка",
+  "newRequests_few": "Є {{count}} нові заявки",
+  "newRequests_many": "Є {{count}} нових заявок"
   },
   "driverOffer": {
     "requestDetails": "Деталі заявки",
@@ -293,7 +310,8 @@
       "landed": "Приземлився",
       "cancelled": "Скасовано",
       "diverted": "Перенаправлено",
-      "Unknown": "Невідомо"
+      "Unknown": "Невідомо",
+      "DEPARTURE": "Вилетів"
     }
   },
   "errors": {
@@ -311,5 +329,16 @@
   "GateClosed": "Вихід закрито",
   "Boarding": "Посадка",
   "Expected": "Очікується"
+},
+"myTrips": {
+  "title": "Мої поїздки",
+  "emptyList": "У вас ще немає прийнятих поїздок",
+  "from": "Звідки",
+  "to": "Куди",
+  "noName": "Ім'я не вказано",
+  "call": "Подзвонити",
+  "message": "Написати",
+  "error": "Помилка",
+  "noPhone": "Пасажир не вказав номер телефону."
 }
 }

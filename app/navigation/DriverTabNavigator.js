@@ -13,6 +13,8 @@ import DriverHomeScreen from '../DriverHomeScreen';
 import MessagesStack from './MessagesStack';
 import DriverProfileStack from './DriverProfileStack';
 import DriverReizeStack from './DriverReizeStack'; // ✨ Імпорт стека рейсів
+import MyTripsScreen from '../driver/MyTripsScreen'; 
+
 const Tab = createBottomTabNavigator();
 
 export default function DriverTabNavigator() {
@@ -80,8 +82,13 @@ export default function DriverTabNavigator() {
           let iconName;
           if (route.name === 'DriverHomeTab') {
             iconName = focused ? 'list-circle' : 'list-circle-outline';
-          } else if (route.name === 'MessagesTab') {
+          }else if (route.name === 'MyTripsTab') { 
+            iconName = focused ? 'car-sport' : 'car-sport-outline';
+          }
+           else if (route.name === 'MessagesTab') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+            } else if (route.name === 'DriverReizeStack') {
+            iconName = focused ? 'airplane' : 'airplane-outline';
           } else if (route.name === 'DriverProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
@@ -94,6 +101,13 @@ export default function DriverTabNavigator() {
         component={DriverHomeScreen} 
         options={{ title: t('tabs.driver.home', 'Трансфери') }}
       />
+       <Tab.Screen 
+            name="MyTripsTab" 
+            component={MyTripsScreen}
+            options={{ 
+              title: t('tabs.driver.myTrips', 'Мої поїздки'),
+            }}
+        />
       <Tab.Screen
         name="DriverReizeStack" 
         component={DriverReizeStack}

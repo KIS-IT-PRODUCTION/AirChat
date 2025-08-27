@@ -1,5 +1,4 @@
-// app/DriverHomeScreen.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, RefreshControl, Platform } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { useTranslation } from 'react-i18next';
@@ -10,11 +9,10 @@ import moment from 'moment';
 import 'moment/locale/uk';
 import Logo from '../assets/icon.svg';
 
-// ✨ ПОВНІСТЮ ПЕРЕРОБЛЕНИЙ КОМПОНЕНТ КАРТКИ
 const TransferRequestCard = ({ item, onPress }) => {
     const { colors, theme } = useTheme();
-    const styles = getStyles(colors, theme);
     const { t } = useTranslation();
+    const styles = getStyles(colors, theme, t);
 
     const isAccepted = item.status === 'accepted';
 
@@ -37,44 +35,39 @@ const TransferRequestCard = ({ item, onPress }) => {
 
     return (
         <TouchableOpacity style={[styles.card, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
-            {/* Верхній блок: Аватар та деталі */}
             <View style={styles.cardTop}>
                 <Image source={avatarSource} style={styles.avatar} />
                 <View style={styles.infoContainer}>
                     <Text style={styles.passengerName} numberOfLines={1}>{getShortName(item.passenger_name)}</Text>
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="calendar-outline" size={14} /> {t('driverHome.date', 'Дата')}</Text>
+                            <Text style={styles.detailLabel}><Ionicons name="calendar-outline" size={14} /> {t('driverHome.date')}</Text>
                             <Text style={styles.detailValue}>{moment(item.transfer_datetime).format('DD MMMM')}</Text>
                         </View>
                         <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="time-outline" size={14} /> {t('driverHome.time', 'Час')}</Text>
+                            <Text style={styles.detailLabel}><Ionicons name="time-outline" size={14} /> {t('driverHome.time')}</Text>
                             <Text style={styles.detailValue}>{moment(item.transfer_datetime).format('HH:mm')}</Text>
                         </View>
                         <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="people-outline" size={14} /> {t('driverHome.people', 'Осіб')}</Text>
+                            <Text style={styles.detailLabel}><Ionicons name="people-outline" size={14} /> {t('driverHome.people')}</Text>
                             <Text style={styles.detailValue}>{item.total_passengers}</Text>
                         </View>
                     </View>
                 </View>
             </View>
-
-            {/* Розділювач */}
             <View style={styles.dividerContainer}>
                 <View style={styles.dividerDot} />
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { borderColor: colors.border }]} />
                 <View style={styles.dividerDot} />
             </View>
-
-            {/* Нижній блок: Маршрут */}
             <View style={styles.routeContainer}>
                 <View style={styles.locationRow}>
-                    <View style={[styles.routeCircle, styles.startCircle]} />
+                    <View style={[styles.routeCircle, styles.startCircle, { borderColor: colors.secondaryText }]} />
                     <Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text>
                 </View>
-                <View style={styles.routeDottedLine} />
+                <View style={[styles.routeDottedLine, { borderColor: colors.secondaryText }]} />
                 <View style={styles.locationRow}>
-                    <View style={[styles.routeCircle, styles.endCircle]} />
+                    <View style={[styles.routeCircle, styles.endCircle, { backgroundColor: colors.secondaryText }]} />
                     <Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text>
                 </View>
             </View>
@@ -82,16 +75,26 @@ const TransferRequestCard = ({ item, onPress }) => {
     );
 };
 
-
 export default function DriverHomeScreen() {
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const styles = getStyles(colors, theme);
+  const styles = getStyles(colors, theme, t);
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [newRequestsCount, setNewRequestsCount] = useState(0);
+
+  const fetchNewRequestsCount = useCallback(async () => {
+    try {
+        const { data, error } = await supabase.rpc('get_new_transfers_count');
+        if (error) throw error;
+        setNewRequestsCount(data);
+    } catch (error) {
+        console.error("Error fetching new requests count:", error.message);
+    }
+  }, []);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -105,16 +108,42 @@ export default function DriverHomeScreen() {
 
   const onRefresh = useCallback(async () => {
       setRefreshing(true);
-      await fetchRequests();
+      await Promise.all([fetchRequests(), fetchNewRequestsCount()]);
       setRefreshing(false);
-  }, [fetchRequests]);
+  }, [fetchRequests, fetchNewRequestsCount]);
 
   useFocusEffect(useCallback(() => {
-    setLoading(true);
-    fetchRequests().finally(() => setLoading(false));
-  }, [fetchRequests]));
+    // Не показуємо повноекранне завантаження при поверненні на екран
+    // setLoading(true); 
+    Promise.all([fetchRequests(), fetchNewRequestsCount()]).finally(() => setLoading(false));
+  }, [fetchRequests, fetchNewRequestsCount]));
 
-  if (loading) {
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:transfers:driver_home')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transfers' },
+        (payload) => {
+          fetchNewRequestsCount(); 
+          // Оптимістично додаємо нову заявку вгору списку
+          setRequests(prev => [payload.new, ...prev]); 
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchNewRequestsCount]);
+
+  const handleCardPress = (item) => {
+    // Позначаємо як прочитану (у фоновому режимі)
+    supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: item.id }).then(({ error }) => {
+        if (error) console.error("Error marking as viewed:", error.message);
+    });
+    // Переходимо на екран деталей
+    navigation.navigate('DriverRequest', { transferId: item.id });
+  };
+  
+  if (loading && !refreshing) {
       return (
           <SafeAreaView style={styles.container}>
               <View style={styles.header}><Text style={styles.title}>{t('driverHome.title', 'Доступні заявки')}</Text><Logo width={40} height={40} /></View>
@@ -126,32 +155,71 @@ export default function DriverHomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('driverHome.title', 'Доступні заявки')}</Text>
+        <Text style={styles.title}>{t('driverHome.title')}</Text>
         <Logo width={40} height={40} />
       </View>
+
+      <View style={[styles.statusBanner, newRequestsCount > 0 ? styles.newRequestBanner : styles.noNewRequestBanner]}>
+          <Ionicons 
+              name={newRequestsCount > 0 ? "notifications-circle" : "checkmark-done-circle-outline"} 
+              size={24} 
+              color={newRequestsCount > 0 ? colors.primary : '#28a745'}
+          />
+          <Text style={styles.statusText}>
+              {newRequestsCount > 0 
+                  ? t('driverHome.newRequests', { count: newRequestsCount })
+                  : t('driverHome.noNewRequests')
+              }
+          </Text>
+      </View>
+
       <FlatList
         data={requests}
         renderItem={({ item }) => (
             <TransferRequestCard 
                 item={item} 
-                onPress={() => navigation.navigate('DriverRequest', { transferId: item.id })}
+                onPress={() => handleCardPress(item)}
             />
         )}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={<View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests', 'Наразі немає доступних заявок.')}</Text></View>}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+        ListEmptyComponent={<View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View>}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       />
     </SafeAreaView>
   );
 }
 
-const getStyles = (colors, theme) => StyleSheet.create({
+const getStyles = (colors, theme, t) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
-    content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 100 },
+    content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 50 },
     text: { fontSize: 18, color: colors.secondaryText, textAlign: 'center', marginTop: 16 },
+    statusBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 8,
+    },
+    newRequestBanner: {
+        backgroundColor: `${colors.primary}20`,
+        borderColor: colors.primary,
+    },
+    noNewRequestBanner: {
+        backgroundColor: '#28a74520',
+        borderColor: '#28a745',
+    },
+    statusText: {
+        marginLeft: 10,
+        color: colors.text,
+        fontSize: 15,
+        fontWeight: '600',
+    },
     card: {
         backgroundColor: colors.card,
         borderRadius: 20,
@@ -173,13 +241,13 @@ const getStyles = (colors, theme) => StyleSheet.create({
     detailLabel: { fontSize: 12, color: colors.secondaryText, marginBottom: 2, flexDirection: 'row', alignItems: 'center', gap: 4 },
     detailValue: { fontSize: 16, color: colors.text, fontWeight: '600' },
     dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 , justifyContent: 'center' },
-    dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border, marginHorizontal: 4, },
-    dividerLine: { flex: 1, height: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: "white", marginHorizontal: 4, backgroundColor: colors.border },
+    dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
     routeContainer: { paddingLeft: 32 },
     locationRow: { flexDirection: 'row', alignItems: 'center' },
     locationText: { color: colors.text, fontSize: 16, marginLeft: 16, fontWeight: '500' },
-    routeDottedLine: { height: 20, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: colors.secondaryText, marginLeft: 5, marginVertical: 4 },
+    routeDottedLine: { height: 20, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginLeft: 5, marginVertical: 4 },
     routeCircle: { width: 12, height: 12, borderRadius: 6 },
-    startCircle: { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.secondaryText },
-    endCircle: { backgroundColor: colors.secondaryText },
+    startCircle: { backgroundColor: 'transparent', borderWidth: 2 },
+    endCircle: {},
 });

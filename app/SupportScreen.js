@@ -10,45 +10,61 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Svg, Path } from 'react-native-svg'; // Імпортуємо для ілюстрації
 
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext.js';
 
+// --- Компонент для ілюстрації ---
+const SupportIllustration = ({ colors }) => (
+    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+        <Svg height="150" width="150" viewBox="0 0 24 24">
+            <Path 
+                d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm0 2v.51l8 5 8-5V6H4zm0 12h16V8.51l-8 5-8-5V18z" 
+                fill={colors.primary}
+            />
+            <Path 
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" 
+                fill={colors.secondaryText}
+                transform="translate(10, -5) scale(0.5)"
+            />
+        </Svg>
+    </View>
+);
+
 export default function SupportScreen({ navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { session } = useAuth(); // Отримуємо дані сесії користувача
+  const { session } = useAuth();
   const styles = getStyles(colors);
 
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Функція для відправки повідомлення
   const handleSubmit = async () => {
     if (message.trim() === '') {
       Alert.alert(t('common.error'), t('support.messageEmpty'));
       return;
     }
     setLoading(true);
-
-    // --- Імітація відправки на сервер ---
-    // У реальному додатку тут буде запит до вашого бекенду або Supabase
-    // await supabase.from('feedback').insert([{ email: session.user.email, message: message }])
+    
+    // У реальному додатку тут буде запит до вашого бекенду
+    // await supabase.from('feedback').insert([{ user_id: session.user.id, message: message }])
     
     setTimeout(() => {
       setLoading(false);
       Alert.alert(t('common.success'), t('support.messageSent'));
       setMessage('');
       navigation.goBack();
-    }, 1500); // Імітуємо затримку мережі
+    }, 1500);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Заголовок екрана */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -60,22 +76,22 @@ export default function SupportScreen({ navigation }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <SupportIllustration colors={colors} />
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>{t('support.formTitle')}</Text>
             <Text style={styles.formSubtitle}>{t('support.formSubtitle')}</Text>
           </View>
 
           <View style={styles.form}>
-            {/* Поле Email (нередаговане) */}
             <Text style={styles.label}>{t('registration.emailLabel')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} />
-              <Text style={styles.emailText}>{session?.user?.email}</Text>
+              <Text style={styles.emailText}>{session?.user?.email || 'email@example.com'}</Text>
             </View>
 
-            {/* Поле Повідомлення */}
             <Text style={styles.label}>{t('support.messageLabel')}</Text>
             <TextInput
               style={styles.textArea}
@@ -89,9 +105,14 @@ export default function SupportScreen({ navigation }) {
           </View>
 
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={loading}>
-            <Text style={styles.submitButtonText}>
-              {loading ? t('common.loading') : t('support.sendButton')}
-            </Text>
+            {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+            ) : (
+                <>
+                    <Ionicons name="send-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.submitButtonText}>{t('support.sendButton')}</Text>
+                </>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -99,7 +120,6 @@ export default function SupportScreen({ navigation }) {
   );
 }
 
-// Динамічні стилі
 const getStyles = (colors) =>
   StyleSheet.create({
     container: {
@@ -126,7 +146,6 @@ const getStyles = (colors) =>
     scrollContainer: {
       flexGrow: 1,
       padding: 24,
-      justifyContent: 'center',
     },
     formHeader: {
       alignItems: 'center',
@@ -136,6 +155,7 @@ const getStyles = (colors) =>
       color: colors.text,
       fontSize: 24,
       fontWeight: 'bold',
+      textAlign: 'center',
     },
     formSubtitle: {
       color: colors.secondaryText,
@@ -151,6 +171,7 @@ const getStyles = (colors) =>
       color: colors.secondaryText,
       fontSize: 14,
       marginBottom: 8,
+      marginLeft: 4,
     },
     inputContainer: {
       flexDirection: 'row',
@@ -160,12 +181,14 @@ const getStyles = (colors) =>
       paddingHorizontal: 16,
       height: 50,
       marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     inputIcon: {
       marginRight: 12,
     },
     emailText: {
-      color: colors.text,
+      color: `${colors.text}99`, // Трохи прозоріший текст для email
       fontSize: 16,
     },
     textArea: {
@@ -176,12 +199,22 @@ const getStyles = (colors) =>
       textAlignVertical: 'top',
       color: colors.text,
       fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     submitButton: {
+      flexDirection: 'row',
       backgroundColor: colors.primary,
       borderRadius: 12,
       paddingVertical: 16,
       alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      elevation: 8,
     },
     submitButtonText: {
       color: '#FFFFFF',

@@ -1,3 +1,4 @@
+// app/DriverRequestDetailScreen.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -28,7 +29,6 @@ const InfoRow = ({ icon, label, value, colors }) => {
 const OtherDriverOffer = ({ offer, isChosen }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
-    // ✨ ВИПРАВЛЕНО: Тепер валюта динамічна
     const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
     return (
         <View style={[styles.otherOfferRow, isChosen && styles.chosenOffer]}>
@@ -103,10 +103,12 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   
   useEffect(() => {
     if (mapViewRef.current && routeCoordinates.length > 1) {
-      mapViewRef.current.fitToCoordinates(routeCoordinates, {
-        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-        animated: true,
-      });
+      setTimeout(() => {
+        mapViewRef.current.fitToCoordinates(routeCoordinates, {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
+      }, 500);
     }
   }, [routeCoordinates]);
 
@@ -144,17 +146,12 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
   };
 
+
   if (!loading && !transferData) {
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-                <Text style={styles.title}>{t('driverOffer.requestDetails')}</Text>
-                <Logo width={40} height={40} />
-            </View>
-            <View style={styles.centeredContainer}>
-                <Text style={styles.sectionTitle}>{t('transferDetail.notFound')}</Text>
-            </View>
+            <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('driverOffer.requestDetails')}</Text><Logo width={40} height={40} /></View>
+            <View style={styles.centeredContainer}><Text style={styles.sectionTitle}>{t('transferDetail.notFound')}</Text></View>
         </SafeAreaView>
     );
   }
@@ -170,8 +167,21 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
       </View>
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.userInfoSection}><Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} /><Text style={styles.userName}>{transferData?.passenger_name}</Text></View>
-        <View style={styles.infoCard}><InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} /></View>
+        <View style={styles.userInfoSection}>
+            {transferData?.passenger_avatar_url ? (
+                <Image source={{ uri: transferData.passenger_avatar_url }} style={styles.userAvatar} />
+            ) : (
+                <View style={styles.avatarPlaceholder}><Ionicons name="person" size={40} color={colors.primary} /></View>
+            )}
+            <Text style={styles.userName}>{transferData?.passenger_name || '...'}</Text>
+            <Text style={styles.memberSince}>{t('driverHome.memberSince', { date: moment(transferData?.passenger_created_at).format('ll') })}</Text>
+        </View>
+
+        <View style={styles.infoCard}>
+            <InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} />
+            <View style={styles.dottedLine} />
+            <InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} />
+        </View>
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle', 'Деталі поїздки')}</Text>
             <View style={styles.detailsGrid}>
@@ -182,6 +192,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
             <View style={styles.divider} />
             <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData?.luggage_info} colors={colors} />
             {transferData?.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }
+            <InfoRow icon="barcode-outline" label={t('transferDetail.flightNumber', 'Номер рейсу')} value={transferData?.flight_number} colors={colors} />
             <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData?.transfer_type} colors={colors} />
         </View>
         {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Коментар пасажира')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
@@ -211,9 +222,9 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
         {!isRequestClosed && (
             <View style={styles.offerSection}>
-                <Text style={styles.sectionTitle}>{hasAlreadyOffered ? t('driverOffer.alreadyOffered', 'Ви вже надіслали пропозицію') : t('driverOffer.yourOffer', 'Ваша пропозиція')}</Text>
+                <Text style={styles.sectionTitle}>{hasAlreadyOffered ? t('driverOffer.alreadyOffered') : t('driverOffer.yourOffer')}</Text>
                 {hasAlreadyOffered ? (
-                    <View style={styles.alreadyOfferedContainer}><Ionicons name="checkmark-circle" size={24} color={colors.primary} /><Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified', 'Пасажир отримав вашу пропозицію. Очікуйте на відповідь.')}</Text></View>
+                    <View style={styles.alreadyOfferedContainer}><Ionicons name="checkmark-circle" size={24} color={colors.primary} /><Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified')}</Text></View>
                 ) : (
                     <>
                         <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /></View>
@@ -228,8 +239,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder', 'Ваш коментар (необов\'язково)')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
-                        <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton', 'Надіслати пропозицію')}</Text>}</TouchableOpacity>
+                        <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
+                        <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton')}</Text>}</TouchableOpacity>
                     </>
                 )}
             </View>
@@ -247,13 +258,15 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: `${colors.background}80`, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,  borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
     scrollContent: { paddingBottom: 40 },
     userInfoSection: { alignItems: 'center', paddingTop: 16 },
-    userAvatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, backgroundColor: colors.card },
+    userAvatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+    avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, marginBottom: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
     userName: { fontSize: 20, fontWeight: 'bold', color: colors.text },
+    memberSince: { fontSize: 12, color: colors.secondaryText, marginTop: 4 },
     infoCard: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginHorizontal: 16, marginTop: 16 },
     infoRowContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
     infoRowIcon: { marginRight: 16, width: 24 },

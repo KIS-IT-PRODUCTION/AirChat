@@ -10,14 +10,16 @@ import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
 
-const DetailRow = ({ label, value }) => {
-  const { colors } = useTheme();
-  return (
-    <View style={getStyles(colors).detailRow}>
-      <Text style={getStyles(colors).detailLabel}>{label}</Text>
-      <Text style={getStyles(colors).detailValue}>{value || '0'}</Text>
-    </View>
-  );
+// ✨ Новий компонент для статистики
+const StatCard = ({ icon, value, label, colors }) => {
+    const styles = getStyles(colors);
+    return (
+        <View style={styles.statItem}>
+            <Ionicons name={icon} size={28} color={colors.primary} />
+            <Text style={styles.statValue}>{value}</Text>
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
 };
 
 export default function ProfileScreen() {
@@ -31,30 +33,21 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState(null);
 
   const calculateTimeInApp = (joinDate) => {
-    if (!joinDate) return `0 ${t('profile.years', 'років')}`;
+    if (!joinDate) return `0 ${t('profile.years')}`;
     const years = moment().diff(moment(joinDate), 'years');
-    if (years > 0) {
-        return `${years} ${years === 1 ? t('profile.year', 'рік') : t('profile.years', 'роки')}`;
-    }
+    if (years > 0) return `${years} ${t('profile.year', { count: years })}`;
     const months = moment().diff(moment(joinDate), 'months');
-    if (months > 0) {
-        return `${months} ${months === 1 ? t('profile.month', 'місяць') : t('profile.months', 'місяців')}`;
-    }
-    return `< 1 ${t('profile.month', 'місяця')}`;
+    if (months > 0) return `${months} ${t('profile.month', { count: months })}`;
+    return `< 1 ${t('profile.month_one')}`;
   };
 
   const fetchProfileData = useCallback(async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
+    if (!session?.user) { setLoading(false); return; }
     try {
       setLoading(true);
-      // ✨ ВИКОРИСТОВУЄМО НОВУ ФУНКЦІЮ
       const { data, error } = await supabase
         .rpc('get_passenger_profile_details', { p_user_id: session.user.id })
         .single();
-
       if (error) throw error;
       setProfile(data);
     } catch (error) {
@@ -79,7 +72,7 @@ export default function ProfileScreen() {
   if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.fullName}>{t('profile.noData', 'Не вдалося завантажити профіль.')}</Text>
+        <Text style={styles.fullName}>{t('profile.noData')}</Text>
       </SafeAreaView>
     );
   }
@@ -88,8 +81,8 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
           <Logo width={40} height={40} />
-          <Text style={styles.headerTitle}>{t('profile.myProfile', 'Мій профіль')}</Text>
-          <TouchableOpacity style={styles.supportButton} onPress={() => { /* Navigate to support */ }}>
+          <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
+          <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
             <Ionicons name="headset-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -99,15 +92,15 @@ export default function ProfileScreen() {
             source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
             style={styles.avatar} 
           />
-          <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний користувач')}</Text>
-          
-          {/* ✨ ВІДОБРАЖАЄМО ДАНІ З НОВОЇ ФУНКЦІЇ */}
-          <DetailRow label={t('profile.role')} value={profile.role} />
-          <DetailRow label={t('profile.adsCount')} value={profile.ads_count} />
-          <DetailRow label={t('profile.yearsInApp')} value={calculateTimeInApp(profile.member_since)} />
-          <DetailRow label={t('profile.completedTrips')} value={profile.completed_trips} />
-          
-          <Text style={styles.phone}>{t('profile.phone')}: {profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
+          <Text style={styles.fullName}>{profile.full_name || t('profile.noName')}</Text>
+          <Text style={styles.phone}>{profile.phone || t('profile.noPhone')}</Text>
+        </View>
+
+        {/* ✨ Новий блок статистики */}
+        <View style={styles.statsContainer}>
+            <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
+            <StatCard icon="file-tray-full-outline" value={profile.ads_count || 0} label={t('profile.adsCount')} colors={colors} />
+            <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
         </View>
 
         <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
@@ -132,16 +125,39 @@ const getStyles = (colors) => StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 16 },
     headerTitle: { color: colors.text, fontSize: 22, fontWeight: 'bold' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
-    profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center' },
-    avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 16, backgroundColor: colors.background },
-    fullName: { color: colors.text, fontSize: 22, fontWeight: 'bold', marginBottom: 24, textAlign: 'center' },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 12 },
-    detailLabel: { color: colors.secondaryText, fontSize: 16 },
-    detailValue: { color: colors.text, fontSize: 16, fontWeight: '600' },
-    phone: { color: colors.secondaryText, fontSize: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, width: '100%', textAlign: 'center' },
+    profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+    avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },
+    fullName: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
+    phone: { color: colors.secondaryText, fontSize: 16, marginBottom: 8 },
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        backgroundColor: colors.card,
+        borderRadius: 20,
+        padding: 16,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statValue: {
+        color: colors.text,
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginTop: 8,
+    },
+    statLabel: {
+        color: colors.secondaryText,
+        fontSize: 12,
+        marginTop: 4,
+        textAlign: 'center',
+    },
     settingsButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 24, gap: 8 },
     settingsButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-    footer: { alignItems: 'center', marginTop: 24 },
+    footer: { alignItems: 'center', marginTop: 32 },
     footerText: { color: colors.secondaryText, fontSize: 14 },
     footerLink: { color: colors.primary, fontSize: 14, fontWeight: '600', marginTop: 4, textDecorationLine: 'underline' },
 });

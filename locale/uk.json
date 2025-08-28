@@ -16,11 +16,15 @@
     "travelingWithPet": "Подорожує тварина",
     "petSubtext": "(наприклад, кішка або собака)",
     "orderButton": "Замовити трансфер",
+    "flightInfoTitle": "Номер рейсу",
+    "flightInfoMessage": "Введіть номер вашого рейсу, наприклад, PS352 або W6123. Це допоможе водієві відстежувати вашу заявку.",
     "error": {
       "fillFields": "Будь ласка, заповніть поля \"Звідки\" та \"Куди\".",
-      "noAdults": "Має бути принаймні один дорослий пасажир."
+      "noAdults": "Має бути принаймні один дорослий пасажир.",
+      "flightNumberRequired": "Будь ласка, введіть номер рейсу."
     }
   },
+  
    "addCommentModal": {
     "title": "Побажання до поїздки",
     "subtitle": "Ви можете додати коментар для водія, наприклад, про дитяче крісло або великий багаж.",
@@ -78,7 +82,14 @@
     "adsCount": "Кількість поданих оголошень",
     "yearsInApp": "У додатку",
     "phone": "Тел",
-    "settings": "Налаштування"
+    "settings": "Налаштування",
+     "inApp": "В додатку",
+  "year_one": "рік",
+  "year_few": "роки",
+  "year_many": "років",
+  "month_one": "місяць",
+  "month_few": "місяці",
+  "month_many": "місяців"
   },
   "settings": {
     "title": "Налаштування",
@@ -105,7 +116,16 @@
     "en": "English",
     "ro": "Română",
     "logout": "Вийти",
-    "logoutConfirm": "Ви впевнені, що хочете вийти?"
+    "logoutConfirm": "Ви впевнені, що хочете вийти?",
+      "avatarModalTitle": "Змінити фото профілю",
+  "pickFromGallery": "Вибрати з галереї",
+  "passwordTooShort": "Пароль має містити щонайменше 6 символів.",
+  "passwordsDoNotMatch": "Паролі не співпадають.",
+  "newPassword": "Новий пароль",
+  "confirmNewPassword": "Підтвердіть новий пароль",
+  "savePassword": "Зберегти пароль",
+  "passwordChangedSuccess": "Пароль успішно змінено!",
+    "notSet": "Не вказано"
   },
   "tabs": {
     "home": "Головна",
@@ -133,7 +153,9 @@
     "done": "Готово",
     "no": "Ні",
     "yes": "Так",
-    "comingSoon": "Цей розділ у розробці"
+    "comingSoon": "Цей розділ у розробці",
+     "delete": "Видалити",
+     "close": "Закрити"
   },
   "support": {
     "title": "Підтримка",
@@ -175,12 +197,22 @@
     "changeDriverConfirmTitle": "Змінити водія?",
     "changeDriverConfirmText": "Ваша поїздка знову стане доступною для пропозицій від інших водіїв.",
     "fromAirport": "З аеропорту",
-    "toAirport": "В аеропорт"
+    "toAirport": "В аеропорт",
+    "completed": "Завершено",
+    "cancelled": "Скасовано"
   },
+
    "transfersScreen": {
     "title": "Мої трансфери",
     "emptyState": "У вас ще немає створених заявок.",
-    "writeButton": "Написати"
+    "writeButton": "Написати",
+     "archiveTitle": "Архів трансферів",
+    "finalPrice": "Фінальна ціна",
+    "emptyArchive": "Ваш архів порожній. Завершені та скасовані поїздки з'являться тут.",
+    "deleteConfirmTitle": "Видалити трансфери?",
+    "deleteConfirmBody_one": "Ви впевнені, що хочете видалити {{count}} обраний трансфер? Цю дію не можна буде повернути.",
+    "deleteConfirmBody_few": "Ви впевнені, що хочете видалити {{count}} обрані трансфери? Цю дію не можна буде повернути.",
+    "deleteConfirmBody_many": "Ви впевнені, що хочете видалити {{count}} обраних трансферів? Цю дію не можна буде повернути."
   },
   "transferStatus": {
     "pending": "Пошук водія",
@@ -229,7 +261,9 @@
   },
   "chatList": {
     "title": "Повідомлення",
-    "noChats": "У вас ще немає чатів."
+    "noChats": "У вас ще немає чатів.",
+      "deleteTitle": "Видалити чат?",
+  "deleteBody": "Ви впевнені, що хочете видалити чат з {{name}}? Вся історія листування буде втрачена."
   },
   "chat": {
     "onlineStatus": "в мережі",
@@ -244,7 +278,23 @@
     "cameraPermissionError": "Потрібен дозвіл на доступ до камери.",
     "locationPermissionError": "Потрібен дозвіл на доступ до геолокації.",
     "readStatus": "Переглянуто",
-
+     "messageActions": "Дії з повідомленням",
+    "edit": "Редагувати",
+    "delete": "Видалити",
+    "deleteConfirmTitle": "Видалити повідомлення?",
+    "deleteConfirmBody": "Цю дію не можна буде повернути.",
+    "editing": "Редагування...",
+    "editCancel": "Скасувати",
+    "editSave": "Зберегти",
+    "messageDeleted": "Повідомлення видалено",
+    "locationMessage": "Поділився(лась) своєю геолокацією",
+    "imageMessage": "Надіслав(ла) зображення",
+    "you": "Ви",
+    "driver": "Водій",
+    "passenger": "Пасажир",
+    "sentAFile": "Надіслав(ла) файл",
+    "today": "Сьогодні",
+    "yesterday": "Вчора",
     "sentAnImage": "Надіслав(ла) зображення",
     "sentLocation": "Поділився(лась) геолокацією"
   ,
@@ -268,7 +318,8 @@
       "newRequests": "Є {{count}} нових непереглянутих заявок",
   "newRequests_one": "Є {{count}} нова заявка",
   "newRequests_few": "Є {{count}} нові заявки",
-  "newRequests_many": "Є {{count}} нових заявок"
+  "newRequests_many": "Є {{count}} нових заявок",
+  "memberSince": "З нами з {{date}}"
   },
   "driverOffer": {
     "requestDetails": "Деталі заявки",
@@ -316,7 +367,10 @@
   },
   "errors": {
     "apiError": "Помилка API",
-    "unexpectedData": "Отримано неочікувану структуру даних"
+    "unexpectedData": "Отримано неочікувану структуру даних",
+      "networkTitle": "Помилка мережі",
+  "networkSubtitle": "Не вдалося підключитися до сервера. Перевірте ваше інтернет-з'єднання.",
+  "retryButton": "Перезавантажити"
   },
   "status": {
   "scheduled": "За розкладом",
@@ -341,4 +395,5 @@
   "error": "Помилка",
   "noPhone": "Пасажир не вказав номер телефону."
 }
+
 }

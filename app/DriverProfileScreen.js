@@ -1,6 +1,5 @@
-// app/DriverProfileScreen.js
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert,Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
@@ -8,25 +7,27 @@ import { useAuth } from '../provider/AuthContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
+import moment from 'moment';
 
-// Допоміжний компонент для зіркового рейтингу
+// Компонент для статистики
+const StatCard = ({ icon, value, label, children, colors }) => {
+    const styles = getStyles(colors);
+    return (
+        <View style={styles.statItem}>
+            <Ionicons name={icon} size={28} color={colors.primary} />
+            {children || <Text style={styles.statValue}>{value}</Text>}
+            <Text style={styles.statLabel}>{label}</Text>
+        </View>
+    );
+};
+
+// Компонент для зіркового рейтингу
 const StarRating = ({ rating }) => {
   let stars = [];
   for (let i = 1; i <= 5; i++) {
     stars.push(<Ionicons key={i} name={i <= rating ? 'star' : 'star-outline'} size={18} color="#FFC107" />);
   }
   return <View style={{ flexDirection: 'row' }}>{stars}</View>;
-};
-
-// Допоміжний компонент для рядка з даними
-const DetailRow = ({ label, value, children }) => {
-  const { colors } = useTheme();
-  return (
-    <View style={getStyles(colors).detailRow}>
-      <Text style={getStyles(colors).detailLabel}>{label}:</Text>
-      {children || <Text style={getStyles(colors).detailValue}>{value}</Text>}
-    </View>
-  );
 };
 
 export default function DriverProfileScreen() {
@@ -39,10 +40,13 @@ export default function DriverProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
 
-  const calculateExperience = (joinDate) => {
-    if (!joinDate) return '0 років';
-    const years = new Date().getFullYear() - new Date(joinDate).getFullYear();
-    return `${years > 0 ? years : 1} ${years === 1 ? 'рік' : 'років'}`;
+  const calculateTimeInApp = (joinDate) => {
+    if (!joinDate) return `0 ${t('profile.years')}`;
+    const years = moment().diff(moment(joinDate), 'years');
+    if (years > 0) return `${years} ${t('profile.year', { count: years })}`;
+    const months = moment().diff(moment(joinDate), 'months');
+    if (months > 0) return `${months} ${t('profile.month', { count: months })}`;
+    return `< 1 ${t('profile.month_one')}`;
   };
 
   const fetchProfileData = useCallback(async () => {
@@ -77,7 +81,7 @@ export default function DriverProfileScreen() {
       <View style={styles.header}>
         <Logo width={40} height={40} />
         <Text style={styles.headerTitle}>{t('profile.myProfile', 'Мій профіль')}</Text>
-        <TouchableOpacity style={styles.supportButton} onPress={() => { /* Navigate to support */ }}>
+        <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
           <Ionicons name="headset-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -85,27 +89,37 @@ export default function DriverProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.profileCard}>
           <Image 
-            source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.jpg')} 
+            source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
             style={styles.avatar} 
           />
           <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний водій')}</Text>
-          
-          <View style={styles.detailsContainer}>
-            <DetailRow label={t('profile.rating', 'Рейтинг')}>
-              <View style={styles.ratingContainer}>
-                <StarRating rating={profile.rating} />
-                <Text style={styles.detailValue}>({profile.rating}/5)</Text>
-              </View>
-            </DetailRow>
-            <DetailRow label={t('profile.completedTrips', 'Завершених рейсів')} value={profile.completed_trips} />
-            <DetailRow label={t('profile.experience', 'Досвід')} value={calculateExperience(profile.member_since)} />
-            <DetailRow label={t('profile.totalMileage', 'Загальний пробіг')} value={`${profile.total_mileage_km.toLocaleString('uk-UA')} км`} />
-          </View>
-          
-          <Text style={styles.phone}>{t('profile.phone', 'Тел')}: {profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
+          <Text style={styles.phone}>{profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
         </View>
 
-        <TouchableOpacity style={styles.settingsButton}  onPress={() => navigation.navigate('DriverSettings')}>
+        <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
+            <View style={styles.carInfoRow}>
+                <Ionicons name="car-sport-outline" size={24} color={colors.secondaryText} />
+                <Text style={styles.carInfoText}>{profile.car_make || t('settings.notSet')} {profile.car_model || ''}</Text>
+            </View>
+            <View style={styles.carInfoRow}>
+                <Ionicons name="reader-outline" size={24} color={colors.secondaryText} />
+                <Text style={styles.carInfoText}>{profile.car_plate || t('settings.notSet')}</Text>
+            </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+            <StatCard icon="star-outline" label={t('profile.rating')} colors={colors}>
+                <View style={styles.ratingContainer}>
+                    <StarRating rating={profile.rating} />
+                    <Text style={styles.ratingValue}>({profile.rating?.toFixed(1)})</Text>
+                </View>
+            </StatCard>
+            <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
+            <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
+        </View>
+
+        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('DriverSettings')}>
           <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
           <Text style={styles.settingsButtonText}>{t('profile.settings', 'Налаштування')}</Text>
         </TouchableOpacity>
@@ -122,23 +136,78 @@ export default function DriverProfileScreen() {
 }
 
 const getStyles = (colors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? 25 : 0  },
+    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     headerTitle: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     scrollContainer: { padding: 16, paddingBottom: 40 },
-    profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center' },
-    avatar: { width: 120, height: 120, borderRadius: 60, marginBottom: 16, backgroundColor: colors.background },
-    fullName: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 24, textAlign: 'center' },
-    detailsContainer: { width: '100%', marginBottom: 16 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 12 },
-    detailLabel: { color: colors.secondaryText, fontSize: 16 },
-    detailValue: { color: colors.text, fontSize: 16, fontWeight: '600' },
-    ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    phone: { color: colors.secondaryText, fontSize: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, width: '100%', textAlign: 'center' },
+    profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+    avatar: { width: 120, height: 120, borderRadius: 60, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },
+    fullName: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
+    phone: { color: colors.secondaryText, fontSize: 16, marginBottom: 8 },
+    infoCard: {
+        backgroundColor: colors.card,
+        borderRadius: 20,
+        padding: 20,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: colors.text,
+        marginBottom: 12,
+    },
+    carInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    carInfoText: {
+        color: colors.text,
+        fontSize: 16,
+        marginLeft: 16,
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        backgroundColor: colors.card,
+        borderRadius: 20,
+        padding: 16,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statValue: {
+        color: colors.text,
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginTop: 8,
+    },
+    statLabel: {
+        color: colors.secondaryText,
+        fontSize: 12,
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    ratingContainer: {
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    ratingValue: {
+        color: colors.text,
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 4,
+    },
     settingsButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 24, gap: 8 },
     settingsButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-    footer: { alignItems: 'center', marginTop: 24 },
+    footer: { alignItems: 'center', marginTop: 32 },
     footerText: { color: colors.secondaryText, fontSize: 14 },
     footerLink: { color: colors.primary, fontSize: 14, fontWeight: '600', marginTop: 4, textDecorationLine: 'underline' },
 });

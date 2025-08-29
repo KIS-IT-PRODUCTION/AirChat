@@ -296,16 +296,17 @@
     "today": "Сьогодні",
     "yesterday": "Вчора",
     "sentAnImage": "Надіслав(ла) зображення",
-    "sentLocation": "Поділився(лась) геолокацією"
-  ,
+    "sentLocation": "Поділився(лась) геолокацією",
     "lastSeen": {
       "justNow": "був(ла) щойно",
-      "minutesAgo_one": "був(ла) {{count}} хвилину тому",
+      "minutesAgo": "був(ла) {{count}} хвилину тому",
       "minutesAgo_few": "був(ла) {{count}} хвилини тому",
       "minutesAgo_many": "був(ла) {{count}} хвилин тому",
       "todayAt": "був(ла) сьогодні о {{time}}",
       "yesterdayAt": "був(ла) вчора о {{time}}",
-      "onDate": "був(ла) {{date}}"
+      "onDate": "був(ла) {{date}}",
+      "onDateAt": "був(ла) {{date}} о {{time}}",
+      "dateFormat": "D MMMM YYYY"
   }},
   "driverHome": {
     "title": "Доступні трансфери",

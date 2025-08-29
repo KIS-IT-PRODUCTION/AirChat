@@ -18,7 +18,7 @@ const ChatListItem = ({ item, currentUserId, onLongPress }) => {
     const isRead = item.last_message_status === 'read';
 
     // Визначаємо, чи користувач онлайн (був у мережі менше 5 хвилин тому)
-    const isOnline = moment().diff(moment(item.other_participant_last_seen), 'minutes') < 5;
+    const isOnline = item.other_participant_last_seen && moment().diff(moment(item.other_participant_last_seen), 'minutes') < 5;
 
     return (
         <TouchableOpacity 
@@ -75,7 +75,10 @@ export default function ChatListScreen() {
             if (error) throw error;
             setChats(data || []);
         } catch (error) {
-            console.error("Error fetching chats:", error.message);
+            // Ігноруємо помилку, якщо вона пов'язана з розмонтуванням компонента
+            if (error.message !== 'Aborted') {
+                console.error("Error fetching chats:", error.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -90,14 +93,16 @@ export default function ChatListScreen() {
 
     useEffect(() => {
         if (!session) return;
+        
+        // Підписуємось на зміни в повідомленнях та кімнатах, щоб оновлювати список
         const subscription = supabase
-            .channel('public:messages:chatlist')
+            .channel('public:chat_list_updates')
             .on('postgres_changes', 
                 { event: '*', schema: 'public', table: 'messages' },
                 () => { fetchChats(); }
             )
             .on('postgres_changes', 
-                { event: '*', schema: 'public', table: 'chat_participants' },
+                { event: '*', schema: 'public', table: 'chat_rooms' }, // <-- Важливе виправлення
                 () => { fetchChats(); }
             )
             .subscribe();
@@ -114,13 +119,12 @@ export default function ChatListScreen() {
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('common.delete'), style: 'destructive', onPress: async () => {
-                    // Оптимістично видаляємо з UI
                     setChats(prev => prev.filter(chat => chat.room_id !== chatItem.room_id));
-                    // Викликаємо функцію в базі
+                    // Потрібна функція для видалення чату, наприклад 'delete_chat_for_user'
                     const { error } = await supabase.rpc('delete_chat_room', { p_room_id: chatItem.room_id });
                     if (error) {
                         Alert.alert(t('common.error'), error.message);
-                        fetchChats(); // Повертаємо чат, якщо видалення не вдалося
+                        fetchChats(); 
                     }
                 }}
             ]

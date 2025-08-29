@@ -87,10 +87,15 @@ export default function IndividualChatScreen() {
     const [viewingImageUri, setViewingImageUri] = useState(null);
     const [editingMessage, setEditingMessage] = useState(null);
     const [isSendingLocation, setIsSendingLocation] = useState(false);
-    
+    const [isRecipientOnline, setIsRecipientOnline] = useState(false);
+
     const typingTimeout = useRef(null);
     const channel = useRef(null);
-
+ useEffect(() => {
+        console.log('--- ДІАГНОСТИКА ЕКРАНУ ЧАТУ ---');
+        console.log('ID Поточного Користувача (я):', session?.user?.id);
+        console.log('ID Співрозмовника (він/вона):', route.params?.recipientId);
+        console.log('------------------------------------');},);
     const formatUserStatus = useCallback((isOnline, lastSeen) => {
         if (isOnline) return t('chat.onlineStatus');
         if (!lastSeen) return t('chat.offlineStatus');
@@ -141,10 +146,13 @@ export default function IndividualChatScreen() {
         if (messagesError) throw messagesError;
         setMessages(messagesData || []);
         await markAsRead(roomId);
-    }, []);
+    }, [markAsRead]);
 
     useEffect(() => {
-        setUserStatus(formatUserStatus(false, realtimeLastSeen));
+        setUserStatus(formatUserStatus(isRecipientOnline, realtimeLastSeen));
+    }, [isRecipientOnline, realtimeLastSeen, formatUserStatus]);
+
+    useEffect(() => {
         let profileSubscription;
         const initializeChat = async () => {
             if (!session || !recipientId) { setLoading(false); return; }
@@ -161,25 +169,43 @@ export default function IndividualChatScreen() {
                 
                 await fetchMessages(roomId);
                 
-                channel.current = supabase.channel(`room-${roomId}`, { config: { presence: { key: session.user.id } } });
+                // --- ⬇️ ОСЬ ЦЕ ВИПРАВЛЕННЯ ⬇️ ---
+                channel.current = supabase.channel(`room-${roomId}`, {
+                  config: {
+                    presence: {
+                      key: session.user.id,
+                    },
+                  },
+                });
+                
                 channel.current
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, payload => {
-                        setMessages(prev => {
-                            if (prev.some(msg => msg.id === payload.new.id)) return prev;
-                            return [payload.new, ...prev];
-                        });
-                        if (payload.new.sender_id !== session.user.id) markAsRead(roomId);
-                    })
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, payload => {
-                        setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
-                    })
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, 
+                        (payload) => {
+                            if (payload.eventType === 'INSERT') {
+                                setMessages(prev => {
+                                    if (prev.some(msg => msg.id === payload.new.id)) return prev;
+                                    return [payload.new, ...prev];
+                                });
+                                if (payload.new.sender_id !== session.user.id) markAsRead(roomId);
+                            } else if (payload.eventType === 'UPDATE') {
+                                setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
+                            } else if (payload.eventType === 'DELETE') {
+                                setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+                            }
+                        }
+                    )
                     .on('presence', { event: 'sync' }, () => {
                         const presenceState = channel.current.presenceState();
                         const recipientIsOnline = Object.keys(presenceState).some(key => key === recipientId);
-                        setUserStatus(formatUserStatus(recipientIsOnline, realtimeLastSeen));
+                        setIsRecipientOnline(recipientIsOnline);
                     })
-                    .on('presence', { event: 'join' }, ({ key }) => { if (key === recipientId) setUserStatus(formatUserStatus(true, null)); })
-                    .on('presence', { event: 'leave' }, ({ key }) => { if (key === recipientId) setUserStatus(formatUserStatus(false, new Date().toISOString())); })
+                    .on('presence', { event: 'join' }, ({ key }) => { 
+                        if (key === recipientId) setIsRecipientOnline(true);
+                    })
+                    .on('presence', { event: 'leave' }, ({ key }) => { 
+                        if (key === recipientId) setIsRecipientOnline(false);
+                    })
                     .on('broadcast', { event: 'typing' }, ({ payload }) => {
                         if (payload.user_id === recipientId) {
                             setUserStatus(t('chat.typingStatus'));
@@ -187,7 +213,7 @@ export default function IndividualChatScreen() {
                             typingTimeout.current = setTimeout(() => {
                                 const presenceState = channel.current.presenceState();
                                 const isOnline = Object.keys(presenceState).some(key => key === recipientId);
-                                setUserStatus(formatUserStatus(isOnline, realtimeLastSeen));
+                                setIsRecipientOnline(isOnline);
                             }, 2000);
                         }
                     })
@@ -198,11 +224,6 @@ export default function IndividualChatScreen() {
                     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, payload => {
                         const newLastSeen = payload.new.last_seen;
                         setRealtimeLastSeen(newLastSeen);
-                        const presenceState = channel.current?.presenceState() || {};
-                        const isOnline = Object.keys(presenceState).some(key => key === recipientId);
-                        if (!isOnline) {
-                            setUserStatus(formatUserStatus(false, newLastSeen));
-                        }
                     })
                     .subscribe();
 
@@ -225,37 +246,52 @@ export default function IndividualChatScreen() {
             if (channel.current) supabase.removeChannel(channel.current);
             if (profileSubscription) supabase.removeChannel(profileSubscription);
         };
-    }, [recipientId, session, formatUserStatus, realtimeLastSeen, fetchMessages]);
+    }, [recipientId, session, fetchMessages, markAsRead]);
+
 
     const sendMessage = async (messageContent, notificationContent) => {
-        if (!currentRoomId || !session) return;
-        const tempId = `temp_${Date.now()}`;
-        const newMessage = { id: tempId, room_id: currentRoomId, sender_id: session.user.id, created_at: new Date().toISOString(), status: 'sending', ...messageContent };
-        setMessages(prev => [newMessage, ...prev]);
+        if (!currentRoomId || !session) return null;
+
         const dbMessage = { room_id: currentRoomId, sender_id: session.user.id, ...messageContent };
-        const { data: insertedMessages, error: insertError } = await supabase.from('messages').insert([dbMessage]).select();
-        if (insertError || !insertedMessages || insertedMessages.length === 0) {
-            console.error("Error sending message:", insertError);
-            setMessages(prev => prev.filter(msg => msg.id !== tempId));
-            Alert.alert(t('common.error'), insertError?.message || 'Failed to send message');
-            return;
+        
+        const { data: newMessage, error } = await supabase
+            .from('messages')
+            .insert([dbMessage])
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error sending message:", error);
+            Alert.alert(t('common.error'), error.message);
+            return null;
         }
-        const realMessage = insertedMessages[0];
-        setMessages(prev => prev.map(msg => msg.id === tempId ? realMessage : msg));
-        const { error: rpcError } = await supabase.rpc('send_push_notification', { p_room_id: currentRoomId, p_message_content: notificationContent });
-        if (rpcError) console.error("Error triggering push notification:", rpcError);
+        
+        supabase.functions.invoke('send-push-notification', {
+            body: {
+                recipient_id: recipientId,
+                sender_id: session.user.id,
+                message_content: notificationContent,
+            }
+        }).catch(funcError => {
+            console.error("Error triggering push notification:", funcError);
+        });
+        
+        return newMessage;
     };
 
     const handleEditMessage = async () => {
         if (!editingMessage || !inputText.trim()) return;
         const newContent = inputText.trim();
+        const originalContent = editingMessage.content;
+        
+        setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg));
+        setEditingMessage(null);
+        setInputText('');
+
         const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id);
         if (error) {
             Alert.alert(t('common.error'), error.message);
-        } else {
-            setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg));
-            setEditingMessage(null);
-            setInputText('');
+            setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg));
         }
     };
 
@@ -263,21 +299,27 @@ export default function IndividualChatScreen() {
         Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [
             { text: t('common.cancel'), style: 'cancel' },
             { text: t('common.delete'), style: 'destructive', onPress: async () => {
+                const originalMessages = [...messages];
                 setMessages(prev => prev.filter(msg => msg.id !== messageId));
                 const { error } = await supabase.from('messages').delete().eq('id', messageId);
                 if (error) {
                     Alert.alert(t('common.error'), error.message);
-                    fetchMessages(currentRoomId);
+                    setMessages(originalMessages);
                 }
             }}
         ]);
     };
 
-    const handleSendText = () => {
+    const handleSendText = async () => {
         const textToSend = inputText.trim();
         if (textToSend.length > 0) {
-            sendMessage({ content: textToSend }, textToSend);
             setInputText('');
+            const newMessage = await sendMessage({ content: textToSend }, textToSend);
+            if (newMessage) {
+                setMessages(prevMessages => [newMessage, ...prevMessages]);
+            } else {
+                setInputText(textToSend);
+            }
         }
     };
     
@@ -295,7 +337,12 @@ export default function IndividualChatScreen() {
             const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData, { upsert: false });
             if (uploadError) throw uploadError;
             const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath);
-            await sendMessage({ image_url: urlData.publicUrl }, t('chat.sentAnImage', 'Надіслав(ла) зображення'));
+            
+            const newMessage = await sendMessage({ image_url: urlData.publicUrl }, t('chat.sentAnImage', 'Надіслав(ла) зображення'));
+            if (newMessage) {
+                setMessages(prev => [newMessage, ...prev]);
+            }
+
         } catch (error) {
             Alert.alert(t('common.error'), error.message);
         }
@@ -338,10 +385,13 @@ export default function IndividualChatScreen() {
             let location = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.High,
             });
-            await sendMessage(
-                { location: { latitude: location.coords.latitude, longitude: location.coords.longitude } },
-                t('chat.sentLocation', 'Поділився(лась) геолокацією')
-            );
+            const locationData = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+            
+            const newMessage = await sendMessage({ location: locationData }, t('chat.sentLocation', 'Поділився(лась) геолокацією'));
+            if (newMessage) {
+                setMessages(prev => [newMessage, ...prev]);
+            }
+
         } catch (error) {
             console.error("Error getting location:", error);
             Alert.alert(t('common.error'), t('chat.locationFetchError'));
@@ -371,7 +421,7 @@ export default function IndividualChatScreen() {
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
                 behavior={Platform.OS === "ios" ? "padding" : "height"} 
-                keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
             >
                 {loading ? <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary}/> : 
                     <SectionList

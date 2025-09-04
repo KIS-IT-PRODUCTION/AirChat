@@ -1,21 +1,26 @@
-import 'react-native-gesture-handler';
-import './i18n'; // Переконайтесь, що шлях до i18n правильний
+// App.js
 
-import React, { useState, useEffect, useCallback } from 'react';
+import 'react-native-gesture-handler';
+import './i18n'; 
+
+// ✨ 1. ДОДАНО ІМПОРТИ useRef та AppState
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Modal, AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import NetInfo from '@react-native-community/netinfo';
+import { useNetInfo } from '@react-native-community/netinfo';
 
 // --- Імпорти ---
 import { ThemeProvider, useTheme } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
-import { supabase } from './config/supabase';
+import { UnreadCountProvider } from './provider/Unread Count Context'; 
 import { usePushNotifications } from './usePushNotifications.js';
-// --- Екрани та навігатори ---
+import { supabase } from './config/supabase'; // ✨ Потрібен імпорт supabase
+
+// --- Екрани та навігатори (без змін) ---
 import HomeScreen from './app/HomeScreen';
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
@@ -32,16 +37,10 @@ const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 const DriverStack = createStackNavigator();
 
-// --- Навігатор для НЕ залогінених користувачів (Гостьовий режим) ---
 function GuestAppStack({ isFirstLaunch }) {
   return (
-    <Stack.Navigator
-      initialRouteName={isFirstLaunch ? 'Onboarding' : 'HomeScreen'}
-      screenOptions={{ headerShown: false }}
-    >
-      {isFirstLaunch && (
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      )}
+    <Stack.Navigator initialRouteName={isFirstLaunch ? 'Onboarding' : 'HomeScreen'} screenOptions={{ headerShown: false }}>
+      {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
@@ -49,8 +48,6 @@ function GuestAppStack({ isFirstLaunch }) {
     </Stack.Navigator>
   );
 }
-
-// --- Навігатор для КЛІЄНТА (залогінений стан) ---
 function RootStackNavigator() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
@@ -61,156 +58,141 @@ function RootStackNavigator() {
     </RootStack.Navigator>
   );
 }
-
-// --- Навігатор для ВОДІЯ ---
 function DriverStackNavigator() {
     return (
         <DriverStack.Navigator screenOptions={{ headerShown: false }}>
-            <DriverStack.Screen 
-                name="DriverMainTabs" 
-                component={DriverTabNavigator} 
-            />
+            <DriverStack.Screen name="DriverMainTabs" component={DriverTabNavigator} />
             <DriverStack.Screen name="DriverRequest" component={DriverRequestDetailScreen} />
         </DriverStack.Navigator>
     );
 }
 
-// --- Компонент: Екран помилки ---
-const ErrorScreen = ({ onRetry }) => {
+// --- Компоненти UI (без змін) ---
+const LoadingScreen = () => {
     const { colors } = useTheme();
-    const { t } = useTranslation();
-    const styles = getStyles(colors);
-
     return (
-        <View style={styles.centeredContainer}>
-            <Ionicons name="cloud-offline-outline" size={80} color={colors.secondaryText} />
-            <Text style={styles.errorTitle}>{t('errors.networkTitle', 'Помилка мережі')}</Text>
-            <Text style={styles.errorSubtitle}>{t('errors.networkSubtitle', 'Не вдалося підключитися до сервера. Перевірте ваше інтернет-з\'єднання.')}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-                <Ionicons name="refresh-outline" size={20} color="#fff" />
-                <Text style={styles.retryButtonText}>{t('errors.retryButton', 'Перезавантажити')}</Text>
-            </TouchableOpacity>
+        <View style={[getStyles(colors).centeredContainer, { backgroundColor: colors.background }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
         </View>
     );
 };
+const NoInternetModal = ({ visible }) => {
+    const { colors } = useTheme();
+    const { t } = useTranslation();
+    const styles = getStyles(colors);
+    return (
+        <Modal animationType="fade" transparent={true} visible={visible}>
+            <View style={styles.modalBackdrop}>
+                <View style={styles.modalContent}>
+                    <Ionicons name="wifi-outline" size={80} color={colors.secondaryText} />
+                    <Text style={styles.modalTitle}>{t('errors.noInternetTitle', 'Немає з\'єднання')}</Text>
+                    <Text style={styles.modalSubtitle}>{t('errors.noInternetSubtitle', 'Будь ласка, перевірте ваше інтернет-з\'єднання.')}</Text>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 
 // --- Основний компонент логіки додатку ---
 function AppContent() {
-  const { session, isLoading: isAuthLoading } = useAuth();
+  const { session, profile, isLoading } = useAuth();
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { isInternetReachable } = useNetInfo();
+  
+  // ✨ 2. ПОВЕРНУЛИ ЛОГІКУ "HEARTBEAT" ДЛЯ ВІДСТЕЖЕННЯ СТАТУСУ
+  const heartbeatTimeout = useRef(null);
   
   usePushNotifications(); 
-
-  const loadInitialData = useCallback(async () => {
-    setError(null);
-    setIsLoading(true);
-    
-    try {
-        const netInfoState = await NetInfo.fetch();
-        if (!netInfoState.isConnected) {
-            throw new Error("No internet connection");
-        }
-
+  
+  useEffect(() => {
+    const checkOnboarding = async () => {
         const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
         setIsFirstLaunch(hasOnboarded === null);
-
-        if (session?.user) {
-            const { data, error: profileError, status } = await supabase
-                .from('profiles')
-                .select(`role`)
-                .eq('id', session.user.id)
-                .single();
-
-            if (profileError && status !== 406) throw profileError;
-            setUserProfile(data);
-        } else {
-            setUserProfile(null);
-        }
-    } catch (e) {
-        console.error('Failed to load initial data:', e.message);
-        setError(e.message);
-    } finally {
-        setIsLoading(false);
-    }
-  }, [session]);
+    };
+    checkOnboarding();
+  }, []);
 
   useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+    // Функція, що оновлює час останньої активності в базі даних
+    const updateLastSeen = async () => {
+        if (session) {
+            console.log('[Heartbeat] Оновлення статусу активності...');
+            const { error } = await supabase.rpc('update_last_seen');
+            if (error) console.error('[Heartbeat] Помилка RPC:', error);
+        }
+    };
 
-  if (isLoading || isAuthLoading || isFirstLaunch === null) {
-    return (
-      <View style={[getStyles().centeredContainer, { backgroundColor: '#121212' }]}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </View>
-    );
-  }
+    // Обробник зміни стану додатку (активний / у фоні)
+    const handleAppStateChange = (nextAppState) => {
+        if (heartbeatTimeout.current) clearTimeout(heartbeatTimeout.current);
 
-  if (error) {
-    return <ErrorScreen onRetry={loadInitialData} />;
+        if (nextAppState === 'active') {
+            updateLastSeen(); // Оновлюємо одразу при вході
+            // І запускаємо періодичне оновлення кожну хвилину
+            heartbeatTimeout.current = setInterval(updateLastSeen, 60000);
+        } else {
+            console.log('[Heartbeat] Додаток неактивний. Зупинка оновлень.');
+        }
+    };
+    
+    // Створюємо підписку на зміну стану додатку
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    // Запускаємо перевірку при першому завантаженні компонента
+    handleAppStateChange('active');
+
+    // Функція очищення: відписуємось від слухача та чистимо таймер
+    return () => {
+        appStateSubscription.remove();
+        if (heartbeatTimeout.current) {
+            clearInterval(heartbeatTimeout.current);
+        }
+    };
+  }, [session]); // Цей ефект залежить від сесії
+
+  if (isLoading || isFirstLaunch === null) {
+    return <LoadingScreen />;
   }
 
   return (
-    <NavigationContainer>
-      {session && userProfile ? (
-        userProfile.role === 'driver'
-          ? <DriverStackNavigator />
-          : <RootStackNavigator />
-      ) : (
-        <GuestAppStack isFirstLaunch={isFirstLaunch} />
-      )}
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+        <NavigationContainer>
+            {session && profile ? (
+              profile.role === 'driver' ? <DriverStackNavigator /> : <RootStackNavigator />
+            ) : (
+                <GuestAppStack isFirstLaunch={isFirstLaunch} />
+            )}
+        </NavigationContainer>
+        <NoInternetModal visible={isInternetReachable === false} />
+    </View>
   );
 }
 
 export default function App() {
-  return (
+  return ( 
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+        <AuthProvider>
+            <UnreadCountProvider>
+              <AppContent />
+            </UnreadCountProvider>
+        </AuthProvider> 
     </ThemeProvider>
   );
 }
 
 // --- Стилі ---
 const getStyles = (colors) => StyleSheet.create({
-    centeredContainer: {
-        flex: 1,
-        justifyContent: 'center',
+    centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors?.background || '#121212', padding: 20 },
+    modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.7)' },
+    modalContent: {
+        backgroundColor: colors?.card || '#1e1e1e',
+        borderRadius: 20,
+        padding: 30,
         alignItems: 'center',
-        backgroundColor: colors?.background || '#fff',
-        padding: 20,
+        width: '80%',
+        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5,
     },
-    errorTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: colors?.text || '#000',
-        marginTop: 20,
-        textAlign: 'center',
-    },
-    errorSubtitle: {
-        fontSize: 16,
-        color: colors?.secondaryText || '#666',
-        textAlign: 'center',
-        marginTop: 8,
-        marginBottom: 24,
-    },
-    retryButton: {
-        flexDirection: 'row',
-        backgroundColor: colors?.primary || '#007AFF',
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        borderRadius: 25,
-        alignItems: 'center',
-        gap: 8,
-    },
-    retryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors?.text || '#fff', marginTop: 20, textAlign: 'center' },
+    modalSubtitle: { fontSize: 16, color: colors?.secondaryText || '#aaa', textAlign: 'center', marginTop: 8 },
 });

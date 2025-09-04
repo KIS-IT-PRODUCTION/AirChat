@@ -334,7 +334,8 @@
     "pricePlaceholder": "0",
     "commentPlaceholder": "Ваш коментар (необов'язково)",
     "submitButton": "Надіслати пропозицію",
-    "chosenDriver": "Обраний водій"
+    "chosenDriver": "Обраний водій",
+    "posted": "Опубліковано"
   },
   "passengers": {
     "title": "Пасажири",
@@ -395,6 +396,24 @@
   "message": "Написати",
   "error": "Помилка",
   "noPhone": "Пасажир не вказав номер телефону."
-}
+},
 
-}
+    "today": "Сьогодні",
+    "yesterday": "Вчора",
+    "placeholder": "Напишіть повідомлення...",
+    "sentAnImage": "Надіслав(ла) зображення",
+    "sentLocation": "Поділився(лась) геолокацією",
+    "locationLabel": "Геолокація",
+    "locationPermissionError": "Необхідно надати доступ до вашої геолокації.",
+    "locationFetchError": "Не вдалося отримати вашу геолокацію.",
+    "takePhoto": "Зробити фото",
+    "pickFromGallery": "Вибрати з галереї",
+    "shareLocation": "Поділитись геолокацією",
+    "fetchingLocation": "Отримання точної локації...",
+    "messageActions": "Дії з повідомленням",
+    "edit": "Редагувати",
+    "editing": "Редагування...",
+    "deleteConfirmTitle": "Видалити повідомлення?",
+    "deleteConfirmBody": "Ви впевнені, що хочете видалити це повідомлення?"
+  }
+

@@ -1,21 +1,24 @@
-// app/hooks/usePushNotifications.js
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { supabase } from './config/supabase';
 import { useAuth } from './provider/AuthContext';
+// ✨ 1. Імпортуємо хук нашого нового контексту
+import { useUnreadCount } from './provider/Unread Count Context';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: true, // Дозволяє сповіщенню змінювати лічильник
+    shouldSetBadge: true,
   }),
 });
 
 export const usePushNotifications = () => {
   const { session } = useAuth();
+  // ✨ 2. Отримуємо функцію для оновлення лічильника з контексту
+  const { fetchUnreadCount } = useUnreadCount(); 
   const [expoPushToken, setExpoPushToken] = useState('');
   const notificationListener = useRef();
   const responseListener = useRef();
@@ -34,6 +37,7 @@ export const usePushNotifications = () => {
         return;
       }
       token = (await Notifications.getExpoPushTokenAsync({
+        // Ваш projectId
         projectId: 'e5ae05a0-322d-4a51-84d9-84738230258b',
       })).data;
     } else {
@@ -63,19 +67,20 @@ export const usePushNotifications = () => {
         }
       });
 
-      // ✨ ОНОВЛЕНА ЛОГІКА ✨
-      notificationListener.current = Notifications.addNotificationReceivedListener(async notification => {
-        // Коли приходить нове сповіщення, ми запитуємо у бази даних
-        // актуальну загальну кількість непрочитаних повідомлень.
-        const { data, error } = await supabase.rpc('get_total_unread_count');
-        if (!error && data) {
-          // І встановлюємо цю кількість на іконку додатку.
-          Notifications.setBadgeCountAsync(data);
+      // ✨ 3. ОНОВЛЕНА ЛОГІКА СЛУХАЧА
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        console.log('[PUSH_NOTIF] Отримано сповіщення, поки додаток відкритий.');
+        // Коли приходить нове сповіщення, ми просто просимо наш
+        // глобальний контекст оновити лічильник.
+        if (fetchUnreadCount) {
+          console.log('[PUSH_NOTIF] Виклик fetchUnreadCount з контексту...');
+          fetchUnreadCount();
         }
       });
 
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
         console.log(response);
+        // Тут можна додати логіку переходу на екран чату при натисканні на сповіщення
       });
 
       return () => {
@@ -83,7 +88,7 @@ export const usePushNotifications = () => {
         Notifications.removeNotificationSubscription(responseListener.current);
       };
     }
-  }, [session]);
+  }, [session, fetchUnreadCount]); // ✨ Додаємо fetchUnreadCount у залежності
 
   return { expoPushToken };
 };

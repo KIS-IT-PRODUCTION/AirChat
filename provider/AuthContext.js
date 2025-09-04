@@ -1,96 +1,82 @@
 // provider/AuthContext.js
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 
-// Створюємо контекст
 const AuthContext = createContext();
 
-// Хук для зручного доступу до контексту
 export const useAuth = () => {
     return useContext(AuthContext);
 };
 
-// Компонент-провайдер, який обгортає всю програму
 export const AuthProvider = ({ children }) => {
     const [session, setSession] = useState(null);
+    const [profile, setProfile] = useState(null);
+    // ✨ 1. ЄДИНИЙ ІНДИКАТОР ЗАВАНТАЖЕННЯ:
+    // Цей стан тепер керує всім початковим завантаженням.
+    // Він буде `false` тільки тоді, коли ми точно знаємо, чи є юзер і який у нього профіль.
     const [isLoading, setIsLoading] = useState(true);
-    const [isDriver, setIsDriver] = useState(false);
 
-    // Слухач для змін сесії Supabase
     useEffect(() => {
-        // supabase.auth.getSession().then(({ data: { session } }) => {
-        //     setSession(session);
-        //     setIsLoading(false);
-        // });
-        // Проблема: .getSession() не слухає зміни в реальному часі.
-        // Вирішення: Використовуємо .onAuthStateChange
+        // Отримуємо початкову сесію, щоб прискорити завантаження.
+        // Це важливо для "пробудження" Supabase після довгої неактивності.
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+        });
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
+                console.log(`[AUTH] Подія: ${event}`);
                 setSession(session);
-                
-                // Перевіряємо роль користувача після успішного входу
-                if (session) {
-                    await checkUserRole(session);
+
+                // ✨ 2. ЦЕНТРАЛІЗОВАНЕ ЗАВАНТАЖЕННЯ ПРОФІЛЮ:
+                // Якщо сесія є, ми одразу ж завантажуємо профіль тут.
+                if (session?.user) {
+                    try {
+                        const { data, error, status } = await supabase
+                            .from('profiles')
+                            .select(`role`)
+                            .eq('id', session.user.id)
+                            .single();
+
+                        if (error && status !== 406) throw error;
+                        
+                        setProfile(data || null);
+
+                    } catch (error) {
+                        console.error("Помилка завантаження профілю:", error.message);
+                        setProfile(null); // Якщо профіль не завантажився, скидаємо його
+                    }
                 } else {
-                    setIsDriver(false);
+                    // Якщо сесії немає, профілю теж немає.
+                    setProfile(null);
                 }
+                
+                // ✨ 3. ГАРАНТОВАНЕ ВИМКНЕННЯ ЗАВАНТАЖЕННЯ:
+                // Індикатор завантаження вимикається в самому кінці, коли всі перевірки завершено.
+                // Це вирішує проблему "вічного завантаження".
                 setIsLoading(false);
             }
         );
 
         return () => subscription.unsubscribe();
     }, []);
-
-    const checkUserRole = async (currentSession) => {
-        if (!currentSession?.user) {
-            setIsDriver(false);
-            return;
-        }
-
-        try {
-            const { data, error, status } = await supabase
-                .from('profiles')
-                .select(`role`)
-                .eq('id', currentSession.user.id)
-                .single();
-
-            if (error && status !== 406) {
-                console.error("Error fetching user role:", error.message);
-                setIsDriver(false);
-            }
-
-            if (data && data.role === 'driver') {
-                setIsDriver(true);
-            } else {
-                setIsDriver(false);
-            }
-        } catch (error) {
-            console.error('Unexpected error fetching user role:', error.message);
-            setIsDriver(false);
-        }
-    };
     
-    // Функція входу в систему
+    // Функції signIn, signUp, signOut залишаються без змін
     const signIn = async ({ email, password }) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        
-        // Повертаємо об'єкт з даними або помилкою
         return { data, error };
     };
 
-    // Функція реєстрації
     const signUp = async ({ email, password, role }) => {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: {
-                data: { role } // Зберігаємо роль в метаданих профілю
-            }
+            options: { data: { role } }
         });
         return { data, error };
     };
 
-    // Функція виходу
     const signOut = async () => {
         const { error } = await supabase.auth.signOut();
         return { error };
@@ -98,8 +84,8 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         session,
+        profile, // ✨ 4. Надаємо профіль усьому додатку
         isLoading,
-        isDriver,
         signIn,
         signUp,
         signOut,

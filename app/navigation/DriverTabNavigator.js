@@ -14,6 +14,7 @@ import MessagesStack from './MessagesStack';
 import DriverProfileStack from './DriverProfileStack';
 import DriverReizeStack from './DriverReizeStack';
 import MyTripsScreen from '../driver/MyTripsScreen'; 
+import { useNewTrips } from '../../provider/NewTripsContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -21,7 +22,7 @@ export default function DriverTabNavigator() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { session } = useAuth();
-
+    const { newTripsCount } = useNewTrips();
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Функція для завантаження кількості непрочитаних повідомлень
@@ -96,12 +97,9 @@ export default function DriverTabNavigator() {
           let iconName;
           if (route.name === 'DriverHomeTab') {
             iconName = focused ? 'list-circle' : 'list-circle-outline';
-          }else if (route.name === 'MyTripsTab') { 
-            iconName = focused ? 'car-sport' : 'car-sport-outline';
-          }
-           else if (route.name === 'MessagesTab') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-            } else if (route.name === 'DriverReizeStack') {
+          } else if (route.name === 'MessagesTab') {
+    iconName = focused ? 'chatbox' : 'chatbox-outline';
+} else if (route.name === 'DriverReizeStack') {
             iconName = focused ? 'airplane' : 'airplane-outline';
           } else if (route.name === 'DriverProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
@@ -115,13 +113,16 @@ export default function DriverTabNavigator() {
         component={DriverHomeScreen} 
         options={{ title: t('tabs.driver.home', 'Трансфери') }}
       />
-       <Tab.Screen 
-            name="MyTripsTab" 
-            component={MyTripsScreen}
-            options={{ 
-              title: t('tabs.driver.myTrips', 'Мої поїздки'),
-            }}
-        />
+        <Tab.Screen
+        name="MyTripsTab"
+        component={MyTripsScreen}
+        options={{
+          tabBarLabel: t('tabs.driver.myTrips', 'Мої поїздки'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="bus" color={color} size={size} />,
+          tabBarBadge: newTripsCount > 0 ? newTripsCount : null, // ✨ Відображаємо бейдж
+          tabBarBadgeStyle: { backgroundColor: colors.primary }
+        }}
+      />
       <Tab.Screen
         name="DriverReizeStack" 
         component={DriverReizeStack}

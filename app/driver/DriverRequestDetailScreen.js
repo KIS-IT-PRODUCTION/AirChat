@@ -1,4 +1,3 @@
-// app/DriverRequestDetailScreen.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -10,6 +9,7 @@ import moment from 'moment';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../provider/AuthContext';
 import Logo from '../../assets/icon.svg';
+import { useNavigation } from '@react-navigation/native';
 
 // --- Допоміжні компоненти ---
 const InfoRow = ({ icon, label, value, colors }) => {
@@ -63,7 +63,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [comment, setComment] = useState('');
   const [currency, setCurrency] = useState('UAH');
   
-  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
   useEffect(() => {
     const markAsViewed = async () => {
@@ -95,7 +95,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [transferId, session]);
+  }, [transferId, session, t]);
 
   useEffect(() => {
     fetchData();
@@ -146,8 +146,16 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
   };
 
+  if (loading) {
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('driverOffer.requestDetails')}</Text><Logo width={40} height={40} /></View>
+            <View style={styles.centeredContainer}><ActivityIndicator size="large" color={colors.primary} /></View>
+        </SafeAreaView>
+    );
+  }
 
-  if (!loading && !transferData) {
+  if (!transferData) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('driverOffer.requestDetails')}</Text><Logo width={40} height={40} /></View>
@@ -156,7 +164,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     );
   }
 
-  const isRequestClosed = transferData?.status === 'accepted';
+  const isRequestClosed = transferData?.status === 'accepted' || transferData?.status === 'completed' || transferData?.status === 'cancelled';
+  const totalPassengers = (transferData?.adults_count || 0) + (transferData?.children_count || 0) + (transferData?.infants_count || 0);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -187,15 +196,24 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
             <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('D MMM')}</Text></View>
                 <View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('HH:mm')}</Text></View>
-                <View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{transferData?.total_passengers} {t('transferDetail.passengers', 'пас.')}</Text></View>
+                <View style={styles.detailItem}><Ionicons name="people-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{totalPassengers} {t('transferDetail.passengers', 'пас.')}</Text></View>
             </View>
             <View style={styles.divider} />
+            
+            <InfoRow icon="people-outline" label={t('passengers.adults', 'Дорослі')} value={transferData?.adults_count > 0 ? transferData?.adults_count : null} colors={colors} />
+            <InfoRow icon="person-outline" label={t('passengers.children', 'Діти')} value={transferData?.children_count > 0 ? transferData.children_count : null} colors={colors} />
+            <InfoRow icon="happy-outline" label={t('passengers.infants', 'Немовлята')} value={transferData?.infants_count > 0 ? transferData.infants_count : null} colors={colors} />
+            <View style={styles.divider} />
+
             <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData?.luggage_info} colors={colors} />
-            {transferData?.with_pet && <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={t('transferDetail.yes', 'Так')} colors={colors} /> }
+            <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={transferData?.with_pet ? t('transferDetail.yes', 'Так') : null} colors={colors} />
+            <InfoRow icon="person-add-outline" label={t('home.meetWithSign', 'Зустріти з табличкою')} value={transferData?.meet_with_sign ? t('transferDetail.yes', 'Так') : null} colors={colors} />
             <InfoRow icon="barcode-outline" label={t('transferDetail.flightNumber', 'Номер рейсу')} value={transferData?.flight_number} colors={colors} />
-            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={transferData?.transfer_type} colors={colors} />
+            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={t(`transferTypes.${transferData?.transfer_type}`, transferData?.transfer_type)} colors={colors} />
         </View>
+
         {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Коментар пасажира')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
+        
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('transferDetail.route', 'Маршрут на карті')}</Text>
             <View style={styles.mapContainer}>

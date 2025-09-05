@@ -113,6 +113,7 @@ export default function HomeScreen({ navigation }) {
     const [activeTab, setActiveTab] = useState('from');
     const [transferType, setTransferType] = useState('individual');
     const [withPet, setWithPet] = useState(false);
+    const [meetWithSign, setMeetWithSign] = useState(false); // ✨ НОВИЙ СТАН
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [passengerCounts, setPassengerCounts] = useState({ adults: 1, children: 0, infants: 0 });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,11 +165,7 @@ export default function HomeScreen({ navigation }) {
             Alert.alert(t('common.error'), t('home.error.noAdults'));
             return;
         }
-        // ✨ ДОДАНО ПЕРЕВІРКУ НА НОМЕР РЕЙСУ
-        if (!flightNumber.trim()) {
-            Alert.alert(t('common.error'), t('home.error.flightNumberRequired'));
-            return;
-        }
+        // ✨ ВИДАЛЕНО ОБОВ'ЯЗКОВУ ПЕРЕВІРКУ НА НОМЕР РЕЙСУ
         setIsSubmitting(true);
         try {
             const transferData = {
@@ -181,7 +178,8 @@ export default function HomeScreen({ navigation }) {
                 infants_count: passengerCounts.infants,
                 transfer_type: transferType,
                 with_pet: withPet,
-                flight_number: flightNumber,
+                meet_with_sign: meetWithSign, // ✨ ДОДАНО НОВЕ ПОЛЕ
+                flight_number: flightNumber.trim() === '' ? null : flightNumber,
                 luggage_info: luggageInfo,
                 direction: activeTab === 'to' ? 'to_airport' : 'from_airport'
             };
@@ -191,10 +189,13 @@ export default function HomeScreen({ navigation }) {
             setLastTransferId(data.id);
             setCommentModalVisible(true);
             
+            // Скидаємо поля після успішного створення
             setFromLocation('');
             setToLocation('');
             setFlightNumber('');
             setLuggageInfo('');
+            setWithPet(false);
+            setMeetWithSign(false);
             setPassengerCounts({ adults: 1, children: 0, infants: 0 });
         } catch (error) {
             Alert.alert(t('common.error'), error.message);
@@ -252,13 +253,8 @@ export default function HomeScreen({ navigation }) {
             
             <ScrollView contentContainerStyle={styles.scrollContent}>
                  <View style={styles.header}>
-                    <Logo width={40} height={40} />
-                    <View style={styles.headerCenter}>
-                        <TouchableOpacity style={styles.iconButton} onPress={() => setLanguageModalVisible(true)}>
-                            <Ionicons name="globe-outline" size={20} color={colors.text} />
-                            <Text style={styles.iconButtonText}>{i18n.language.toUpperCase()}</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <Logo width={50} height={50} />
+            
                     <View style={styles.headerIcons}>
                         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('ProfileTab', { screen: 'Support' })}>
                             <Ionicons name="headset-outline" size={24} color={colors.text} />
@@ -291,14 +287,25 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 </View>
                 <View style={styles.radioGroupContainer}>
-                    <TouchableOpacity style={[styles.radioContainer, transferType === 'individual' && styles.radioContainerActive]} onPress={() => setTransferType('individual')}><IndividualTransferIcon width={48} height={48} fill={transferType === 'individual' ? colors.primary : colors.secondaryText} /><Text style={[styles.radioText, transferType === 'individual' && styles.radioTextActive]}>{t('home.individualTransfer')}</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.radioContainer, transferType === 'group' && styles.radioContainerActive]} onPress={() => setTransferType('group')}><GroupTransferIcon width={48} height={48} fill={transferType === 'group' ? colors.primary : colors.secondaryText} /><Text style={[styles.radioText, transferType === 'group' && styles.radioTextActive]}>{t('home.groupTransfer')}</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.radioContainer, transferType === 'group' && styles.radioContainerActive]} onPress={() => setTransferType('group')}><GroupTransferIcon width={78} height={78} fill={transferType === 'group' ? colors.primary : colors.secondaryText} /><Text style={[styles.radioText,  transferType === 'group' && styles.radioTextActive]}>{t('home.groupTransfer')}</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.radioContainer, transferType === 'individual' && styles.radioContainerActive]} onPress={() => setTransferType('individual')}><IndividualTransferIcon width={78} height={78} fill={transferType === 'individual' ? colors.primary : colors.secondaryText} /><Text style={[styles.radioText, transferType === 'individual' && styles.radioTextActive]}>{t('home.individualTransfer')}</Text></TouchableOpacity>
                 </View>
                 <TouchableOpacity style={[styles.card, styles.checkboxRow]} onPress={() => setWithPet(!withPet)}>
                     <Ionicons name={withPet ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} />
                     <View style={styles.checkboxTextContainer}><Text style={styles.radioText}>{t('home.travelingWithPet')}</Text><Text style={styles.checkboxSubtext}>{t('home.petSubtext')}</Text></View>
                     <Image source={Pet} style={styles.petImage} />
                 </TouchableOpacity>
+
+                {/* ✨ НОВА КНОПКА-ПЕРЕМИКАЧ */}
+                <TouchableOpacity style={[styles.card, styles.checkboxRow]} onPress={() => setMeetWithSign(!meetWithSign)}>
+                    <Ionicons name={meetWithSign ? 'checkbox' : 'square-outline'} size={24} color={colors.primary} />
+                    <View style={styles.checkboxTextContainer}>
+                        <Text style={styles.radioText}>{t('home.meetWithSign', 'Зустріти з табличкою')}</Text>
+                        <Text style={styles.checkboxSubtext}>{t('home.signSubtext', 'Водій чекатиме з вашим іменем')}</Text>
+                    </View>
+                    <Ionicons name="person-add-outline" size={32} color={colors.secondaryText} style={styles.signIcon} />
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.submitButton} onPress={handleOrderPress} disabled={isSubmitting}>{isSubmitting ? (<ActivityIndicator color="#FFFFFF" />) : (<Text style={styles.submitButtonText}>{t('home.orderButton')}</Text>)}</TouchableOpacity>
             </ScrollView>
             <DateTimePickerModal isVisible={isPickerVisible} mode={pickerMode} onConfirm={handleConfirm} onCancel={hidePicker} is24Hour={true} locale={i18n.language} confirmTextIOS={t('common.confirm')} cancelTextIOS={t('common.cancel')} date={selectedDate} />
@@ -336,14 +343,14 @@ const getStyles = (colors, theme) => StyleSheet.create({
     stepper:{flexDirection:'row',alignItems:'center',gap:10},
     passengerCount:{color:colors.text,fontSize:16,fontWeight:'bold'},
     radioGroupContainer:{flexDirection:'row',gap:12,marginBottom:16},
-    radioContainer:{flex:1,padding:16,borderRadius:16,borderWidth:1.5,backgroundColor:colors.card,borderColor:colors.border,alignItems:'center', justifyContent: 'center', gap: 8, minHeight: 110, ...(theme==='light'?shadowStyle:{})},
+    radioContainer:{flex:1,padding:16,borderRadius:16,borderWidth:1.5,backgroundColor:colors.card,borderColor:colors.border,alignItems:'center', justifyContent: 'center', gap: 2, minHeight: 80, ...(theme==='light'?shadowStyle:{})},
     radioContainerActive:{backgroundColor:theme==='light'?'#EBF5FF':'rgba(10, 132, 255, 0.2)',borderColor:colors.primary},
     radioText:{color:colors.text,fontSize:16,fontWeight:'600', textAlign: 'center'},
     radioTextActive:{color:colors.primary},
     checkboxRow:{flexDirection:'row',alignItems:'center',padding:16,gap:12, justifyContent: 'space-between'},
     checkboxTextContainer: {flex: 1},
     petImage: {width: 40, height: 40},
-    checkboxSubtext:{color:colors.secondaryText,fontSize:14},
+    checkboxSubtext:{color:colors.secondaryText,fontSize:14, textAlign: 'center'},
     submitButton:{backgroundColor:colors.primary,paddingVertical:16,borderRadius:16,alignItems:'center',...(theme==='light'?shadowStyle:{})},
     submitButtonText:{color:'#FFFFFF',fontSize:18,fontWeight:'bold'},
     centeredModalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
@@ -370,4 +377,5 @@ const getStyles = (colors, theme) => StyleSheet.create({
     modalButtonColumn: { width: '100%', marginTop: 8 },
     flightInputContainer: {flexDirection: 'row', alignItems: 'center'},
     infoIcon: {paddingLeft: 12, paddingVertical: 14},
+    signIcon: { width: 40, height: 40, textAlign: 'center' },
 });

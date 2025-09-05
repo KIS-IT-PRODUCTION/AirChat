@@ -592,8 +592,8 @@ export default function IndividualChatScreen() {
 // ✨ 5. ДОДАНО НОВІ СТИЛІ ДЛЯ ACTION SHEET
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10 },
+    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 0 },
+    headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10,},
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
     headerAvatar: { width: 40, height: 40, borderRadius: 20 },

@@ -1,9 +1,8 @@
 // App.js
 
 import 'react-native-gesture-handler';
-import './i18n'; 
+import './i18n';
 
-// ✨ 1. ДОДАНО ІМПОРТИ useRef та AppState
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -13,14 +12,14 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
 
-// --- Імпорти ---
 import { ThemeProvider, useTheme } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
-import { UnreadCountProvider } from './provider/Unread Count Context'; 
+import { UnreadCountProvider } from './provider/Unread Count Context';
 import { usePushNotifications } from './usePushNotifications.js';
-import { supabase } from './config/supabase'; // ✨ Потрібен імпорт supabase
+import { supabase } from './config/supabase';
+import { NewTripsProvider, useNewTrips } from './provider/NewTripsContext';
 
-// --- Екрани та навігатори (без змін) ---
+// --- Екрани та навігатори ---
 import HomeScreen from './app/HomeScreen';
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
@@ -32,11 +31,14 @@ import Settings from './app/Settings';
 import TransferDetailScreen from './app/TransferDetailScreen';
 import DriverRequestDetailScreen from './app/driver/DriverRequestDetailScreen';
 import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js';
+import Support from './app/SupportScreen.js';
+
 
 const Stack = createStackNavigator();
 const RootStack = createStackNavigator();
 const DriverStack = createStackNavigator();
 
+// --- Компоненти та навігатори ---
 function GuestAppStack({ isFirstLaunch }) {
   return (
     <Stack.Navigator initialRouteName={isFirstLaunch ? 'Onboarding' : 'HomeScreen'} screenOptions={{ headerShown: false }}>
@@ -60,14 +62,15 @@ function RootStackNavigator() {
 }
 function DriverStackNavigator() {
     return (
+      <NewTripsProvider>
         <DriverStack.Navigator screenOptions={{ headerShown: false }}>
             <DriverStack.Screen name="DriverMainTabs" component={DriverTabNavigator} />
             <DriverStack.Screen name="DriverRequest" component={DriverRequestDetailScreen} />
+            <DriverStack.Screen name="Support" component={Support} />
         </DriverStack.Navigator>
+      </NewTripsProvider>
     );
 }
-
-// --- Компоненти UI (без змін) ---
 const LoadingScreen = () => {
     const { colors } = useTheme();
     return (
@@ -99,12 +102,10 @@ function AppContent() {
   const { session, profile, isLoading } = useAuth();
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const { isInternetReachable } = useNetInfo();
-  
-  // ✨ 2. ПОВЕРНУЛИ ЛОГІКУ "HEARTBEAT" ДЛЯ ВІДСТЕЖЕННЯ СТАТУСУ
   const heartbeatTimeout = useRef(null);
-  
-  usePushNotifications(); 
-  
+
+  usePushNotifications();
+
   useEffect(() => {
     const checkOnboarding = async () => {
         const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
@@ -113,43 +114,52 @@ function AppContent() {
     checkOnboarding();
   }, []);
 
+  // ✨ КЛЮЧОВЕ ВИПРАВЛЕННЯ: Логіка Heartbeat тепер залежить від isLoading
   useEffect(() => {
-    // Функція, що оновлює час останньої активності в базі даних
+    // 🛑 Запускаємо Heartbeat тільки якщо:
+    // 1. Завантаження завершено (isLoading === false)
+    // 2. Користувач залогінений (є сесія та профіль)
+    if (isLoading || !session || !profile) {
+        // Якщо одна з умов не виконана, переконуємось, що таймер зупинено
+        if (heartbeatTimeout.current) {
+            clearInterval(heartbeatTimeout.current);
+            heartbeatTimeout.current = null;
+            console.log('[Heartbeat] Зупинено через відсутність сесії або завантаження.');
+        }
+        return; // Виходимо з ефекту
+    }
+
     const updateLastSeen = async () => {
-        if (session) {
+        // Додаткова перевірка, чи все ще є сесія
+        if (supabase.auth.getSession()) {
             console.log('[Heartbeat] Оновлення статусу активності...');
             const { error } = await supabase.rpc('update_last_seen');
-            if (error) console.error('[Heartbeat] Помилка RPC:', error);
+            if (error) console.error('[Heartbeat] Помилка RPC:', error.message);
         }
     };
 
-    // Обробник зміни стану додатку (активний / у фоні)
     const handleAppStateChange = (nextAppState) => {
-        if (heartbeatTimeout.current) clearTimeout(heartbeatTimeout.current);
+        if (heartbeatTimeout.current) clearInterval(heartbeatTimeout.current);
 
         if (nextAppState === 'active') {
-            updateLastSeen(); // Оновлюємо одразу при вході
-            // І запускаємо періодичне оновлення кожну хвилину
-            heartbeatTimeout.current = setInterval(updateLastSeen, 60000);
+            updateLastSeen(); // Оновлюємо одразу
+            heartbeatTimeout.current = setInterval(updateLastSeen, 60000); // І запускаємо таймер
         } else {
             console.log('[Heartbeat] Додаток неактивний. Зупинка оновлень.');
         }
     };
-    
-    // Створюємо підписку на зміну стану додатку
+
     const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
-    
-    // Запускаємо перевірку при першому завантаженні компонента
     handleAppStateChange('active');
 
-    // Функція очищення: відписуємось від слухача та чистимо таймер
     return () => {
         appStateSubscription.remove();
         if (heartbeatTimeout.current) {
             clearInterval(heartbeatTimeout.current);
         }
     };
-  }, [session]); // Цей ефект залежить від сесії
+  }, [isLoading, session, profile]); // ✨ Додано залежності isLoading та profile
+
 
   if (isLoading || isFirstLaunch === null) {
     return <LoadingScreen />;
@@ -170,13 +180,13 @@ function AppContent() {
 }
 
 export default function App() {
-  return ( 
+  return (
     <ThemeProvider>
         <AuthProvider>
             <UnreadCountProvider>
-              <AppContent />
+                <AppContent />
             </UnreadCountProvider>
-        </AuthProvider> 
+        </AuthProvider>
     </ThemeProvider>
   );
 }

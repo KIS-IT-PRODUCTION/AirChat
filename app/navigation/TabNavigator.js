@@ -87,8 +87,8 @@ export default function TabNavigator() {
           } else if (route.name === 'TransfersTab') {
             iconName = 'airplane';
           } else if (route.name === 'MessagesTab') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'ProfileTab') {
+    iconName = focused ? 'chatbox' : 'chatbox-outline';
+} if (route.name === 'ProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -109,7 +109,7 @@ export default function TabNavigator() {
         name="MessagesTab" 
         component={MessagesStack}
         options={{ 
-          title: t('tabs.messages', 'Повідомлення'), 
+          title: t('tabs.messages', 'Чат'), 
           // Динамічно показуємо лічильник
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
         }}

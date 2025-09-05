@@ -8,8 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
 import 'moment/locale/uk';
 import Logo from '../assets/icon.svg';
-
-// ✨ ПЕРЕВІРТЕ ШЛЯХ: Переконайтесь, що шлях до файлів правильний.
 import IndividualTransferIcon from '../assets/induvidual.svg'; 
 import GroupTransferIcon from '../assets/group.svg';
 
@@ -37,14 +35,15 @@ const TransferRequestCard = ({ item, onPress }) => {
         ? { uri: getResizedAvatarUrl(item.passenger_avatar_url) } 
         : require('../assets/default-avatar.png');
 
-    // ✨ 1. ЛОГІКА ДЛЯ ІКОНОК МАРШРУТУ
-    // Припускаємо, що значення 'from_airport' і 'to_airport'. Перевірте їх у вашій БД.
     const airportIcon = <Ionicons name="airplane-outline" size={24} color={colors.secondaryText} />;
     const locationIcon = <Ionicons name="business-outline" size={24} color={colors.secondaryText} />;
-
     const startIcon = item.direction === 'from_airport' ? airportIcon : locationIcon;
     const endIcon = item.direction === 'to_airport' ? airportIcon : locationIcon;
     
+    const truncatedComment = item.passenger_comment && item.passenger_comment.length > 20
+        ? `${item.passenger_comment.substring(0, 20)}...`
+        : item.passenger_comment;
+
     return (
         <TouchableOpacity style={[styles.card, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
             <View style={styles.cardTop}>
@@ -53,49 +52,34 @@ const TransferRequestCard = ({ item, onPress }) => {
                     <View style={styles.nameAndTypeContainer}>
                         <Text style={styles.passengerName} numberOfLines={1}>{getShortName(item.passenger_name)}</Text>
                         <View style={styles.transferIconContainer}>
-                            {/* Умова для відображення іконок */}
                             {item.transfer_type === 'individual' && <IndividualTransferIcon width={48} height={48} />}
                             {item.transfer_type === 'group' && <GroupTransferIcon width={48} height={48} />}
                         </View>
                     </View>
                     <View style={styles.detailsGrid}>
-                        <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="calendar-outline" size={14} /> {t('driverHome.date')}</Text>
-                            <Text style={styles.detailValue}>{moment(item.transfer_datetime).format('DD.MM')}</Text>
-                        </View>
-                        <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="time-outline" size={14} /> {t('driverHome.time')}</Text>
-                            <Text style={styles.detailValue}>{moment(item.transfer_datetime).format('HH:mm')}</Text>
-                        </View>
-                        <View style={styles.detailItem}>
-                            <Text style={styles.detailLabel}><Ionicons name="people-outline" size={14} /> {t('driverHome.people')}</Text>
-                            <Text style={styles.detailValue}>{item.total_passengers}</Text>
-                        </View>
+                        <View style={styles.detailItem}><Text style={styles.detailLabel}><Ionicons name="calendar-outline" size={14} /> {t('driverHome.date')}</Text><Text style={styles.detailValue}>{moment(item.transfer_datetime).format('DD.MM')}</Text></View>
+                        <View style={styles.detailItem}><Text style={styles.detailLabel}><Ionicons name="time-outline" size={14} /> {t('driverHome.time')}</Text><Text style={styles.detailValue}>{moment(item.transfer_datetime).format('HH:mm')}</Text></View>
+                        <View style={styles.detailItem}><Text style={styles.detailLabel}><Ionicons name="people-outline" size={14} /> {t('driverHome.people')}</Text><Text style={styles.detailValue}>{item.total_passengers}</Text></View>
                     </View>
                 </View>
             </View>
-            <View style={styles.dividerContainer}>
-                <View style={styles.dividerDot} />
-                <View style={[styles.dividerLine, { borderColor: colors.border }]} />
-                <View style={styles.dividerDot} />
-            </View>
-            {/* ✨ 2. ОНОВЛЕНИЙ БЛОК МАРШРУТУ З ІКОНКАМИ */}
+            <View style={styles.dividerContainer}><View style={styles.dividerDot} /><View style={[styles.dividerLine, { borderColor: colors.border }]} /><View style={styles.dividerDot} /></View>
             <View style={styles.routeContainer}>
-                <View style={styles.locationRow}>
-                    {startIcon}
-                    <Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text>
-                </View>
+                <View style={styles.locationRow}>{startIcon}<Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text></View>
                 <View style={[styles.routeDottedLine, { borderColor: colors.secondaryText }]} />
-                <View style={styles.locationRow}>
-                    {endIcon}
-                    <Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text>
-                </View>
+                <View style={styles.locationRow}>{endIcon}<Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text></View>
             </View>
+            
+            {item.passenger_comment && (
+                <View style={styles.commentContainer}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.secondaryText} style={styles.commentIcon} />
+                    <Text style={styles.commentText} numberOfLines={1}>"{truncatedComment}"</Text>
+                </View>
+            )}
         </TouchableOpacity>
     );
 };
 
-// ... (решта коду DriverHomeScreen залишається без змін)
 export default function DriverHomeScreen() {
   const { colors, theme } = useTheme();
   const { t, i18n } = useTranslation();
@@ -138,6 +122,7 @@ export default function DriverHomeScreen() {
   }, [fetchRequests, fetchNewRequestsCount]);
 
   useFocusEffect(useCallback(() => {
+    setLoading(true);
     Promise.all([fetchRequests(), fetchNewRequestsCount()]).finally(() => setLoading(false));
   }, [fetchRequests, fetchNewRequestsCount]));
 
@@ -207,7 +192,7 @@ export default function DriverHomeScreen() {
             </View>
         )}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
         ListEmptyComponent={<View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View>}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       />
@@ -215,7 +200,6 @@ export default function DriverHomeScreen() {
   );
 }
 
-// ✨ 3. ОНОВЛЕНІ СТИЛІ
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -293,7 +277,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
     dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 , justifyContent: 'center' },
     dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-    routeContainer: { /* Видалено paddingLeft для кращого вирівнювання іконок */ },
+    routeContainer: {},
     locationRow: { 
         flexDirection: 'row', 
         alignItems: 'center',
@@ -301,17 +285,33 @@ const getStyles = (colors, theme) => StyleSheet.create({
     locationText: { 
         color: colors.text, 
         fontSize: 16, 
-        marginLeft: 12, // Змінено відступ для іконки
+        marginLeft: 12,
         fontWeight: '500',
-        flex: 1, // Дозволяє тексту займати весь доступний простір
+        flex: 1,
     },
     routeDottedLine: { 
         height: 20, 
         width: 1, 
         borderLeftWidth: 1, 
         borderStyle: 'dashed', 
-        marginLeft: 11, // Вирівнювання по центру іконки (24/2 - 1)
+        marginLeft: 11,
         marginVertical: 4 
     },
-    // Старі стилі routeCircle, startCircle, endCircle видалені, бо вони більше не потрібні
+    commentContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderColor: colors.border,
+    },
+    commentIcon: {
+        marginRight: 8,
+    },
+    commentText: {
+        color: colors.secondaryText,
+        fontSize: 14,
+        fontStyle: 'italic',
+        flex: 1,
+    },
 });

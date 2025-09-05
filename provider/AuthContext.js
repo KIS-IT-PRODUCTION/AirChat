@@ -12,14 +12,13 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
-    // ✨ 1. ЄДИНИЙ ІНДИКАТОР ЗАВАНТАЖЕННЯ:
-    // Цей стан тепер керує всім початковим завантаженням.
-    // Він буде `false` тільки тоді, коли ми точно знаємо, чи є юзер і який у нього профіль.
+    // ✨ ЄДИНИЙ ІНДИКАТОР ЗАВАНТАЖЕННЯ:
+    // Цей стан керує всім початковим завантаженням.
+    // Він стане `false` тільки тоді, коли ми точно знаємо, чи є юзер і який у нього профіль.
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         // Отримуємо початкову сесію, щоб прискорити завантаження.
-        // Це важливо для "пробудження" Supabase після довгої неактивності.
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
         });
@@ -29,7 +28,7 @@ export const AuthProvider = ({ children }) => {
                 console.log(`[AUTH] Подія: ${event}`);
                 setSession(session);
 
-                // ✨ 2. ЦЕНТРАЛІЗОВАНЕ ЗАВАНТАЖЕННЯ ПРОФІЛЮ:
+                // ✨ ЦЕНТРАЛІЗОВАНЕ ЗАВАНТАЖЕННЯ ПРОФІЛЮ:
                 // Якщо сесія є, ми одразу ж завантажуємо профіль тут.
                 if (session?.user) {
                     try {
@@ -40,7 +39,7 @@ export const AuthProvider = ({ children }) => {
                             .single();
 
                         if (error && status !== 406) throw error;
-                        
+                         
                         setProfile(data || null);
 
                     } catch (error) {
@@ -51,8 +50,8 @@ export const AuthProvider = ({ children }) => {
                     // Якщо сесії немає, профілю теж немає.
                     setProfile(null);
                 }
-                
-                // ✨ 3. ГАРАНТОВАНЕ ВИМКНЕННЯ ЗАВАНТАЖЕННЯ:
+                 
+                // ✨ ГАРАНТОВАНЕ ВИМКНЕННЯ ЗАВАНТАЖЕННЯ:
                 // Індикатор завантаження вимикається в самому кінці, коли всі перевірки завершено.
                 // Це вирішує проблему "вічного завантаження".
                 setIsLoading(false);
@@ -61,8 +60,7 @@ export const AuthProvider = ({ children }) => {
 
         return () => subscription.unsubscribe();
     }, []);
-    
-    // Функції signIn, signUp, signOut залишаються без змін
+     
     const signIn = async ({ email, password }) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         return { data, error };
@@ -84,7 +82,7 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         session,
-        profile, // ✨ 4. Надаємо профіль усьому додатку
+        profile,
         isLoading,
         signIn,
         signUp,

@@ -1,6 +1,7 @@
-// app/ProfileScreen.js
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+// ✨ 1. Імпортуємо покращений компонент Image з expo-image
+import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
@@ -10,7 +11,6 @@ import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
 
-// ✨ Новий компонент для статистики
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
@@ -88,15 +88,18 @@ export default function ProfileScreen() {
         </View>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.profileCard}>
+          {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
           <Image 
             source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
             style={styles.avatar} 
+            contentFit="cover"
+            transition={300}
+            cachePolicy="disk" // Вмикає кешування на диску
           />
           <Text style={styles.fullName}>{profile.full_name || t('profile.noName')}</Text>
           <Text style={styles.phone}>{profile.phone || t('profile.noPhone')}</Text>
         </View>
 
-        {/* ✨ Новий блок статистики */}
         <View style={styles.statsContainer}>
             <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
             <StatCard icon="file-tray-full-outline" value={profile.ads_count || 0} label={t('profile.adsCount')} colors={colors} />
@@ -119,6 +122,7 @@ export default function ProfileScreen() {
   );
 }
 
+// Стилі залишаються без змін
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContainer: { padding: 16, paddingBottom: 40 },

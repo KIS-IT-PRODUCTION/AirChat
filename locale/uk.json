@@ -11,12 +11,13 @@
     "dateLabel": "Дата",
     "timeLabel": "Час",
     "passengersLabel": "Пасажири",
-    "individualTransfer": "Індивідуальний трансфер",
+    "individualTransfer": "Індивід. трансфер",
     "groupTransfer": "Груповий трансфер",
     "travelingWithPet": "Подорожую з твариною",
     "petSubtext": "(кішка, собака тощо)",
     "orderButton": "Замовити трансфер",
     "flightInfoTitle": "Номер рейсу (за бажанням)",
+     "flightNumberPlaceholder":"Номер рейсу (за бажанням)",
     "flightInfoMessage": "Введіть номер вашого рейсу, наприклад, PS352 або W6123. Це допоможе водієві відстежувати вашу заявку.",
     "error": {
       "fillFields": "Будь ласка, заповніть поля \"Звідки\" та \"Куди\".",
@@ -24,7 +25,7 @@
       "flightNumberRequired": "Будь ласка, введіть номер рейсу."
     }
   },
-  
+ 
    "addCommentModal": {
     "title": "Додати побажання",
     "subtitle": "Напишіть важливу інформацію для водія: дитяче крісло, великий багаж чи інші деталі.",
@@ -86,10 +87,12 @@
      "inApp": "В додатку",
   "year_one": "рік",
   "year_few": "роки",
-  "year_many": "років",
+  "year": "років",
   "month_one": "місяць",
   "month_few": "місяці",
-  "month_many": "місяців"
+  "month_many": "місяців",
+      "shareMessage": "Переглянь профіль водія {{driverName}} в додатку {{appName}}: {{link}}"
+
   },
   "settings": {
     "title": "Налаштування",

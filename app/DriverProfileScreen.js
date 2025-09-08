@@ -10,25 +10,18 @@ import Logo from '../assets/icon.svg';
 import moment from 'moment';
 
 // Компонент для статистики
-const StatCard = ({ icon, value, label, children, colors }) => {
+const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
         <View style={styles.statItem}>
             <Ionicons name={icon} size={28} color={colors.primary} />
-            {children || <Text style={styles.statValue}>{value}</Text>}
+            <Text style={styles.statValue}>{value}</Text>
             <Text style={styles.statLabel}>{label}</Text>
         </View>
     );
 };
 
-// Компонент для зіркового рейтингу
-const StarRating = ({ rating }) => {
-  let stars = [];
-  for (let i = 1; i <= 5; i++) {
-    stars.push(<Ionicons key={i} name={i <= rating ? 'star' : 'star-outline'} size={18} color="#FFC107" />);
-  }
-  return <View style={{ flexDirection: 'row' }}>{stars}</View>;
-};
+// ✨ Компонент для зіркового рейтингу більше не потрібен, його можна видалити
 
 export default function DriverProfileScreen() {
   const { colors } = useTheme();
@@ -108,13 +101,14 @@ export default function DriverProfileScreen() {
             </View>
         </View>
 
+        {/* ✨ ОНОВЛЕНИЙ БЛОК СТАТИСТИКИ */}
         <View style={styles.statsContainer}>
-            <StatCard icon="star-outline" label={t('profile.rating')} colors={colors}>
-                <View style={styles.ratingContainer}>
-                    <StarRating rating={profile.rating} />
-                    <Text style={styles.ratingValue}>({profile.rating?.toFixed(1)})</Text>
-                </View>
-            </StatCard>
+            <StatCard 
+                icon="id-card-outline" 
+                value={profile.experience_years ? `${profile.experience_years} ${t('profile.year', { count: profile.experience_years })}` : `0 ${t('profile.years')}`}
+                label={t('profile.experience', 'Досвід водіння')} 
+                colors={colors} 
+            />
             <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
             <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
         </View>
@@ -194,16 +188,6 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 12,
         marginTop: 4,
         textAlign: 'center',
-    },
-    ratingContainer: {
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    ratingValue: {
-        color: colors.text,
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginTop: 4,
     },
     settingsButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 24, gap: 8 },
     settingsButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },

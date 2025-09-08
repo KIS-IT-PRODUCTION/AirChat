@@ -8,7 +8,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage, // Use AsyncStorage for session persistence
+    storage: AsyncStorage, 
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

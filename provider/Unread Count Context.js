@@ -12,7 +12,6 @@ export const UnreadCountProvider = ({ children }) => {
   // ✨ 2. Створюємо єдину функцію для оновлення стану та бейджа
   const updateCountAndBadge = useCallback(async (count) => {
     setUnreadCount(count);
-    await Notifications.setBadgeCountAsync(count);
     console.log(`[BADGE_SYNC] Встановлено бейдж на іконці: ${count}`);
   }, []);
 

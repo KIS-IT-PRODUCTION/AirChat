@@ -1,12 +1,13 @@
-// app/navigation/TabNavigator.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { getFocusedRouteNameFromRoute, useFocusEffect } from '@react-navigation/native';
-import { supabase } from '../../config/supabase';
-import { useAuth } from '../../provider/AuthContext';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+
+// ✨ Імпортуємо хуки з наших глобальних контекстів
+import { useUnreadCount } from '../../provider/Unread Count Context';
+import { useNewOffers } from '../../provider/NewOffersContext';
 
 // Імпортуємо екрани та стеки
 import HomeScreen from '../HomeScreen';
@@ -21,48 +22,10 @@ const Tab = createBottomTabNavigator();
 export default function TabNavigator() {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { session } = useAuth(); // Отримуємо сесію, яка тепер гарантовано надійна
-
-  const [unreadCount, setUnreadCount] = useState(0); // Стан для лічильника
-
-  // Функція для завантаження кількості непрочитаних повідомлень
-  const fetchUnreadCount = useCallback(async () => {
-    if (!session) return; // Запобігаємо виклику, якщо сесія не встановлена
-    try {
-      const { data, error } = await supabase.rpc('get_total_unread_count');
-      if (error) throw error;
-      setUnreadCount(data);
-    } catch (error) {
-      console.error("Error fetching unread count:", error.message);
-    }
-  }, [session]);
-
-  // Оновлюємо лічильник, коли екран стає активним
-  useFocusEffect(
-    useCallback(() => {
-      fetchUnreadCount();
-    }, [fetchUnreadCount])
-  );
-
-  // Підписуємось на зміни в таблиці повідомлень в реальному часі
-  useEffect(() => {
-    if (!session) return; // Запобігаємо підписці, якщо сесія не встановлена
-
-    const channel = supabase
-      .channel('public:messages:tab_navigator')
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'messages' },
-          () => {
-            // Коли будь-яке повідомлення змінюється, перезавантажуємо лічильник
-            fetchUnreadCount();
-          }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session, fetchUnreadCount]);
+  
+  // ✨ Отримуємо лічильники з глобальних контекстів
+  const { unreadCount } = useUnreadCount();
+  const { newOffersCount } = useNewOffers();
 
   return (
     <Tab.Navigator
@@ -85,10 +48,10 @@ export default function TabNavigator() {
           if (route.name === 'HomeTab') {
             return focused ? <Home2 width={size} height={size} fill={color} /> : <Home width={size} height={size} fill={color} />;
           } else if (route.name === 'TransfersTab') {
-            iconName = 'airplane';
+            iconName = focused ? 'airplane' : 'airplane-outline';
           } else if (route.name === 'MessagesTab') {
-    iconName = focused ? 'chatbox' : 'chatbox-outline';
-} if (route.name === 'ProfileTab') {
+            iconName = focused ? 'chatbox' : 'chatbox-outline';
+          } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -103,14 +66,19 @@ export default function TabNavigator() {
       <Tab.Screen 
         name="TransfersTab" 
         component={TransfersScreen} 
-        options={{ title: t('tabs.transfers', 'Трансфери') }}
+        options={{ 
+          title: t('tabs.transfers', 'Трансфери'),
+          // ✨ Динамічно показуємо лічильник нових пропозицій
+          tabBarBadge: newOffersCount > 0 ? newOffersCount : null,
+          tabBarBadgeStyle: { backgroundColor: '#FFA000' } // Можна задати інший колір
+        }}
       />
       <Tab.Screen 
         name="MessagesTab" 
         component={MessagesStack}
         options={{ 
           title: t('tabs.messages', 'Чат'), 
-          // Динамічно показуємо лічильник
+          // Динамічно показуємо лічильник непрочитаних повідомлень
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
         }}
       />      

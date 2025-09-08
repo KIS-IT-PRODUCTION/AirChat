@@ -27,6 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>airchat</string>
           <string>com.airchat.app</string>
         </array>
       </dict>

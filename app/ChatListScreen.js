@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Image, Platform, Alert, Animated } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Platform, Alert, Animated } from 'react-native';
+// ✨ 1. Імпортуємо покращений компонент Image з expo-image
+import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native'; // useFocusEffect більше не потрібен
 import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
@@ -70,9 +72,13 @@ const ChatListItem = React.memo(({ item, index, currentUserId, onDelete }) => {
                     })}
                 >
                     <View style={styles.avatarContainer}>
+                        {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
                         <Image
                             source={item.other_participant_avatar ? { uri: item.other_participant_avatar } : require('../assets/default-avatar.png')}
                             style={styles.avatar}
+                            contentFit="cover"
+                            transition={300}
+                            cachePolicy="disk" // Вмикає кешування на диску
                         />
                         {isOnline && <View style={styles.onlineIndicator} />}
                     </View>
@@ -120,6 +126,7 @@ export default function ChatListScreen() {
 
     const fetchChats = useCallback(async () => {
         if (!session) { setLoading(false); return; }
+        // Не встановлюємо loading(true) тут, щоб уникнути блимання при оновленні
         try {
             const { data, error } = await supabase.rpc('get_my_chats');
             if (error) throw error;
@@ -127,47 +134,43 @@ export default function ChatListScreen() {
         } catch (error) {
             console.error("Error fetching chats:", error.message);
         } finally {
-            setLoading(false);
+            setLoading(false); // Вимикаємо завантаження в будь-якому випадку
         }
     }, [session]);
 
-    useFocusEffect(
-        useCallback(() => {
-            setLoading(true);
+    // ✨ 3. Замінюємо useFocusEffect на useEffect для одноразового завантаження
+    useEffect(() => {
+        // Завантажуємо чати тільки якщо є сесія
+        if (session) {
             fetchChats();
-        }, [fetchChats])
-    );
-
-    // ✨ 1. НОВА ФУНКЦІЯ ДЛЯ МИТТЄВОГО ОНОВЛЕННЯ СПИСКУ
+        } else {
+            // Якщо сесії немає (наприклад, користувач вийшов), очищуємо список
+            setChats([]);
+            setLoading(false);
+        }
+    }, [session, fetchChats]);
+    
     const handleRealtimeUpdate = useCallback((payload) => {
         const newMessage = payload.new;
         
         setChats(currentChats => {
             const chatIndex = currentChats.findIndex(c => c.room_id === newMessage.room_id);
             
-            // Якщо чат вже є у списку
             if (chatIndex > -1) {
                 const existingChat = { ...currentChats[chatIndex] };
-
-                // Оновлюємо дані чату
                 existingChat.last_message = newMessage.content || (newMessage.image_url ? t('chat.sentAnImage') : t('chat.sentLocation'));
                 existingChat.last_message_time = newMessage.created_at;
                 existingChat.last_message_sender_id = newMessage.sender_id;
-                existingChat.last_message_status = 'sent'; // Скидаємо статус, бо він буде оновлений в чаті
-
-                // Оновлюємо лічильник, якщо повідомлення не від нас
+                existingChat.last_message_status = 'sent';
                 if (newMessage.sender_id !== session.user.id) {
                     existingChat.unread_count = (existingChat.unread_count || 0) + 1;
                 }
-
-                // Видаляємо старий чат і додаємо оновлений на початок списку
                 const filteredChats = currentChats.filter(c => c.room_id !== newMessage.room_id);
                 return [existingChat, ...filteredChats];
             } else {
-                 // Якщо це абсолютно новий чат, робимо повне оновлення, щоб отримати дані співрозмовника
                 console.log("New chat detected, fetching full list.");
                 fetchChats();
-                return currentChats; // Повертаємо поточний стан, поки йде повне завантаження
+                return currentChats;
             }
         });
     }, [session?.user?.id, t, fetchChats]);
@@ -176,12 +179,9 @@ export default function ChatListScreen() {
     useEffect(() => {
         if (!session) return;
         
-        // ✨ 2. ОНОВЛЕНА ПІДПИСКА, ЯКА ВИКОРИСТОВУЄ НОВУ ФУНКЦІЮ
         const subscription = supabase
             .channel('public:chat_list_updates')
-            // Миттєво оновлюємо список тільки при отриманні НОВОГО повідомлення
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleRealtimeUpdate)
-             // Для інших подій (видалення чату) можна залишити повне оновлення
             .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, fetchChats)
             .subscribe();
 
@@ -219,7 +219,7 @@ export default function ChatListScreen() {
                 <View style={styles.header}><Text style={styles.title}>{t('chatList.title', 'Повідомлення')}</Text><Logo width={40} height={40} /></View>
                 <FlatList
                     data={Array.from({ length: 7 })}
-                    renderItem={({ item }) => <SkeletonChatItem key={item} />}
+                    renderItem={({ item, index }) => <SkeletonChatItem key={index} />}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                 />
             </SafeAreaView>
@@ -250,6 +250,7 @@ export default function ChatListScreen() {
     );
 }
 
+// --- (Стилі залишаються без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },

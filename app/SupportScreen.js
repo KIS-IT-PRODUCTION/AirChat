@@ -27,11 +27,6 @@ const SupportIllustration = ({ colors }) => (
                 d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm0 2v.51l8 5 8-5V6H4zm0 12h16V8.51l-8 5-8-5V18z" 
                 fill={colors.primary}
             />
-            <Path 
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" 
-                fill={colors.secondaryText}
-                transform="translate(10, -5) scale(0.5)"
-            />
         </Svg>
     </View>
 );

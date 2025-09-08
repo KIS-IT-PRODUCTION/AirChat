@@ -127,16 +127,25 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } catch (error) { console.error("Error fetching route:", error); }
   };
   
-  const handleSubmitOffer = async () => {
+   const handleSubmitOffer = async () => {
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
         Alert.alert(t('common.error'), t('driverOffer.priceRequired', 'Будь ласка, вкажіть коректну ціну.'));
         return;
     }
     setIsSubmitting(true);
     try {
-        const offerData = { transfer_id: transferId, driver_id: session.user.id, price: parseFloat(price), driver_comment: comment, currency: currency };
-        const { error } = await supabase.from('transfer_offers').insert([offerData]);
+        const { error } = await supabase.functions.invoke('submit-offer-and-notify', {
+            body: {
+                transfer_id: transferId,
+                driver_id: session.user.id,
+                price: parseFloat(price),
+                driver_comment: comment,
+                currency: currency
+            }
+        });
+
         if (error) throw error;
+
         Alert.alert(t('common.success'), t('driverOffer.offerSent', 'Вашу пропозицію надіслано пасажиру!'));
         fetchData();
     } catch (error) {

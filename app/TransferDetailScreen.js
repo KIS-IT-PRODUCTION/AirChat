@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+// ✨ 1. Імпортуємо покращений компонент Image з expo-image
+import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -11,7 +13,7 @@ import Logo from '../assets/icon.svg';
 import { useNavigation } from '@react-navigation/native';
 
 // --- Допоміжні компоненти ---
-const InfoRow = ({ icon, label, value, colors }) => {
+const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
   return (
@@ -19,7 +21,7 @@ const InfoRow = ({ icon, label, value, colors }) => {
       <Ionicons name={icon} size={24} color={colors.secondaryText} style={styles.infoRowIcon} />
       <View>
         <Text style={styles.infoRowLabel}>{label}</Text>
-        <Text style={styles.infoRowValue}>{value}</Text>
+        <Text style={[styles.infoRowValue, valueStyle]}>{value}</Text>
       </View>
     </View>
   );
@@ -30,7 +32,8 @@ const DriverOfferCard = ({ offer, onAccept, isAccepting }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
     const navigation = useNavigation();
-    const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
+    // ✨ 2. Виправлено відображення валюти. Тепер 'UAH' - це запасний варіант, якщо валюта ВЗАГАЛІ відсутня.
+    const displayPrice = `${offer.price} ${offer.currency || t('common.currency_uah', 'UAH')}`;
 
     return(
         <View style={styles.driverCard}>
@@ -41,7 +44,14 @@ const DriverOfferCard = ({ offer, onAccept, isAccepting }) => {
                     driverName: offer.driver_name 
                 })}
             >
-                <Image source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../assets/default-avatar.png')} style={styles.driverAvatar} />
+                {/* ✨ 3. Замінено стандартний Image на новий з кешуванням */}
+                <Image 
+                    source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../assets/default-avatar.png')} 
+                    style={styles.driverAvatar}
+                    contentFit="cover"
+                    transition={300}
+                    cachePolicy="disk"
+                />
                 <View style={styles.driverInfo}>
                     <Text style={styles.driverName}>{offer.driver_name}</Text>
                     <Text style={styles.driverCarText}>{offer.car_make} {offer.car_model}</Text>
@@ -66,7 +76,14 @@ const ConfirmedDriverCard = ({ driver, onChangeDriver }) => {
     return (
         <View style={[styles.driverCard, styles.confirmedDriverCard]}>
             <View style={styles.driverCardHeader}>
-                <Image source={driver.driver_avatar_url ? { uri: driver.driver_avatar_url } : require('../assets/default-avatar.png')} style={styles.driverAvatar} />
+                {/* ✨ 4. Замінено стандартний Image на новий з кешуванням */}
+                <Image 
+                    source={driver.driver_avatar_url ? { uri: driver.driver_avatar_url } : require('../assets/default-avatar.png')} 
+                    style={styles.driverAvatar} 
+                    contentFit="cover"
+                    transition={300}
+                    cachePolicy="disk"
+                />
                 <View style={styles.driverInfo}>
                     <Text style={styles.driverName}>{driver.driver_name}</Text>
                     <Text style={styles.driverCarText}>{driver.car_make} {driver.car_model}</Text>
@@ -95,7 +112,7 @@ export default function TransferDetailScreen({ navigation, route }) {
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
   
-  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; 
 
   useEffect(() => {
     if (routeCoordinates.length > 1 && mapViewRef.current) {
@@ -116,62 +133,35 @@ export default function TransferDetailScreen({ navigation, route }) {
       
       if (data) {
         setTransferData(data);
-
         if (data.status === 'pending' || data.status === 'accepted') {
             const { data: offersData, error: offersError } = await supabase.rpc('get_transfer_offers', { p_transfer_id: transferId });
             if (offersError) throw offersError;
             setOffers(offersData || []);
         }
-
         if (data.status === 'pending') {
             await supabase.rpc('mark_offers_as_read', { p_transfer_id: transferId });
         }
-        
         fetchRoute(data.from_location, data.to_location);
       }
     } catch (error) { Alert.alert(t('common.error'), error.message); } 
     finally { setLoading(false); }
-  }, [transferId, t]);
+  }, [transferId, t, i18n.language]); // Додано мову в залежності для оновлення маршруту
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleAcceptOffer = async (offer) => {
       setIsAccepting(true);
       try {
-          const { error } = await supabase.functions.invoke('accept-offer-and-notify', {
-              body: {
-                  offer_id: offer.offer_id,
-                  transfer_id: transferId,
-                  driver_id: offer.driver_id,
-              }
-          });
+          const { error } = await supabase.functions.invoke('accept-offer-and-notify', { body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } });
           if (error) throw error;
-          
-          Alert.alert(t('common.success'), t('transferDetail.driverConfirmed', 'Водія підтверджено! Сповіщення надіслано.'));
+          Alert.alert(t('common.success'), t('transferDetail.driverConfirmed'));
           fetchData();
-          
-      } catch (error) {
-          Alert.alert(t('common.error'), error.message);
-      } finally {
-          setIsAccepting(false);
-      }
+      } catch (error) { Alert.alert(t('common.error'), error.message); } 
+      finally { setIsAccepting(false); }
   };
 
   const handleChangeDriver = async () => {
-      Alert.alert(
-          t('transferDetail.changeDriverConfirmTitle', 'Змінити водія?'),
-          t('transferDetail.changeDriverConfirmText', 'Ваша поїздка знову стане доступною для пропозицій.'),
-          [
-              { text: t('common.cancel'), style: 'cancel' },
-              { text: t('common.confirm'), style: 'destructive', onPress: async () => {
-                  try {
-                      const { error } = await supabase.rpc('reset_transfer_to_pending', { p_transfer_id: transferId });
-                      if (error) throw error;
-                      fetchData();
-                  } catch (error) { Alert.alert(t('common.error'), error.message); }
-              }}
-          ]
-      );
+      Alert.alert( t('transferDetail.changeDriverConfirmTitle'), t('transferDetail.changeDriverConfirmText'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: async () => { try { const { error } = await supabase.rpc('reset_transfer_to_pending', { p_transfer_id: transferId }); if (error) throw error; fetchData(); } catch (error) { Alert.alert(t('common.error'), error.message); } } } ]);
   };
 
   const fetchRoute = async (origin, destination) => {
@@ -185,22 +175,16 @@ export default function TransferDetailScreen({ navigation, route }) {
         const coords = points.map(point => ({ latitude: point[0], longitude: point[1] }));
         setRouteCoordinates(coords);
         if (route.legs?.length > 0) { setRouteInfo({ distance: route.legs[0].distance.text, duration: route.legs[0].duration.text }); }
-      } else {
-        console.warn('Маршрут не знайдено:', json.status);
-      }
+      } else { console.warn('Route not found:', json.status); }
     } catch (error) { console.error("Error fetching route:", error); }
   };
 
-  const handleCancelTransfer = async () => { Alert.alert(t('transferDetail.cancelConfirmTitle', 'Скасувати заявку?'), t('transferDetail.cancelConfirmText', 'Цю дію не можна буде повернути.'), [{ text: t('common.no'), style: 'cancel' }, { text: t('common.yes'), style: 'destructive', onPress: async () => { try { const { error } = await supabase.from('transfers').update({ status: 'cancelled' }).eq('id', transferId); if (error) throw error; Alert.alert(t('common.success'), t('transferDetail.cancelledSuccess')); navigation.goBack(); } catch (error) { Alert.alert(t('common.error'), error.message); } } }]); };
+  const handleCancelTransfer = async () => { Alert.alert(t('transferDetail.cancelConfirmTitle'), t('transferDetail.cancelConfirmText'), [{ text: t('common.no'), style: 'cancel' }, { text: t('common.yes'), style: 'destructive', onPress: async () => { try { const { error } = await supabase.from('transfers').update({ status: 'cancelled' }).eq('id', transferId); if (error) throw error; Alert.alert(t('common.success'), t('transferDetail.cancelledSuccess')); navigation.goBack(); } catch (error) { Alert.alert(t('common.error'), error.message); } } }]); };
 
   if (loading) {
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-                <Text style={styles.title}>{t('transferDetail.title', 'Деталі заявки')}</Text>
-                <Logo width={40} height={40} />
-            </View>
+            <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
             <View style={styles.centeredContainer}><ActivityIndicator size="large" color={colors.primary} /></View>
         </SafeAreaView>
     );
@@ -209,36 +193,30 @@ export default function TransferDetailScreen({ navigation, route }) {
   if (!transferData) {
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-                <Text style={styles.title}>{t('transferDetail.title', 'Деталі заявки')}</Text>
-                <Logo width={40} height={40} />
-            </View>
-            <View style={styles.centeredContainer}>
-                <Text style={styles.sectionTitle}>{t('transferDetail.notFound', 'Заявку не знайдено.')}</Text>
-            </View>
+            <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
+            <View style={styles.centeredContainer}><Text style={styles.sectionTitle}>{t('transferDetail.notFound')}</Text></View>
         </SafeAreaView>
     );
   }
+  
+  const finalPrice = transferData.accepted_driver_details?.price;
+  const finalCurrency = transferData.accepted_driver_details?.currency;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-          <Text style={styles.title}>{t('transferDetail.title', 'Деталі заявки')}</Text>
-          <Logo width={40} height={40} />
-      </View>
-
-      {(transferData?.status === 'completed' || transferData?.status === 'cancelled') && (
-          <View style={[styles.statusBanner, transferData.status === 'completed' ? styles.completedBanner : styles.cancelledBanner]}>
-              <Ionicons name={transferData.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'} size={24} color={transferData.status === 'completed' ? '#2E7D32' : '#D32F2F'} />
-              <Text style={[styles.statusBannerText, transferData.status === 'completed' ? styles.completedBannerText : styles.cancelledBannerText]}>{t(`transferDetail.${transferData.status}`)}</Text>
-          </View>
-      )}
+      <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
+      {(transferData?.status === 'completed' || transferData?.status === 'cancelled') && (<View style={[styles.statusBanner, transferData.status === 'completed' ? styles.completedBanner : styles.cancelledBanner]}><Ionicons name={transferData.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'} size={24} color={transferData.status === 'completed' ? '#2E7D32' : '#D32F2F'} /><Text style={[styles.statusBannerText, transferData.status === 'completed' ? styles.completedBannerText : styles.cancelledBannerText]}>{t(`transferDetail.${transferData.status}`)}</Text></View>)}
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.userInfoSection}>
-            <Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../assets/default-avatar.png')} style={styles.userAvatar} />
+            {/* ✨ 5. Замінено стандартний Image на новий з кешуванням */}
+            <Image 
+                source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../assets/default-avatar.png')} 
+                style={styles.userAvatar}
+                contentFit="cover"
+                transition={300}
+                cachePolicy="disk"
+            />
             <Text style={styles.userName}>{transferData?.passenger_name}</Text>
         </View>
 
@@ -249,75 +227,43 @@ export default function TransferDetailScreen({ navigation, route }) {
         </View>
 
         <View style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle', 'Деталі поїздки')}</Text>
-            <View style={styles.detailsGrid}>
-                <View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('D MMM')}</Text></View>
-                <View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('HH:mm')}</Text></View>
-            </View>
+            <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text>
+            <View style={styles.detailsGrid}><View style={styles.detailItem}><Ionicons name="calendar-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('D MMM')}</Text></View><View style={styles.detailItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText}/><Text style={styles.detailValue}>{moment(transferData?.transfer_datetime).format('HH:mm')}</Text></View></View>
             <View style={styles.divider} />
-
-            <InfoRow icon="people-outline" label={t('passengers.adults', 'Дорослі')} value={transferData?.adults_count > 0 ? transferData?.adults_count : null} colors={colors} />
-            <InfoRow icon="person-outline" label={t('passengers.children', 'Діти')} value={transferData?.children_count > 0 ? transferData.children_count : null} colors={colors} />
-            <InfoRow icon="happy-outline" label={t('passengers.infants', 'Немовлята')} value={transferData?.infants_count > 0 ? transferData.infants_count : null} colors={colors} />
             
-            <View style={styles.divider} />
-            <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage', 'Багаж')} value={transferData?.luggage_info} colors={colors} />
-            <InfoRow icon="paw-outline" label={t('transferDetail.withPet', 'З тваринкою')} value={transferData?.with_pet ? t('transferDetail.yes', 'Так') : null} colors={colors} />
-            <InfoRow icon="person-add-outline" label={t('home.meetWithSign', 'Зустріти з табличкою')} value={transferData?.meet_with_sign ? t('transferDetail.yes', 'Так') : null} colors={colors} />
-            <InfoRow icon="barcode-outline" label={t('transferDetail.flightNumber', 'Номер рейсу')} value={transferData?.flight_number} colors={colors} />
-            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType', 'Тип трансферу')} value={t(`transferTypes.${transferData?.transfer_type}`, transferData?.transfer_type)} colors={colors} />
-        </View>
-
-        {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment', 'Ваш коментар')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
-        
-        <View style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>{t('transferDetail.route', 'Маршрут на карті')}</Text>
-            <View style={styles.mapContainer}><MapView ref={mapViewRef} style={StyleSheet.absoluteFill} provider={PROVIDER_GOOGLE}><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></MapView></View>
-            {routeInfo && (
-                <View style={styles.routeInfoContainer}>
-                    <View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View>
-                    <View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport', 'З аеропорту') : t('transferDetail.toAirport', 'В аеропорт')}</Text></View>
-                </View>
+            {/* ✨ 6. Додано відображення фінальної ціни для підтверджених поїздок */}
+            {(transferData.status === 'accepted' || transferData.status === 'completed') && finalPrice && (
+              <>
+                <InfoRow 
+                  icon="cash-outline" 
+                  label={t('transferDetail.finalPrice', 'Фінальна ціна')} 
+                  value={`${finalPrice} ${finalCurrency || t('common.currency_uah', 'UAH')}`} 
+                  colors={colors}
+                  valueStyle={{ color: colors.primary, fontWeight: 'bold' }}
+                />
+                <View style={styles.divider} />
+              </>
             )}
+
+            <InfoRow icon="people-outline" label={t('passengers.adults')} value={transferData?.adults_count > 0 ? transferData?.adults_count : null} colors={colors} />
+            <InfoRow icon="person-outline" label={t('passengers.children')} value={transferData?.children_count > 0 ? transferData.children_count : null} colors={colors} />
+            <InfoRow icon="happy-outline" label={t('passengers.infants')} value={transferData?.infants_count > 0 ? transferData.infants_count : null} colors={colors} />
+            <View style={styles.divider} />
+            <InfoRow icon="briefcase-outline" label={t('transferDetail.luggage')} value={transferData?.luggage_info} colors={colors} />
+            <InfoRow icon="paw-outline" label={t('transferDetail.withPet')} value={transferData?.with_pet ? t('transferDetail.yes') : null} colors={colors} />
+            <InfoRow icon="person-add-outline" label={t('home.meetWithSign')} value={transferData?.meet_with_sign ? t('transferDetail.yes') : null} colors={colors} />
+            <InfoRow icon="barcode-outline" label={t('transferDetail.flightNumber')} value={transferData?.flight_number} colors={colors} />
+            <InfoRow icon="car-sport-outline" label={t('transferDetail.transferType')} value={t(`transferTypes.${transferData?.transfer_type}`, transferData?.transfer_type)} colors={colors} />
         </View>
 
-        {transferData?.status === 'accepted' && transferData?.accepted_driver_details && (
-            <View style={styles.offersSection}>
-                <Text style={styles.sectionTitle}>{t('transferDetail.chosenDriver', 'Ваш водій')}</Text>
-                <ConfirmedDriverCard driver={transferData.accepted_driver_details} onChangeDriver={handleChangeDriver} />
-            </View>
-        )}
+        {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
+        
+        <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.route')}</Text><View style={styles.mapContainer}><MapView ref={mapViewRef} style={StyleSheet.absoluteFill} provider={PROVIDER_GOOGLE}><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></MapView></View>{routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport') : t('transferDetail.toAirport')}</Text></View></View>)}</View>
 
-        {offers.length > 0 && (
-            <View style={styles.offersSection}>
-                <Text style={styles.sectionTitle}>
-                    {transferData.status === 'pending' 
-                        ? t('transferDetail.driverOffers', 'Пропозиції водіїв')
-                        : t('transferDetail.otherOffers', 'Інші пропозиції')
-                    }
-                </Text>
-                {offers
-                    .filter(offer => transferData.status === 'accepted' ? offer.driver_id !== transferData.accepted_driver_details?.driver_id : true)
-                    .map(offer => (
-                        <DriverOfferCard 
-                            key={offer.offer_id} 
-                            offer={offer} 
-                            onAccept={() => handleAcceptOffer(offer)} 
-                            isAccepting={isAccepting} 
-                        />
-                    ))
-                }
-            </View>
-        )}
-        
-        {transferData?.status === 'pending' && offers.length === 0 && (
-            <View style={styles.offersSection}>
-                 <Text style={styles.sectionTitle}>{t('transferDetail.driverOffers', 'Пропозиції водіїв')}</Text>
-                 <Text style={styles.noOffersText}>{t('transferDetail.noOffers', 'Ще немає пропозицій. Зачекайте, водії скоро відгукнуться.')}</Text>
-            </View>
-        )}
-        
-        {transferData?.status !== 'completed' && transferData?.status !== 'cancelled' && (<TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransfer}><Text style={styles.cancelButtonText}>{t('transferDetail.cancelTransfer', 'Скасувати заявку')}</Text><Ionicons name="close-circle-outline" size={20} color="#fff" /></TouchableOpacity>)}
+        {transferData?.status === 'accepted' && transferData?.accepted_driver_details && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{t('transferDetail.chosenDriver')}</Text><ConfirmedDriverCard driver={transferData.accepted_driver_details} onChangeDriver={handleChangeDriver} /></View>)}
+        {offers.length > 0 && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{transferData.status === 'pending' ? t('transferDetail.driverOffers') : t('transferDetail.otherOffers')}</Text>{offers.filter(offer => transferData.status === 'accepted' ? offer.driver_id !== transferData.accepted_driver_details?.driver_id : true).map(offer => ( <DriverOfferCard key={offer.offer_id} offer={offer} onAccept={() => handleAcceptOffer(offer)} isAccepting={isAccepting} /> ))}</View>)}
+        {transferData?.status === 'pending' && offers.length === 0 && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{t('transferDetail.driverOffers')}</Text><Text style={styles.noOffersText}>{t('transferDetail.noOffers')}</Text></View>)}
+        {transferData?.status !== 'completed' && transferData?.status !== 'cancelled' && (<TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransfer}><Text style={styles.cancelButtonText}>{t('transferDetail.cancelTransfer')}</Text><Ionicons name="close-circle-outline" size={20} color="#fff" /></TouchableOpacity>)}
       </ScrollView>
 
     </SafeAreaView>

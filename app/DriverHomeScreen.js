@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, RefreshControl, Platform } from 'react-native';
+import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+// ✨ 1. Імпортуємо покращений компонент Image
+import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native'; // useFocusEffect більше не потрібен
 import { supabase } from '../config/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
@@ -17,22 +19,14 @@ const TransferRequestCard = ({ item, onPress }) => {
     const styles = getStyles(colors, theme);
 
     const isAccepted = item.status === 'accepted';
-
     const getShortName = (name) => {
         if (!name) return '';
         const parts = name.split(' ');
         return parts.length > 1 ? `${parts[0]} ${parts[1].charAt(0)}.` : name;
     };
 
-    const getResizedAvatarUrl = (url) => {
-        if (!url) return null;
-        let transformedUrl = url.replace('/object/', '/render/image/');
-        const resizeParams = 'width=128&height=128&resize=cover';
-        return transformedUrl.includes('?') ? `${transformedUrl}&${resizeParams}` : `${transformedUrl}?${resizeParams}`;
-    };
-
     const avatarSource = item.passenger_avatar_url 
-        ? { uri: getResizedAvatarUrl(item.passenger_avatar_url) } 
+        ? { uri: item.passenger_avatar_url } 
         : require('../assets/default-avatar.png');
 
     const airportIcon = <Ionicons name="airplane-outline" size={24} color={colors.secondaryText} />;
@@ -47,7 +41,14 @@ const TransferRequestCard = ({ item, onPress }) => {
     return (
         <TouchableOpacity style={[styles.card, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
             <View style={styles.cardTop}>
-                <Image source={avatarSource} style={styles.avatar} />
+                {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
+                <Image 
+                    source={avatarSource} 
+                    style={styles.avatar}
+                    contentFit="cover"
+                    transition={300}
+                    cachePolicy="disk"
+                />
                 <View style={styles.infoContainer}>
                     <View style={styles.nameAndTypeContainer}>
                         <Text style={styles.passengerName} numberOfLines={1}>{getShortName(item.passenger_name)}</Text>
@@ -95,51 +96,52 @@ export default function DriverHomeScreen() {
     moment.locale(i18n.language);
   }, [i18n.language]);
 
-  const fetchNewRequestsCount = useCallback(async () => {
+  const fetchDriverData = useCallback(async () => {
     try {
-        const { data, error } = await supabase.rpc('get_new_transfers_count');
-        if (error) throw error;
-        setNewRequestsCount(data);
-    } catch (error) {
-        console.error("Error fetching new requests count:", error.message);
-    }
-  }, []);
+        // Виконуємо обидва запити паралельно для швидкості
+        const [requestsPromise, countPromise] = await Promise.all([
+            supabase.rpc('get_driver_feed_transfers'),
+            supabase.rpc('get_new_transfers_count')
+        ]);
 
-  const fetchRequests = useCallback(async () => {
-    try {
-        const { data, error } = await supabase.rpc('get_driver_feed_transfers');
-        if (error) throw error;
-        setRequests(data);
+        if (requestsPromise.error) throw requestsPromise.error;
+        if (countPromise.error) throw countPromise.error;
+
+        setRequests(requestsPromise.data);
+        setNewRequestsCount(countPromise.data);
     } catch (error) {
-        console.error("Error fetching transfer requests:", error.message);
+        console.error("Error fetching driver data:", error.message);
     }
   }, []);
 
   const onRefresh = useCallback(async () => {
       setRefreshing(true);
-      await Promise.all([fetchRequests(), fetchNewRequestsCount()]);
+      await fetchDriverData();
       setRefreshing(false);
-  }, [fetchRequests, fetchNewRequestsCount]);
+  }, [fetchDriverData]);
 
-  useFocusEffect(useCallback(() => {
-    setLoading(true);
-    Promise.all([fetchRequests(), fetchNewRequestsCount()]).finally(() => setLoading(false));
-  }, [fetchRequests, fetchNewRequestsCount]));
-
+  // ✨ 3. Замінено useFocusEffect на useEffect для одноразового завантаження та стабільних підписок
   useEffect(() => {
+    setLoading(true);
+    fetchDriverData().finally(() => setLoading(false));
+
     const channel = supabase
       .channel('public:transfers:driver_home')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transfers' },
+      // ✨ 4. Покращено підписку: тепер вона реагує на будь-які зміни і надійно оновлює весь список
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'transfers' },
         (payload) => {
-          fetchNewRequestsCount(); 
-          setRequests(prev => [payload.new, ...prev]); 
+          console.log('Driver feed received an update:', payload);
+          // Перезавантажуємо дані, щоб отримати повну та актуальну інформацію
+          fetchDriverData();
         }
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNewRequestsCount]);
+  }, [fetchDriverData]);
 
   const handleCardPress = (item) => {
     supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: item.id }).then(({ error }) => {
@@ -151,7 +153,7 @@ export default function DriverHomeScreen() {
   if (loading && !refreshing) {
       return (
           <SafeAreaView style={styles.container}>
-              <View style={styles.header}><Text style={styles.title}>{t('driverHome.title', 'Доступні заявки')}</Text><Logo width={40} height={40} /></View>
+              <View style={styles.header}><Text style={styles.title}>{t('driverHome.title')}</Text><Logo width={40} height={40} /></View>
               <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
           </SafeAreaView>
       );
@@ -200,6 +202,7 @@ export default function DriverHomeScreen() {
   );
 }
 
+// Стилі залишаються без змін
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -215,6 +218,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         marginBottom: 8,
+        marginTop: 8,
     },
     newRequestBanner: {
         backgroundColor: `${colors.primary}20`,

@@ -16,30 +16,27 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ✨ 1. Створюємо універсальну функцію для навігації
-// Вона буде викликатися і при натисканні, і при холодному старті.
+// ✨ 1. КЛЮЧОВЕ ВИПРАВЛЕННЯ: Спрощена та надійна функція навігації
 const handleChatNavigation = (navigationRef, data) => {
-  // Перевіряємо, чи навігація готова і чи є в сповіщенні дані для чату (roomId)
   if (navigationRef.current?.isReady() && data?.roomId) {
-    console.log('Navigating to chat with data:', data);
-    navigationRef.current.navigate('UserAppFlow', {
-      screen: 'IndividualChat',
-      params: { // Передаємо всі параметри, які відправила функція Supabase
-        roomId: data.roomId,
-        recipientId: data.recipientId,
-        recipientName: data.recipientName,
-        recipientAvatar: data.recipientAvatar,
-        recipientLastSeen: data.recipientLastSeen,
-      },
+    console.log('Navigating directly to IndividualChat with data:', data);
+    
+    // Замість того, щоб вказувати 'UserAppFlow', ми переходимо напряму на 'IndividualChat'.
+    // React Navigation сам знайде цей екран у поточному активному стеку (водія чи пасажира).
+    navigationRef.current.navigate('IndividualChat', {
+      roomId: data.roomId,
+      recipientId: data.recipientId,
+      recipientName: data.recipientName,
+      recipientAvatar: data.recipientAvatar,
+      recipientLastSeen: data.recipientLastSeen,
     });
   } else if (!navigationRef.current?.isReady()) {
-    // Якщо навігація ще не готова, чекаємо трохи і пробуємо знову
-    setTimeout(() => handleChatNavigation(navigationRef, data), 150);
+    // Якщо навігація ще не готова (холодний старт), чекаємо і пробуємо знову.
+    setTimeout(() => handleChatNavigation(navigationRef, data), 200);
   }
 };
 
 
-// ✨ 2. Змінюємо хук, щоб він приймав `navigationRef` з App.js
 export const usePushNotifications = (navigationRef) => {
   const { session, profile } = useAuth();
   const { fetchUnreadCount } = useUnreadCount();
@@ -97,7 +94,7 @@ export const usePushNotifications = (navigationRef) => {
         if (fetchUnreadCount) {
           fetchUnreadCount();
         }
-        if (type === 'new_offer' && profile.role === 'passenger' && fetchNewOffersCount) {
+        if (type === 'new_offer' && profile.role === 'client' && fetchNewOffersCount) { // У пасажира роль 'client'
           fetchNewOffersCount();
         }
         if (type === 'offer_accepted' && profile.role === 'driver' && fetchNewTripsCount) {
@@ -105,15 +102,12 @@ export const usePushNotifications = (navigationRef) => {
         }
       });
 
-      // ✨ 3. Додаємо логіку в слухач натискань
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
         console.log('Користувач натиснув на сповіщення:', response);
         const notificationData = response.notification.request.content.data;
-        // Викликаємо нашу нову функцію навігації
         handleChatNavigation(navigationRef, notificationData);
       });
       
-      // ✨ 4. Перевіряємо, чи додаток відкрився через сповіщення (холодний старт)
       Notifications.getLastNotificationResponseAsync().then(response => {
         if (response) {
             console.log('Додаток відкрито з холодного старту через сповіщення');
@@ -131,10 +125,7 @@ export const usePushNotifications = (navigationRef) => {
         }
       };
     }
-    // ✨ 5. Додаємо `navigationRef` у масив залежностей
   }, [session, profile, fetchUnreadCount, fetchNewOffersCount, fetchNewTripsCount, navigationRef]);
 
-  // Цей хук тепер не повертає токен, бо він не використовується в UI, 
-  // але ви можете повернути його, якщо він вам потрібен деінде.
   return {};
 };

@@ -1,54 +1,70 @@
-// TypingIndicator.js
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Easing } from 'react-native';
+import React, { memo } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+import { MotiView } from 'moti'; // Moti для плавної анімації
 import { useTheme } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 
-const TypingIndicator = () => {
+// Огортаємо компонент в memo для запобігання зайвим рендерам
+const TypingIndicator = memo(() => {
     const { colors } = useTheme();
-    const yAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
-
-    useEffect(() => {
-        const animations = yAnims.map(anim =>
-            Animated.sequence([
-                Animated.timing(anim, { toValue: -8, duration: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-                Animated.timing(anim, { toValue: 0, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-                Animated.delay(200),
-            ])
-        );
-
-        const loopedAnimation = Animated.loop(
-            Animated.stagger(150, animations)
-        );
-        loopedAnimation.start();
-
-        return () => {
-            loopedAnimation.stop();
-        };
-    }, []);
-
-    const dotStyle = [styles.dot, { backgroundColor: colors.secondaryText }];
+    const { t } = useTranslation();
+    const styles = getStyles(colors);
 
     return (
-        <View style={styles.container}>
-            {yAnims.map((anim, index) => (
-                <Animated.View key={index} style={[dotStyle, { transform: [{ translateY: anim }] }]} />
+        // Контейнер з анімацією появи/зникнення
+        <MotiView
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: 'timing', duration: 200 }}
+            style={styles.container}
+        >
+            {/* Рендеримо три крапки з анімацією */}
+            {[...Array(3).keys()].map((index) => (
+                <MotiView
+                    from={{ scale: 0.7, opacity: 0.5 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    key={index}
+                    style={styles.dot}
+                    // Налаштування анімації:
+                    // loop: true - безкінечна анімація
+                    // type: 'timing' - плавна зміна
+                    // delay - затримка для кожної наступної крапки, що створює ефект "хвилі"
+                    transition={{
+                        type: 'timing',
+                        duration: 400,
+                        delay: index * 150,
+                        loop: true,
+                        repeatReverse: true, // Анімація буде плавно повертатись у початковий стан
+                    }}
+                />
             ))}
-        </View>
+             {/* Додаємо текст "друкує...", щоб було зрозуміліше */}
+            <Text style={styles.typingText}>{t('chat.typing', 'друкує...')}</Text>
+        </MotiView>
     );
-};
+});
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        height: 20, // Задаємо фіксовану висоту, щоб UI не "стрибав"
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        height: 20, // Фіксована висота для стабільності UI
     },
     dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
+        backgroundColor: colors.secondaryText,
         marginHorizontal: 3,
+    },
+    typingText: {
+        color: colors.secondaryText,
+        fontSize: 12,
+        marginLeft: 6,
+        fontStyle: 'italic',
     },
 });
 

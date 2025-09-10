@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
-// ✨ 1. Імпортуємо покращений компонент Image
 import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native'; // useFocusEffect більше не потрібен
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
@@ -13,7 +12,8 @@ import Logo from '../assets/icon.svg';
 import IndividualTransferIcon from '../assets/induvidual.svg'; 
 import GroupTransferIcon from '../assets/group.svg';
 
-const TransferRequestCard = ({ item, onPress }) => {
+// ✨ 1. Додаємо новий пропс `isExpiring`
+const TransferRequestCard = ({ item, onPress, isExpiring }) => {
     const { colors, theme } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(colors, theme);
@@ -39,9 +39,9 @@ const TransferRequestCard = ({ item, onPress }) => {
         : item.passenger_comment;
 
     return (
-        <TouchableOpacity style={[styles.card, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
+        // ✨ 2. Застосовуємо умовний стиль для "гарячих" заявок
+        <TouchableOpacity style={[styles.card, isExpiring && styles.expiringCard, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
             <View style={styles.cardTop}>
-                {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
                 <Image 
                     source={avatarSource} 
                     style={styles.avatar}
@@ -98,7 +98,6 @@ export default function DriverHomeScreen() {
 
   const fetchDriverData = useCallback(async () => {
     try {
-        // Виконуємо обидва запити паралельно для швидкості
         const [requestsPromise, countPromise] = await Promise.all([
             supabase.rpc('get_driver_feed_transfers'),
             supabase.rpc('get_new_transfers_count')
@@ -120,19 +119,16 @@ export default function DriverHomeScreen() {
       setRefreshing(false);
   }, [fetchDriverData]);
 
-  // ✨ 3. Замінено useFocusEffect на useEffect для одноразового завантаження та стабільних підписок
   useEffect(() => {
     setLoading(true);
     fetchDriverData().finally(() => setLoading(false));
 
     const channel = supabase
       .channel('public:transfers:driver_home')
-      // ✨ 4. Покращено підписку: тепер вона реагує на будь-які зміни і надійно оновлює весь список
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'transfers' },
         (payload) => {
           console.log('Driver feed received an update:', payload);
-          // Перезавантажуємо дані, щоб отримати повну та актуальну інформацію
           fetchDriverData();
         }
       )
@@ -182,17 +178,22 @@ export default function DriverHomeScreen() {
 
       <FlatList
         data={requests}
-        renderItem={({ item }) => (
-            <View style={styles.itemContainer}>
-                <Text style={styles.postedTimeText}>
-                    {t('driverHome.posted', 'Опубліковано')} {moment(item.created_at).fromNow()}
-                </Text>
-                <TransferRequestCard 
-                    item={item} 
-                    onPress={() => handleCardPress(item)}
-                />
-            </View>
-        )}
+        renderItem={({ item }) => {
+            // ✨ 3. Визначаємо, чи є заявка "гарячою" (в минулому)
+            const isExpiring = moment(item.transfer_datetime).isBefore(moment());
+            return (
+                <View style={styles.itemContainer}>
+                    <Text style={styles.postedTimeText}>
+                        {t('driverHome.posted', 'Опубліковано')} {moment(item.created_at).fromNow()}
+                    </Text>
+                    <TransferRequestCard 
+                        item={item} 
+                        onPress={() => handleCardPress(item)}
+                        isExpiring={isExpiring} // Передаємо пропс
+                    />
+                </View>
+            );
+        }}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
         ListEmptyComponent={<View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View>}
@@ -202,47 +203,19 @@ export default function DriverHomeScreen() {
   );
 }
 
-// Стилі залишаються без змін
+// ✨ 4. Додаємо новий стиль для "гарячих" заявок
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
     content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 50 },
     text: { fontSize: 18, color: colors.secondaryText, textAlign: 'center', marginTop: 16 },
-    statusBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        marginHorizontal: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        marginBottom: 8,
-        marginTop: 8,
-    },
-    newRequestBanner: {
-        backgroundColor: `${colors.primary}20`,
-        borderColor: colors.primary,
-    },
-    noNewRequestBanner: {
-        backgroundColor: '#28a74520',
-        borderColor: '#28a745',
-    },
-    statusText: {
-        marginLeft: 10,
-        color: colors.text,
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    itemContainer: {
-        marginBottom: 16,
-    },
-    postedTimeText: {
-        color: colors.secondaryText,
-        fontSize: 12,
-        textAlign: 'center',
-        marginBottom: 8,
-    },
+    statusBanner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, marginBottom: 8, marginTop: 8 },
+    newRequestBanner: { backgroundColor: `${colors.primary}20`, borderColor: colors.primary },
+    noNewRequestBanner: { backgroundColor: '#28a74520', borderColor: '#28a745' },
+    statusText: { marginLeft: 10, color: colors.text, fontSize: 15, fontWeight: '600' },
+    itemContainer: { marginBottom: 16 },
+    postedTimeText: { color: colors.secondaryText, fontSize: 12, textAlign: 'center', marginBottom: 8 },
     card: {
         backgroundColor: colors.card,
         borderRadius: 20,
@@ -253,27 +226,18 @@ const getStyles = (colors, theme) => StyleSheet.create({
         shadowRadius: 12,
         elevation: 5,
     },
+    expiringCard: {
+        backgroundColor: theme === 'dark' ? '#3E2723' : '#FFF3E0', // Темний або світлий відтінок помаранчевого
+        borderColor: '#FFA000',
+        borderWidth: 1,
+    },
     acceptedCard: { opacity: 0.5 },
     cardTop: { flexDirection: 'row', alignItems: 'center' },
     avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 16, backgroundColor: colors.background },
     infoContainer: { flex: 1 },
-    nameAndTypeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    passengerName: { 
-        fontSize: 18, 
-        fontWeight: 'bold', 
-        color: colors.text,
-        flex: 1,
-        marginRight: 8,
-    },
-    transferIconContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    nameAndTypeContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    passengerName: { fontSize: 18, fontWeight: 'bold', color: colors.text, flex: 1, marginRight: 8 },
+    transferIconContainer: { alignItems: 'center', justifyContent: 'center' },
     detailsGrid: { flexDirection: 'row', justifyContent: 'space-between' },
     detailItem: { alignItems: 'center', flex: 1,  },
     detailLabel: { fontSize: 12, color: colors.secondaryText, marginBottom: 2, flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -282,40 +246,10 @@ const getStyles = (colors, theme) => StyleSheet.create({
     dividerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
     routeContainer: {},
-    locationRow: { 
-        flexDirection: 'row', 
-        alignItems: 'center',
-    },
-    locationText: { 
-        color: colors.text, 
-        fontSize: 16, 
-        marginLeft: 12,
-        fontWeight: '500',
-        flex: 1,
-    },
-    routeDottedLine: { 
-        height: 20, 
-        width: 1, 
-        borderLeftWidth: 1, 
-        borderStyle: 'dashed', 
-        marginLeft: 11,
-        marginVertical: 4 
-    },
-    commentContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderColor: colors.border,
-    },
-    commentIcon: {
-        marginRight: 8,
-    },
-    commentText: {
-        color: colors.secondaryText,
-        fontSize: 14,
-        fontStyle: 'italic',
-        flex: 1,
-    },
+    locationRow: { flexDirection: 'row', alignItems: 'center' },
+    locationText: { color: colors.text, fontSize: 16, marginLeft: 12, fontWeight: '500', flex: 1 },
+    routeDottedLine: { height: 20, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginLeft: 11, marginVertical: 4 },
+    commentContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderColor: colors.border },
+    commentIcon: { marginRight: 8 },
+    commentText: { color: colors.secondaryText, fontSize: 14, fontStyle: 'italic', flex: 1 },
 });

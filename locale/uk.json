@@ -92,7 +92,7 @@
     "inApp": "В додатку",
     "year_one": "рік",
     "year_few": "роки",
-    "year_many": "років",
+    "year": "років",
     "month_one": "місяць",
     "month_few": "місяці",
     "month_many": "місяців",
@@ -137,7 +137,14 @@
     "confirmNewPassword": "Підтвердіть новий пароль",
     "savePassword": "Зберегти пароль",
     "passwordChangedSuccess": "Пароль успішно змінено!",
-    "notSet": "Не вказано"
+    "notSet": "Не вказано",
+     "modeSwitchTitle": "Режим роботи",
+    "driverModeActive": "Ви в режимі водія",
+    "passengerModeActive": "Ви в режимі пасажира",
+     "modeInfoText": "Режим Водія дозволяє вам переглядати та приймати замовлення. Режим Пасажира приховує інтерфейс водія, дозволяючи вам користуватися додатком як звичайний пасажир.",
+    "clearCacheTitle": "Очистити кеш",
+    "clearCacheBody": "Це видалить всі завантажені зображення з пам'яті пристрою. Вони будуть завантажені знову при потребі. Продовжити?",
+    "cacheClearedSuccess": "Кеш успішно очищено."
   },
   "tabs": {
     "home": "Головна",
@@ -334,6 +341,11 @@
     "deleteMultipleConfirmBody_one": "Ви впевнені, що хочете видалити {{count}} обране повідомлення?",
     "deleteMultipleConfirmBody_few": "Ви впевнені, що хочете видалити {{count}} обрані повідомлення?",
     "deleteMultipleConfirmBody_many": "Ви впевнені, що хочете видалити {{count}} обраних повідомлень?",
+    "deleteMultipleConfirmBody": "Цю дію не можна буде повернути.",
+    "noMessages": "Ще немає повідомлень. Напишіть перше!",
+    "reply": "Відповісти",
+    "photo": "Фото",
+    "location": "Геолокація",
     "locationFetchError": "Не вдалося отримати вашу геолокацію.",
     "fetchingLocation": "Отримання точної локації...",
     "lastSeen": {

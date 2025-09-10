@@ -24,8 +24,6 @@ import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
-// (Всі ваші допоміжні компоненти залишаються без змін: SelectionHeader, SelectionCircle, і т.д.)
-// ...
 const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -75,6 +73,7 @@ const ImageViewerModal = ({ visible, uri, onClose }) => {
     return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.imageViewerBackdrop} onPress={onClose}><Image source={{ uri }} style={styles.fullScreenImage} contentFit="contain" /><TouchableOpacity style={styles.closeButton} onPress={onClose}><Ionicons name="close-circle" size={32} color="white" /></TouchableOpacity></Pressable></Modal>);
 };
 
+
 const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏']; if (!message) return null; const handleAction = (action) => { action(); onClose(); };
     return (
@@ -83,12 +82,7 @@ const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, on
                 <Pressable style={styles.actionSheetContainer}>
                     <View style={styles.reactionPickerContainer}>{reactions.map(emoji => ( <TouchableOpacity key={emoji} onPress={() => handleAction(() => onReact(emoji))} style={styles.reactionEmojiButton}><Text style={styles.reactionEmojiText}>{emoji}</Text></TouchableOpacity> ))}</View>
                     <View style={styles.actionButtonsContainer}>
-                        {isMyMessage && (
-                             <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(onSelect)}>
-                                <Ionicons name="checkmark-circle-outline" size={22} color={colors.text} />
-                                <Text style={styles.actionButtonText}>{t('chat.select', 'Вибрати')}</Text>
-                            </TouchableOpacity>
-                        )}
+                        {isMyMessage && ( <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(onSelect)}><Ionicons name="checkmark-circle-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.select', 'Вибрати')}</Text></TouchableOpacity> )}
                         {message.content && ( <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(onCopy)}><Ionicons name="copy-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.copy', 'Копіювати')}</Text></TouchableOpacity> )}
                         {isMyMessage && message.content && ( <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(onEdit)}><Ionicons name="create-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.edit', 'Редагувати')}</Text></TouchableOpacity> )}
                         {isMyMessage && ( <TouchableOpacity style={[styles.actionButton, { borderBottomWidth: 0 }]} onPress={() => handleAction(onDelete)}><Ionicons name="trash-outline" size={22} color={'#D83C3C'} /><Text style={[styles.actionButtonText, { color: '#D83C3C' }]}>{t('common.delete', 'Видалити')}</Text></TouchableOpacity> )}
@@ -101,7 +95,6 @@ const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, on
 };
 
 
-// ✨ 1. Оновлюємо компонент MessageBubble для кращої анімації
 const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const isMyMessage = message.sender_id === currentUserId; const lastTap = useRef(0);
     const [isPressed, setIsPressed] = useState(false);
@@ -113,7 +106,8 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
         lastTap.current = now;
     };
     const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
-    const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="large" color="#FFFFFF" /></View>);
+    
+    const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
 
     return (
         <Pressable
@@ -124,27 +118,28 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
             style={styles.messageContainer}
         >
             <MotiView
-                from={{
-                    opacity: 0,
-                    scale: 0.9,
-                    translateX: isMyMessage ? 40 : -40, // Початкова позиція за екраном
-                }}
-                animate={{
-                    opacity: 1,
-                    scale: isPressed ? 0.97 : 1,
-                    translateX: 0, // Кінцева позиція
-                }}
-                transition={{
-                    type: 'timing', // Використовуємо 'timing' для більш контрольованої анімації
-                    duration: 250,
-                }}
+                from={{ opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40, }}
+                animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0, }}
+                transition={{ type: 'timing', duration: 250, }}
             >
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
                     <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
                         <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
                             {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
-                            {message.image_url && (<TouchableOpacity onPress={() => onImagePress(message.image_url)}><Image source={{ uri: message.image_url }} style={[styles.messageImage, message.status === 'uploading' && styles.uploadingImage]} contentFit="cover" transition={300} cachePolicy="disk" />{message.status === 'uploading' && <UploadingIndicator />}</TouchableOpacity>)}
+                            {message.image_url && (
+                                <TouchableOpacity onPress={() => onImagePress(message.image_url)}>
+                                    <Image 
+                                        source={{ uri: message.image_url }} 
+                                        style={styles.messageImage} 
+                                        contentFit="cover" 
+                                        transition={300} 
+                                        cachePolicy="disk"
+                                        placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}
+                                    />
+                                    {message.status === 'uploading' && <UploadingIndicator />}
+                                </TouchableOpacity>
+                            )}
                             {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
                             <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
                         </View>
@@ -159,7 +154,6 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function IndividualChatScreen() {
-    // ... (всі ваші хуки і стани залишаються без змін)
     const { colors } = useTheme(); const { t, i18n } = useTranslation(); const styles = getStyles(colors);
     const route = useRoute(); const navigation = useNavigation();
     const { session, profile } = useAuth();
@@ -193,6 +187,7 @@ export default function IndividualChatScreen() {
     const typingTimeout = useRef(null);
     const sentSound = useRef(new Audio.Sound());
     const receivedSound = useRef(new Audio.Sound());
+    const textInputRef = useRef(null);
 
     useEffect(() => {
         const loadSounds = async () => {
@@ -211,7 +206,6 @@ export default function IndividualChatScreen() {
     const playSentSound = useCallback(async () => { try { await sentSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
     const playReceivedSound = useCallback(async () => { try { await receivedSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
     
-    // ... (решта вашого коду без змін)
     useEffect(() => {
         const fetchRecipientInfo = async () => {
             if (!recipientId || (recipientInfo.name && recipientInfo.avatar)) return;
@@ -226,10 +220,21 @@ export default function IndividualChatScreen() {
             } finally { setIsLoadingRecipient(false); }
         };
         fetchRecipientInfo();
-    }, [recipientId]);
+    }, [recipientId, t]);
 
     const markAsRead = useCallback(async (roomId) => { if (!roomId) return; try { await supabase.rpc('mark_messages_as_read', { p_room_id: roomId }); } catch (e) { console.error("Error marking as read:", e.message); } }, []);
-    const fetchMessages = useCallback(async (roomId) => { if (!roomId) return; const { data, error } = await supabase.from('messages').select('*, reactions(*)').eq('room_id', roomId).order('created_at', { ascending: false }); if (error) { console.error("Fetch Error:", error); } else { setMessages(data || []); } }, []);
+    
+    const fetchMessages = useCallback(async (roomId) => { 
+        if (!roomId) return; 
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*, reactions(*)') // Спрощений запит
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false }); 
+        
+        if (error) { console.error("Fetch Error:", error); } 
+        else { setMessages(data || []); } 
+    }, []);
     
     useEffect(() => { const setup = async () => { if (!session || !recipientId) return; let roomId = currentRoomId; if (!roomId) { try { const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId }); roomId = data; setCurrentRoomId(roomId); } catch (e) { console.error("Error getting room ID:", e); return; } } if (roomId) await fetchMessages(roomId); }; setup(); }, [session, recipientId, currentRoomId, fetchMessages]);
     
@@ -239,20 +244,7 @@ export default function IndividualChatScreen() {
         channel.current = supabase.channel(`room-${currentRoomId}`, { config: { presence: { key: session.user.id } } }); 
 
         const handleNew = (payload) => { 
-            setMessages(prev => { 
-                const optimisticId = payload.new.client_id;
-                // Шукаємо, чи є вже повідомлення з таким client_id
-                const existingMsgIndex = prev.findIndex(m => m.client_id === optimisticId);
-                
-                if (existingMsgIndex !== -1) {
-                    // Якщо є, оновлюємо його
-                    const updatedMessages = [...prev];
-                    updatedMessages[existingMsgIndex] = payload.new;
-                    return updatedMessages;
-                }
-                // Якщо немає, додаємо нове
-                return [payload.new, ...prev];
-            }); 
+            fetchMessages(currentRoomId);
             if (payload.new.sender_id !== session.user.id) { 
                 markAsRead(currentRoomId);
                 playReceivedSound();
@@ -281,7 +273,7 @@ export default function IndividualChatScreen() {
             supabase.removeChannel(channel.current); 
             supabase.removeChannel(profileSub); 
         }; 
-    }, [currentRoomId, session, recipientId, markAsRead, playReceivedSound]);
+    }, [currentRoomId, session, recipientId, markAsRead, playReceivedSound, fetchMessages]);
     
     useFocusEffect(useCallback(() => { if (currentRoomId) { markAsRead(currentRoomId); fetchUnreadCount(); } }, [currentRoomId, markAsRead, fetchUnreadCount]));
     
@@ -292,49 +284,47 @@ export default function IndividualChatScreen() {
     
     const onRefresh = useCallback(async () => { setIsRefreshing(true); await fetchMessages(currentRoomId); setIsRefreshing(false); }, [currentRoomId, fetchMessages]);
     
-    // ✨ 2. Оновлюємо функцію створення "оптимістичного" повідомлення
-    const createOptimisticMessage = (content, imageUrl = null) => {
-        const tempId = `temp-${Date.now()}`;
-        return {
-            id: tempId,
-            client_id: tempId, // Дуже важливо для стабільного ключа!
+    const sendMessage = useCallback(async (messageData) => {
+        const fullMessageData = {
             room_id: currentRoomId,
             sender_id: session.user.id,
-            content: content,
-            image_url: imageUrl,
-            created_at: new Date().toISOString(),
-            status: imageUrl ? 'uploading' : 'sending',
-            reactions: []
+            ...messageData,
         };
-    };
-
-    const handleSendText = async () => {
-        if (editingMessage) { handleEditMessage(); return; } 
-        const textToSend = inputText.trim(); 
-        if (textToSend.length === 0 || !session || !currentRoomId) return; 
         
         playSentSound();
-        
-        const optimisticMessage = createOptimisticMessage(textToSend);
-        
-        setMessages(prev => [optimisticMessage, ...prev]); 
-        setInputText(''); 
-        
-        const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, content: textToSend, client_id: optimisticMessage.client_id }]).select().single(); 
-        
-        if (error) { 
-            console.error("[SEND] Error:", error); 
-            Alert.alert(t('common.error'), error.message); 
-            setMessages(prev => prev.filter(msg => msg.client_id !== optimisticMessage.client_id)); 
-        } else { 
-            const pushPayload = { recipient_id: recipientId, sender_id: session.user.id, message_content: textToSend, room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() };
+        setInputText('');
+
+        const { error } = await supabase.from('messages').insert([fullMessageData]);
+        if (error) {
+            Alert.alert(t('common.error'), error.message);
+        } else {
+            const pushPayload = {
+                recipient_id: recipientId,
+                sender_id: session.user.id,
+                message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')),
+                room_id: currentRoomId,
+                sender_name: profile?.full_name,
+                sender_avatar: profile?.avatar_url,
+                sender_last_seen: new Date().toISOString()
+            };
             supabase.functions.invoke('send-push-notification', { body: pushPayload }).catch(e => console.error("Push notification error:", e));
-        } 
-    };
-    
-    const uploadAndSendImage = async (asset) => { 
-        const optimisticMessage = createOptimisticMessage(null, asset.uri);
-        setMessages(prev => [optimisticMessage, ...prev]); 
+        }
+    }, [currentRoomId, session, playSentSound, t, recipientId, profile]);
+
+    const handleSendText = useCallback(async () => {
+        if (editingMessage) { handleEditMessage(); return; } 
+        const textToSend = inputText.trim(); 
+        if (textToSend.length === 0) return;
+        sendMessage({ content: textToSend });
+    }, [editingMessage, inputText, sendMessage]);
+
+    const uploadAndSendImage = useCallback(async (asset) => { 
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMessage = { id: tempId, client_id: tempId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
+        
+        setMessages(prev => [optimisticMessage, ...prev]);
+        playSentSound();
+
         try { 
             const fileExt = asset.uri.split('.').pop().toLowerCase(); 
             const filePath = `${session.user.id}/${Date.now()}.${fileExt}`; 
@@ -343,41 +333,48 @@ export default function IndividualChatScreen() {
             const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData); 
             if (uploadError) throw uploadError; 
             const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath); 
-            const { error: dbError } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, image_url: urlData.publicUrl, client_id: optimisticMessage.client_id }]); 
-            if (dbError) throw dbError; 
-            supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentAnImage'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}); 
+            
+            await sendMessage({ image_url: urlData.publicUrl, client_id: tempId, blurhash: asset.blurhash });
+
         } catch (e) { 
             Alert.alert(t('common.error'), e.message); 
-            setMessages(prev => prev.filter(m => m.client_id !== optimisticMessage.client_id)); 
+            setMessages(prev => prev.filter(m => m.client_id !== tempId)); 
         } 
-    };
+    }, [session, sendMessage, playSentSound, t]);
 
-    const handleEditMessage = async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); };
-    const handleReaction = async (emoji, message) => { const target = message || selectedMessage; if (!target) return; setMessages(prev => prev.map(msg => { if (msg.id !== target.id) return msg; let reactions = [...(msg.reactions || [])]; const rIdx = reactions.findIndex(r => r.emoji === emoji); if (rIdx > -1) { const uIdx = reactions[rIdx].users.indexOf(session.user.id); if (uIdx > -1) { reactions[rIdx].count--; if (reactions[rIdx].count === 0) reactions.splice(rIdx, 1); } else { reactions[rIdx].count++; reactions[rIdx].users.push(session.user.id); } } else { reactions.push({ emoji, count: 1, users: [session.user.id] }); } return { ...msg, reactions }; })); await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); };
-    const handleDeleteMessage = () => { if (!selectedMessage) return; Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const messageId = selectedMessage.id; setMessages(prev => prev.filter(msg => msg.id !== messageId)); await supabase.from('messages').delete().eq('id', messageId); } } ]); };
-    const handleLongPress = (message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) { handleToggleSelection(message.id); } } else { setSelectedMessage(message); setActionSheetVisible(true); } };
-    const handleToggleSelection = (messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) { newSelection.delete(messageId); } else { newSelection.add(messageId); } if (newSelection.size === 0) { setSelectionMode(false); } setSelectedMessages(newSelection); };
-    const handleCancelSelection = () => { setSelectionMode(false); setSelectedMessages(new Set()); };
-    const handleDeleteSelected = () => { Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const idsToDelete = Array.from(selectedMessages); setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); handleCancelSelection(); await supabase.from('messages').delete().in('id', idsToDelete); } } ]); };
-    const pickImage = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
-    const takePhoto = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
-    const handleSendLocation = async () => { setAttachmentModalVisible(false); let { status } = await Location.requestForegroundPermissionsAsync(); if (status !== 'granted') return; setIsSendingLocation(true); try { let { coords } = await Location.getCurrentPositionAsync(); const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, location: { latitude: coords.latitude, longitude: coords.longitude } }]); if (error) throw error; supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentLocation'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}); } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); } finally { setIsSendingLocation(false); } };
-    const handleTyping = (text) => { setInputText(text); if (channel.current && channel.current.state === 'joined') { try { channel.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id }, }); } catch (e) { console.error("Broadcast failed:", e); } } };
+    const handleSendLocation = useCallback(async () => { 
+        setAttachmentModalVisible(false);
+        let { status } = await Location.requestForegroundPermissionsAsync(); 
+        if (status !== 'granted') return;
+        setIsSendingLocation(true); 
+        try { 
+            let { coords } = await Location.getCurrentPositionAsync(); 
+            await sendMessage({ location: { latitude: coords.latitude, longitude: coords.longitude } });
+        } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); } 
+        finally { setIsSendingLocation(false); } 
+    }, [sendMessage, t]);
+    
+    const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); }, [editingMessage, inputText]);
+    const handleReaction = useCallback(async (emoji, message) => { const target = message || selectedMessage; if (!target) return; setMessages(prev => prev.map(msg => { if (msg.id !== target.id) return msg; let reactions = [...(msg.reactions || [])]; const rIdx = reactions.findIndex(r => r.emoji === emoji); if (rIdx > -1) { const uIdx = reactions[rIdx].users.indexOf(session.user.id); if (uIdx > -1) { reactions[rIdx].count--; if (reactions[rIdx].count === 0) reactions.splice(rIdx, 1); } else { reactions[rIdx].count++; reactions[rIdx].users.push(session.user.id); } } else { reactions.push({ emoji, count: 1, users: [session.user.id] }); } return { ...msg, reactions }; })); await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); }, [selectedMessage, session]);
+    const handleDeleteMessage = useCallback(() => { if (!selectedMessage) return; Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const messageId = selectedMessage.id; setMessages(prev => prev.filter(msg => msg.id !== messageId)); await supabase.from('messages').delete().eq('id', messageId); } } ]); }, [selectedMessage, t]);
+    const handleLongPress = useCallback((message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) { handleToggleSelection(message.id); } } else { setSelectedMessage(message); setActionSheetVisible(true); } }, [selectionMode, session]);
+    const handleToggleSelection = useCallback((messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) { newSelection.delete(messageId); } else { newSelection.add(messageId); } if (newSelection.size === 0) { setSelectionMode(false); } setSelectedMessages(newSelection); }, [selectedMessages]);
+    const handleCancelSelection = useCallback(() => { setSelectionMode(false); setSelectedMessages(new Set()); }, []);
+    const handleDeleteSelected = useCallback(() => { Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const idsToDelete = Array.from(selectedMessages); setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); handleCancelSelection(); await supabase.from('messages').delete().in('id', idsToDelete); } } ]); }, [selectedMessages, t, handleCancelSelection]);
+    const pickImage = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true, exif: true }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage]);
+    const takePhoto = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true, exif: true }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage]);
+    const handleTyping = useCallback((text) => { setInputText(text); if (channel.current && channel.current.state === 'joined') { try { channel.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id }, }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
 
     const lastMessage = useMemo(() => processedData.find(item => item.type === 'message'), [processedData]);
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id;
 
     return (
         <SafeAreaView style={styles.container}>
-            {selectionMode ? (
-                <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} />
-            ) : (
+            {selectionMode ? ( <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} /> ) : (
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
                     <View style={styles.headerUserInfo}>
-                        <Text style={styles.headerUserName}>
-                            {isLoadingRecipient ? t('common.loading', 'Завантаження...') : recipientInfo.name}
-                        </Text>
+                        <Text style={styles.headerUserName}>{isLoadingRecipient ? t('common.loading', 'Завантаження...') : recipientInfo.name}</Text>
                         {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
                     </View>
                     <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
@@ -390,25 +387,31 @@ export default function IndividualChatScreen() {
                         if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
                         return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
                     }}
-                    // ✨ 3. Оновлюємо keyExtractor для стабільної роботи анімації
                     keyExtractor={item => item.client_id || item.id}
                     inverted
                     contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 10, flexGrow: 1 }}
                     style={{ flex: 1 }}
                     refreshControl={ <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.primary} /> }
                 />
+
                 <View style={styles.inputContainer}>
                     <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
-                    {canLikeLastMessage && !inputText && (
-                        <TouchableOpacity style={styles.likeButton} onPress={() => handleReaction('👍', lastMessage)}>
-                            <Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} />
-                        </TouchableOpacity>
-                    )}
-                    <TextInput style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
+                    {canLikeLastMessage && !inputText && ( <TouchableOpacity style={styles.likeButton} onPress={() => handleReaction('👍', lastMessage)}><Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} /></TouchableOpacity> )}
+                    <TextInput ref={textInputRef} style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSendText}><Ionicons name={editingMessage ? "checkmark" : "paper-plane"} size={24} color="#fff" /></TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-            <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessage} isMyMessage={selectedMessage?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessage?.content || '')} onEdit={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage?.content || ''); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessage)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessage.id])); }} />
+            <MessageActionSheet 
+                visible={isActionSheetVisible && !selectionMode} 
+                onClose={() => setActionSheetVisible(false)} 
+                message={selectedMessage} 
+                isMyMessage={selectedMessage?.sender_id === session?.user?.id} 
+                onCopy={() => Clipboard.setString(selectedMessage?.content || '')} 
+                onEdit={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage?.content || ''); textInputRef.current?.focus(); }} 
+                onDelete={handleDeleteMessage} 
+                onReact={(emoji) => handleReaction(emoji, selectedMessage)} 
+                onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessage.id])); }}
+            />
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}><Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}><View style={styles.modalContent}><TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity></View></Pressable></Modal>
             {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
@@ -416,27 +419,16 @@ export default function IndividualChatScreen() {
     );
 }
 
-// ... (стилі залишаються без змін)
 const getStyles = (colors) => StyleSheet.create({
-    selectionCircleContainer: {
-        width: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    selectionCircleEmpty: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: colors.secondaryText,
-    },
+    selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
+    selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
     selectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 5, backgroundColor: colors.card },
     selectionCountText: { color: colors.text, fontSize: 18, fontWeight: 'bold' },
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
     container: { flex: 1, backgroundColor: colors.background },
-    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 0 },
+    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10},
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
@@ -449,7 +441,6 @@ const getStyles = (colors) => StyleSheet.create({
     messageText: { color: colors.text, fontSize: 15, lineHeight: 20 },
     myMessageText: { color: '#FFFFFF' },
     messageImage: { width: 200, height: 150, borderRadius: 15 },
-    uploadingImage: { opacity: 0.6 },
     uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 15 },
     messageMap: { width: 220, height: 150, borderRadius: 15 },
     messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 4, alignItems: 'center', gap: 4 },
@@ -459,8 +450,6 @@ const getStyles = (colors) => StyleSheet.create({
     inputContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
     textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 8, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
     sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-    editingBanner: { position: 'absolute', top: -40, left: 0, right: 0, backgroundColor: colors.card, paddingHorizontal: 15, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
-    editingText: { color: colors.primary, fontWeight: 'bold', marginLeft: 8, flex: 1 },
     imageViewerBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center' },
     fullScreenImage: { width: '100%', height: '80%' },
     closeButton: { position: 'absolute', top: 50, right: 20, padding: 10 },
@@ -484,3 +473,4 @@ const getStyles = (colors) => StyleSheet.create({
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
 });
+

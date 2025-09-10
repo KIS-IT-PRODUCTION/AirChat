@@ -2,7 +2,7 @@
   "expo": {
     "name": "AirChat",
     "slug": "AirChat",
-    "scheme": "airchat", 
+    "scheme": "airchat",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -63,7 +63,7 @@
       [
         "expo-location",
         {
-            "locationWhenInUsePermission": "Цей застосунок потребує доступу до вашої геолокації, щоб ділитися нею з друзями."
+          "locationWhenInUsePermission": "Цей застосунок потребує доступу до вашої геолокації, щоб ділитися нею з друзями."
         }
       ],
       [
@@ -72,7 +72,8 @@
           "icon": "./assets/icon.png",
           "color": "#ffffff"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

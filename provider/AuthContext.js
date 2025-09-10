@@ -12,7 +12,8 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Функція для отримання профілю, винесена для перевикористання
+    // ✨ 1. Оновлюємо функцію для отримання профілю
+    // Тепер вона викликає 'get_my_profile' і отримує більше даних (role, is_driver, etc.)
     const getProfile = useCallback(async (userSession) => {
         if (!userSession?.user) {
             console.log("🪵 [AUTH_PROVIDER] No session, clearing profile.");
@@ -22,18 +23,19 @@ export const AuthProvider = ({ children }) => {
 
         try {
             console.log(`🪵 [AUTH_PROVIDER] Fetching profile for user: ${userSession.user.id}`);
-            const { data, error } = await supabase.rpc('get_my_role');
+            const { data, error } = await supabase.rpc('get_my_profile').single();
             if (error) throw error;
 
             setProfile(data || null);
-            console.log(`🪵 [AUTH_PROVIDER] Profile loaded. Role: ${data?.role || 'none'}`);
+            console.log(`🪵 [AUTH_PROVIDER] Profile loaded. Role: ${data?.role}, Is Driver: ${data?.is_driver}`);
         } catch (error) {
             console.error("🪵 [AUTH_PROVIDER] Error fetching profile:", error.message);
             setProfile(null);
         }
     }, []);
 
-    // ✨ Ключове виправлення: надійний процес ініціалізації
+    // Ваша надійна логіка ініціалізації залишається без змін,
+    // оскільки вона коректно обробляє вхід, вихід та оновлення сесії.
     useEffect(() => {
         let authSubscription = null;
 
@@ -42,20 +44,15 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(true);
 
             try {
-                // 1. Негайно отримуємо поточну сесію при старті.
                 const { data: { session: initialSession } } = await supabase.auth.getSession();
                 console.log(`🪵 [AUTH_PROVIDER] Initial session check complete. Session exists: ${!!initialSession}`);
                 setSession(initialSession);
-
-                // 2. Одразу завантажуємо профіль для початкової сесії.
                 await getProfile(initialSession);
 
-                // 3. Тепер підписуємося на майбутні зміни (вхід, вихід, оновлення токену).
                 const { data: { subscription } } = supabase.auth.onAuthStateChange(
                     async (_event, currentSession) => {
                         console.log(`🪵 [AUTH_PROVIDER] Auth event: ${_event}. Session is now: ${currentSession ? 'active' : 'null'}`);
                         setSession(currentSession);
-                        // Оновлюємо профіль при кожній зміні сесії.
                         await getProfile(currentSession);
                     }
                 );
@@ -64,7 +61,6 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
                 console.error("🪵 [AUTH_PROVIDER] Critical error during auth initialization:", error.message);
             } finally {
-                // 4. Гарантовано вимикаємо завантаження, щоб уникнути "зависання".
                 console.log("🪵 [AUTH_PROVIDER] Auth initialization finished.");
                 setIsLoading(false);
             }
@@ -72,16 +68,33 @@ export const AuthProvider = ({ children }) => {
 
         initializeAuth();
 
-        // Функція очищення для відписки
         return () => {
             if (authSubscription) {
                 console.log("🪵 [AUTH_PROVIDER] Unsubscribing from auth changes.");
                 authSubscription.unsubscribe();
             }
         };
-    }, [getProfile]); // Залежність від getProfile
+    }, [getProfile]);
 
-    // Функції signIn, signUp, signOut залишаються майже без змін
+    // ✨ 2. Додаємо нову функцію для перемикання ролі
+    const switchRole = useCallback(async (newRole) => {
+        console.log(`[AUTH_PROVIDER] Attempting to switch role to: ${newRole}`);
+        try {
+            // Викликаємо SQL-функцію, яка безпечно оновить роль
+            const { data, error } = await supabase.rpc('switch_active_role', { new_role: newRole }).single();
+            if (error) throw error;
+            
+            // Миттєво оновлюємо стан профілю в додатку новими даними з сервера
+            setProfile(data);
+            console.log(`[AUTH_PROVIDER] Role switched successfully. New active role: ${data.role}`);
+            return { success: true };
+        } catch (error) {
+            console.error("[AUTH_PROVIDER] Error switching role:", error.message);
+            return { success: false, error: error.message };
+        }
+    }, []); // Ця функція не має залежностей
+
+    // Функції signIn, signUp, signOut залишаються без змін
     const signIn = useCallback(async ({ email, password }) => {
         return await supabase.auth.signInWithPassword({ email, password });
     }, []);
@@ -94,7 +107,8 @@ export const AuthProvider = ({ children }) => {
         return await supabase.auth.signOut();
     }, []);
 
-    const value = { session, profile, isLoading, signIn, signUp, signOut };
+    // ✨ 3. Додаємо `switchRole` до загального контексту
+    const value = { session, profile, isLoading, signIn, signUp, signOut, switchRole };
 
     return (
         <AuthContext.Provider value={value}>
@@ -102,3 +116,4 @@ export const AuthProvider = ({ children }) => {
         </AuthContext.Provider>
     );
 };
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,9 @@ const validateEmail = (email) => {
   return re.test(String(email).toLowerCase());
 };
 
-export default function LoginScreen({ navigation }) {
+// ✨ 1. Огортаємо компонент в React.memo
+// Це запобігає зайвим пере-рендерам екрану, якщо пропси не змінилися.
+const LoginScreen = ({ navigation }) => {
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -24,7 +26,9 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
-  const handleLogin = async () => {
+  // ✨ 2. Огортаємо функції-обробники в useCallback
+  // Це оптимізація, яка не дозволяє створювати нову функцію при кожному рендері.
+  const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
     setErrorText('');
 
@@ -50,12 +54,16 @@ export default function LoginScreen({ navigation }) {
         setErrorText(error.message);
       }
     }
-  };
+    // ✨ ВАЖЛИВО: Навігація тут НЕ потрібна.
+    // AuthProvider оновить стан, а RootNavigator в App.js автоматично
+    // перемкне користувача на потрібний екран (UserAppFlow або DriverAppFlow).
+    // Це правильна архітектура, яка усуває "смикання".
 
-  // ✨ Виправлено навігацію на новий екран
-  const handleForgotPassword = () => {
+  }, [email, password, signIn, t]);
+
+  const handleForgotPassword = useCallback(() => {
     navigation.navigate('ForgotPasswordScreen');
-  };
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,6 +74,7 @@ export default function LoginScreen({ navigation }) {
         <Ionicons name="close-outline" size={32} color={colors.text} />
       </TouchableOpacity>
       
+      {/* Ця комбінація KeyboardAvoidingView та ScrollView є найкращою практикою для форм */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingContainer}
@@ -84,10 +93,7 @@ export default function LoginScreen({ navigation }) {
                 icon="mail-outline"
                 placeholder={t('registration.emailPlaceholder', 'Електронна пошта')}
                 value={email}
-                onChangeText={(text) => {
-                setEmail(text);
-                if (errorText) setErrorText('');
-                }}
+                onChangeText={setEmail}
                 keyboardType="email-address" 
                 autoCapitalize="none"
             />
@@ -95,10 +101,7 @@ export default function LoginScreen({ navigation }) {
                 icon="lock-closed-outline"
                 placeholder={t('registration.passwordPlaceholder', 'Пароль')}
                 value={password}
-                onChangeText={(text) => {
-                setPassword(text);
-                if (errorText) setErrorText('');
-                }}
+                onChangeText={setPassword}
                 secureTextEntry
             />
             <TouchableOpacity onPress={handleForgotPassword}>
@@ -128,6 +131,9 @@ export default function LoginScreen({ navigation }) {
     </SafeAreaView>
   );
 }
+
+// ✨ Експортуємо мемоізовану версію компонента
+export default React.memo(LoginScreen);
 
 const getStyles = (colors, insets, theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
@@ -191,4 +197,3 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-

@@ -9,18 +9,20 @@ import { useAuth } from '../../provider/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNewTrips } from '../../provider/NewTripsContext';
 import moment from 'moment';
+// ✨ 1. Імпортуємо всі необхідні локалі для moment
 import 'moment/locale/uk';
+import 'moment/locale/ro';
+import 'moment/locale/en-gb'; // en-gb як стандарт для англійської
 
 
-// ✨ 1. Додаємо пропс `onPress` і прибираємо непотрібний `navigation`
 const TripCard = ({ item, t, onDelete, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
-    const navigation = useNavigation(); // Використовуємо хук тут для кнопок
+    const navigation = useNavigation();
     
-    const tripDate = new Date(item.transfer_datetime);
-    const formattedDate = tripDate.toLocaleDateString([], { day: '2-digit', month: 'long', year: 'numeric' });
-    const formattedTime = tripDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // ✨ 2. Використовуємо moment для форматування, який тепер знає про поточну мову
+    const formattedDate = moment(item.transfer_datetime).format('D MMMM YYYY');
+    const formattedTime = moment(item.transfer_datetime).format('HH:mm');
     const totalPassengers = (item.adults_count || 0) + (item.children_count || 0) + (item.infants_count || 0);
     
     const handleCall = () => {
@@ -57,7 +59,6 @@ const TripCard = ({ item, t, onDelete, onPress }) => {
         }
     };
 
-    // ✨ 2. Огортаємо всю картку в TouchableOpacity і передаємо onPress
     return (
         <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
             <View style={styles.cardHeader}>
@@ -109,7 +110,8 @@ const TripCard = ({ item, t, onDelete, onPress }) => {
 
 export default function MyTripsScreen() {
     const { colors } = useTheme();
-    const { t } = useTranslation();
+    // ✨ 3. Отримуємо i18n для доступу до поточної мови
+    const { t, i18n } = useTranslation();
     const { session } = useAuth();
     const navigation = useNavigation();
     const { clearNewTripsCount } = useNewTrips();
@@ -120,12 +122,24 @@ export default function MyTripsScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    // ✨ 4. Цей useEffect тепер встановлює глобальну мову для moment
+    useEffect(() => {
+        moment.locale(i18n.language);
+    }, [i18n.language]);
+
     useFocusEffect(useCallback(() => { clearNewTripsCount(); }, [clearNewTripsCount]));
 
     const fetchTrips = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
-            const { data, error } = await supabase.from('transfers').select('*, passenger:passenger_id(id, full_name, phone, avatar_url, last_seen)').eq('driver_id', session.user.id).in('status', ['accepted', 'completed']).order('transfer_datetime', { ascending: false });
+            // ✨ 5. КЛЮЧОВА ЗМІНА: ascending: true для сортування від найближчих дат
+            const { data, error } = await supabase
+                .from('transfers')
+                .select('*, passenger:passenger_id(id, full_name, phone, avatar_url, last_seen)')
+                .eq('driver_id', session.user.id)
+                .in('status', ['accepted', 'completed'])
+                .order('transfer_datetime', { ascending: true }); // Змінено на true
+
             if (error) throw error;
             setAllTrips(data || []);
         } catch (e) { console.error("Error fetching trips:", e); } 
@@ -161,12 +175,17 @@ export default function MyTripsScreen() {
         await fetchTrips();
         setRefreshing(false);
     }, [fetchTrips]);
-
+    
+    // Логіка розділення на активні та архівні залишається без змін,
+    // вона збереже правильний порядок сортування.
     const { activeTrips, archivedTrips } = useMemo(() => {
-        const twoDaysAgo = new Date();
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const now = moment();
         return allTrips.reduce((acc, trip) => {
-            (new Date(trip.transfer_datetime) < twoDaysAgo ? acc.archivedTrips : acc.activeTrips).push(trip);
+            // Архівуємо поїздки, які завершились більше 24 годин тому
+            (moment(trip.transfer_datetime).isBefore(now.clone().subtract(1, 'day')) 
+                ? acc.archivedTrips.push(trip) 
+                : acc.activeTrips.push(trip)
+            );
             return acc;
         }, { activeTrips: [], archivedTrips: [] });
     }, [allTrips]);
@@ -210,7 +229,6 @@ export default function MyTripsScreen() {
             ) : (
                 <FlatList
                     data={tripsToDisplay}
-                    // ✨ 3. Передаємо функцію навігації в `onPress` для кожної картки
                     renderItem={({ item }) => (
                         <TripCard 
                             item={item} 

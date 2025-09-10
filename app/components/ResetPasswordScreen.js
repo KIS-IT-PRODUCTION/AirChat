@@ -23,38 +23,33 @@ export default function ResetPasswordScreen({ navigation }) {
     setErrorText('');
 
     if (password.length < 6) {
-      setErrorText(t('registration.passwordTooShort', 'Пароль має містити щонайменше 6 символів.'));
+      setErrorText(t('registration.passwordTooShort'));
       return;
     }
     if (password !== confirmPassword) {
-      setErrorText(t('resetPassword.passwordsDoNotMatch', 'Паролі не співпадають.'));
+      setErrorText(t('resetPassword.passwordsDoNotMatch'));
       return;
     }
 
     setLoading(true);
-    // Supabase client автоматично підхоплює сесію з URL
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
     if (error) {
       setErrorText(error.message);
     } else {
+      // ✨ КЛЮЧОВЕ ВИПРАВЛЕННЯ: Просто показуємо повідомлення.
+      // Навігація відбудеться автоматично, коли AuthProvider побачить нову сесію.
       Alert.alert(
         t('common.success'),
-        t('resetPassword.successMessage', 'Ваш пароль успішно оновлено!'),
-        [{ text: 'OK', onPress: () => navigation.navigate('LoginScreen') }]
+        t('resetPassword.successMessage', 'Ваш пароль успішно оновлено!')
       );
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={() => navigation.navigate('LoginScreen')}
-      >
-        <Ionicons name="arrow-back-outline" size={32} color={colors.text} />
-      </TouchableOpacity>
+       {/* Кнопка "назад" тепер не потрібна, оскільки користувач не може "вийти" з цього стану */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingContainer}
@@ -71,20 +66,14 @@ export default function ResetPasswordScreen({ navigation }) {
                   icon="lock-closed-outline"
                   placeholder={t('resetPassword.newPassword', 'Новий пароль')}
                   value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (errorText) setErrorText('');
-                  }}
+                  onChangeText={setPassword}
                   secureTextEntry
               />
               <InputWithIcon
                   icon="lock-closed-outline"
                   placeholder={t('resetPassword.confirmPassword', 'Підтвердіть пароль')}
                   value={confirmPassword}
-                  onChangeText={(text) => {
-                    setConfirmPassword(text);
-                    if (errorText) setErrorText('');
-                  }}
+                  onChangeText={setConfirmPassword}
                   secureTextEntry
               />
             </View>
@@ -106,6 +95,7 @@ export default function ResetPasswordScreen({ navigation }) {
   );
 }
 
+// ... (стилі без змін)
 const getStyles = (colors, insets) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     keyboardAvoidingContainer: { flex: 1 },
@@ -120,4 +110,3 @@ const getStyles = (colors, insets) => StyleSheet.create({
     button: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center' },
     buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
 });
-

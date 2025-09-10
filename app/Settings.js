@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView,
   TextInput, Alert, Modal, Pressable, Platform, ActivityIndicator
 } from 'react-native';
+// ✨ 1. Імпортуємо необхідні модулі
+import { Image } from 'expo-image';
+import { MotiView } from 'moti';
+import * as FileSystem from 'expo-file-system';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,7 +15,7 @@ import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 
-// --- Компоненти полів ---
+// --- Компоненти полів (без змін) ---
 const EditableField = ({ labelKey, icon, value, isEditing, onToggleEdit, onChangeText }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
@@ -65,16 +69,33 @@ const PasswordField = ({ labelKey, icon, onNavigate }) => {
     );
 };
 
+// ✨ 2. НОВИЙ ДИЗАЙН: Повністю перероблений компонент перемикача теми
 const ThemeSwitcher = () => {
   const { colors, theme, toggleTheme } = useTheme();
   const styles = getStyles(colors);
   const { t } = useTranslation();
+  const isDark = theme === 'dark';
+  
   return (
-    <View style={styles.themeRow}><Text style={styles.label}>{t('settings.darkTheme')}</Text><TouchableOpacity onPress={toggleTheme} style={styles.switchContainer}><View style={[styles.switchIconContainer, theme === 'light' && styles.switchIconActive]}><Ionicons name="sunny-outline" size={18} color={theme === 'light' ? colors.primary : colors.secondaryText} /></View><View style={[styles.switchIconContainer, theme === 'dark' && styles.switchIconActive]}><Ionicons name="moon-outline" size={18} color={theme === 'dark' ? colors.primary : colors.secondaryText} /></View></TouchableOpacity></View>
+    <View style={styles.themeContainer}>
+      <Text style={styles.label}>{t('settings.darkTheme')}</Text>
+      <TouchableOpacity onPress={toggleTheme} style={styles.themeSwitchTrack}>
+        <MotiView
+          style={styles.themeSwitchThumb}
+          animate={{ translateX: isDark ? 36 : 0 }}
+          transition={{ type: 'timing', duration: 250 }}
+        />
+        <View style={styles.themeIconContainer}>
+          <Ionicons name="sunny-outline" size={18} color={isDark ? colors.secondaryText : colors.primary} />
+          <Ionicons name="moon-outline" size={18} color={isDark ? colors.primary : colors.secondaryText} />
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 };
 
-// --- Модальні вікна ---
+
+// --- Модальні вікна (без змін) ---
 const AvatarSelectionModal = ({ visible, onClose, onPickFromGallery, onSelectPreset }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
@@ -136,7 +157,7 @@ const ChangePasswordModal = ({ visible, onClose, onSave, isSaving }) => {
 };
 
 // --- Основний компонент ---
-export default function SettingsScreen({ navigation }) {
+const SettingsScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
   const { session, signOut } = useAuth();
@@ -154,6 +175,44 @@ export default function SettingsScreen({ navigation }) {
   const [localAvatar, setLocalAvatar] = useState(null); 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  
+  // ✨ 3. Додаємо стани для функціоналу кешу
+  const [cacheSize, setCacheSize] = useState(null);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const formatBytes = (bytes, decimals = 2) => {
+    if (!+bytes) return '0 B';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  };
+
+  // ✨ 4. Функція для надійного розрахунку розміру кешу
+  const calculateCacheSize = useCallback(async () => {
+    try {
+      const cacheDir = `${FileSystem.cacheDirectory}expo-image/`;
+      const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+      if (!dirInfo.exists) {
+        setCacheSize('0 B');
+        return;
+      }
+      const files = await FileSystem.readDirectoryAsync(cacheDir);
+      const promises = files.map(file => FileSystem.getInfoAsync(`${cacheDir}${file}`));
+      const fileInfos = await Promise.all(promises);
+      const totalSize = fileInfos.reduce((acc, file) => acc + file.size, 0);
+      setCacheSize(formatBytes(totalSize));
+    } catch (error) {
+      console.error("Failed to get cache size:", error);
+      setCacheSize(null);
+    }
+  }, []);
+  
+  // ✨ 5. Розраховуємо розмір кешу при завантаженні екрану
+  useEffect(() => {
+    calculateCacheSize();
+  }, [calculateCacheSize]);
 
   const fetchProfile = useCallback(async () => {
     if (!session?.user) return;
@@ -161,8 +220,35 @@ export default function SettingsScreen({ navigation }) {
   }, [session, t]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  
+  // ✨ 6. Функція для очищення кешу
+  const handleClearCache = useCallback(() => {
+    Alert.alert(
+      t('settings.clearCacheTitle'),
+      t('settings.clearCacheBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            setIsClearingCache(true);
+            try {
+              await Image.clearDiskCache();
+              Alert.alert(t('common.success'), t('settings.cacheClearedSuccess'));
+              await calculateCacheSize(); 
+            } catch (error) {
+              Alert.alert(t('common.error'), error.message);
+            } finally {
+              setIsClearingCache(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [t, calculateCacheSize]);
 
-  const pickImage = async () => {
+  const pickImage = useCallback(async () => {
     setAvatarModalVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -176,9 +262,9 @@ export default function SettingsScreen({ navigation }) {
     if (!result.canceled) {
       setTimeout(() => setLocalAvatar(result.assets[0]), 100);
     }
-  };
+  }, [t]);
 
-  const handleSelectPresetAvatar = (type) => {
+  const handleSelectPresetAvatar = useCallback((type) => {
     const presetBaseUrl = `https://api.dicebear.com/8.x/initials/png?seed=`;
     let newUrl;
     switch(type) {
@@ -189,9 +275,9 @@ export default function SettingsScreen({ navigation }) {
     setAvatarUrl(newUrl);
     setLocalAvatar(null);
     setAvatarModalVisible(false);
-  };
+  }, [fullName]);
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = useCallback(async () => {
     if (!session?.user) return;
     setIsSaving(true);
     try {
@@ -222,9 +308,9 @@ export default function SettingsScreen({ navigation }) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [session, avatarUrl, localAvatar, fullName, phone, t]);
 
-  const handleChangePassword = async (newPassword) => {
+  const handleChangePassword = useCallback(async (newPassword) => {
       setIsPasswordSaving(true);
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       setIsPasswordSaving(false);
@@ -234,16 +320,16 @@ export default function SettingsScreen({ navigation }) {
           Alert.alert(t('common.success'), t('settings.passwordChangedSuccess'));
           setPasswordModalVisible(false);
       }
-  };
+  }, [t]);
 
-  const handleLanguageChange = (lang) => { i18n.changeLanguage(lang); setLanguageModalVisible(false); };
-  const toggleEdit = (fieldName) => { setEditingField(prev => (prev === fieldName ? null : fieldName)); };
-  const handleLogout = () => { Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), onPress: signOut, style: 'destructive' }]); };
-  const getDisplayAvatar = () => {
+  const handleLanguageChange = useCallback((lang) => { i18n.changeLanguage(lang); setLanguageModalVisible(false); }, [i18n]);
+  const toggleEdit = useCallback((fieldName) => { setEditingField(prev => (prev === fieldName ? null : fieldName)); }, []);
+  const handleLogout = useCallback(() => { Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), onPress: signOut, style: 'destructive' }]); }, [signOut, t]);
+  const getDisplayAvatar = useCallback(() => {
     if (localAvatar) return { uri: localAvatar.uri };
     if (avatarUrl) return { uri: avatarUrl };
     return require('../assets/default-avatar.png');
-  };
+  }, [localAvatar, avatarUrl]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -266,16 +352,33 @@ export default function SettingsScreen({ navigation }) {
           <>
             <View style={styles.avatarContainer}>
               <TouchableOpacity onPress={() => setAvatarModalVisible(true)}>
-                <Image source={getDisplayAvatar()} style={styles.avatar} />
+                 {/* ✨ 7. Використовуємо оптимізований Image */}
+                <Image 
+                    source={getDisplayAvatar()} 
+                    style={styles.avatar} 
+                    cachePolicy="disk"
+                    transition={300}
+                />
                 <View style={styles.changeButton}><Ionicons name="camera-outline" size={20} color="#FFFFFF" /></View>
               </TouchableOpacity>
             </View>
             <View style={styles.form}>
+              <Text style={styles.sectionTitle}>{t('settings.personalInfo')}</Text>
               <EditableField labelKey="registration.fullNameLabel" icon="person-outline" value={fullName} onChangeText={setFullName} isEditing={editingField === 'fullName'} onToggleEdit={() => toggleEdit('fullName')} />
               <EditableField labelKey="registration.phoneLabel" icon="call-outline" value={phone} onChangeText={setPhone} isEditing={editingField === 'phone'} onToggleEdit={() => toggleEdit('phone')} />
+              
+              <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
               <EditableField labelKey="settings.language" icon="language-outline" value={t(`settings.${i18n.language}`)} onToggleEdit={() => setLanguageModalVisible(true)} />
               <ReadOnlyField labelKey="registration.emailLabel" icon="mail-outline" value={session?.user?.email} />
               <PasswordField labelKey="registration.passwordLabel" icon="lock-closed-outline" onNavigate={() => setPasswordModalVisible(true)} />
+              
+              {/* ✨ 8. Додаємо кнопку очищення кешу */}
+              <TouchableOpacity style={styles.actionButton} onPress={handleClearCache} disabled={isClearingCache}>
+                  {isClearingCache ? <ActivityIndicator size="small" color={colors.secondaryText} /> : <Ionicons name="trash-bin-outline" size={20} color={colors.secondaryText} />}
+                  <Text style={styles.actionButtonText}>
+                      {t('settings.clearCacheTitle')}
+                  </Text>
+              </TouchableOpacity>
             </View>
             <ThemeSwitcher />
           </>
@@ -295,6 +398,9 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
+// ✨ 9. Огортаємо експорт в memo для оптимізації
+export default memo(SettingsScreen);
+
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -305,11 +411,14 @@ const getStyles = (colors) => StyleSheet.create({
     avatar: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.primary },
     changeButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: colors.primary, borderRadius: 20, padding: 8, borderWidth: 2, borderColor: colors.background },
     form: { marginBottom: 24 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16 },
     fieldContainer: { marginBottom: 16 },
     label: { color: colors.secondaryText, fontSize: 14, marginBottom: 8 },
     inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, height: 50 },
     inputIcon: { marginRight: 12 },
     inputText: { flex: 1, color: colors.text, fontSize: 16 },
+    actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, marginTop: 10, gap: 12 },
+    actionButtonText: { color: colors.secondaryText, fontSize: 16, fontWeight: '500' },
     footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
     saveButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8 },
     saveButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
@@ -325,8 +434,38 @@ const getStyles = (colors) => StyleSheet.create({
     modalInput: { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: '100%', padding: 14, fontSize: 16, color: colors.text, marginBottom: 16 },
     langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
     langButtonText: { color: colors.text, fontSize: 18, textAlign: 'center' },
-    themeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 16 },
-    switchContainer: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 20, padding: 4 },
-    switchIconContainer: { padding: 6, borderRadius: 16 },
-    switchIconActive: { backgroundColor: colors.card },
+    // ✨ 10. Нові стилі для перемикача теми
+    themeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: colors.card,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginBottom: 16
+    },
+    themeSwitchTrack: {
+        width: 70,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: colors.background,
+        justifyContent: 'center',
+        padding: 4,
+    },
+    themeSwitchThumb: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: colors.primary,
+        position: 'absolute',
+        top: 4,
+        left: 4,
+    },
+    themeIconContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+    },
 });

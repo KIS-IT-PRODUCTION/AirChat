@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// ✨ 1. Імпортуємо KeyboardAvoidingView та Platform
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
-// ✨ 2. Імпортуємо покращений компонент Image
 import { Image } from 'expo-image';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,15 +27,19 @@ const InfoRow = ({ icon, label, value, colors }) => {
   );
 };
 
-const OtherDriverOffer = ({ offer, isChosen }) => {
+const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
+    
     return (
-        <View style={[styles.otherOfferRow, isChosen && styles.chosenOffer]}>
-            {/* ✨ 3. Замінено стандартний Image на новий з кешуванням */}
-            <Image 
-                source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')} 
+        <TouchableOpacity 
+            style={[styles.otherOfferRow, isChosen && styles.chosenOffer]} 
+            onPress={onPress} 
+            activeOpacity={0.7}
+        >
+            <Image
+                source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')}
                 style={styles.otherOfferAvatar}
                 contentFit="cover"
                 transition={300}
@@ -46,11 +48,12 @@ const OtherDriverOffer = ({ offer, isChosen }) => {
             <Text style={[styles.otherOfferName, isChosen && styles.chosenOfferText]} numberOfLines={1}>{offer.driver_name}</Text>
             <Text style={[styles.otherOfferPrice, isChosen && styles.chosenOfferText]}>{displayPrice}</Text>
             {isChosen && <Ionicons name="checkmark-circle" size={24} color={colors.primary} style={{ marginLeft: 8 }} />}
-        </View>
+        </TouchableOpacity>
     );
 };
 
 const CURRENCIES = ['UAH', 'USD', 'EUR'];
+const HEADER_HEIGHT = Platform.select({ ios: 85, android: 100 });
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function DriverRequestDetailScreen({ navigation, route }) {
@@ -68,11 +71,11 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
-  
+
   const [price, setPrice] = useState('');
   const [comment, setComment] = useState('');
   const [currency, setCurrency] = useState('UAH');
-  
+
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
 
   useEffect(() => {
@@ -92,7 +95,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     try {
       const { data, error } = await supabase.rpc('get_driver_request_details', { p_transfer_id: transferId }).single();
       if (error) throw error;
-      
+
       if (data) {
         setTransferData(data);
         const offers = data.other_offers || [];
@@ -110,7 +113,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
+
   useEffect(() => {
     if (mapViewRef.current && routeCoordinates.length > 1) {
       setTimeout(() => {
@@ -136,7 +139,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
       }
     } catch (error) { console.error("Error fetching route:", error); }
   };
-  
+
    const handleSubmitOffer = async () => {
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
         Alert.alert(t('common.error'), t('driverOffer.priceRequired'));
@@ -184,20 +187,19 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         <Logo width={40} height={40} />
       </View>
       
-      {/* ✨ 4. Огортаємо ScrollView в KeyboardAvoidingView */}
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={HEADER_HEIGHT}
       >
-        <ScrollView 
+        <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
         >
             <View style={styles.userInfoSection}>
-                {/* ✨ 5. Замінено стандартний Image на новий з кешуванням */}
-                <Image 
-                    source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} 
-                    style={styles.userAvatar} 
+                <Image
+                    source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')}
+                    style={styles.userAvatar}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="disk"
@@ -206,11 +208,24 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                 <Text style={styles.memberSince}>{t('driverHome.memberSince', { date: moment(transferData?.passenger_created_at).format('ll') })}</Text>
             </View>
 
+            {/* ✨ ЗМІНИ ТУТ: Іконки тепер умовні */}
             <View style={styles.infoCard}>
-                <InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} />
+                <InfoRow 
+                    icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} 
+                    label={t('transferDetail.from')} 
+                    value={transferData?.from_location} 
+                    colors={colors} 
+                />
                 <View style={styles.dottedLine} />
-                <InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} />
+                <InfoRow 
+                    icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} 
+                    label={t('transferDetail.to')} 
+                    value={transferData?.to_location} 
+                    colors={colors} 
+                />
             </View>
+            {/* ✨ КІНЕЦЬ ЗМІН */}
+            
             <View style={styles.infoCard}>
                 <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text>
                 <View style={styles.detailsGrid}>
@@ -242,7 +257,19 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                 {routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport') : t('transferDetail.toAirport')}</Text></View></View>)}
             </View>
 
-            {otherOffers.length > 0 && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle')}</Text>{otherOffers.map((offer, index) => (<OtherDriverOffer key={index} offer={offer} isChosen={offer.driver_id === transferData?.accepted_driver_id} />))}</View>)}
+            {otherOffers.length > 0 && (
+                <View style={styles.infoCard}>
+                    <Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle')}</Text>
+                    {otherOffers.map((offer, index) => (
+                        <OtherDriverOffer 
+                            key={index} 
+                            offer={offer} 
+                            isChosen={offer.driver_id === transferData?.accepted_driver_id}
+                            onPress={() => navigation.navigate('PublicDriverProfile', { driverId: offer.driver_id })}
+                        />
+                    ))}
+                </View>
+            )}
 
             {!isRequestClosed && (
                 <View style={styles.offerSection}>
@@ -266,6 +293,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     </SafeAreaView>
   );
 }
+
 // Стилі залишаються без змін
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },

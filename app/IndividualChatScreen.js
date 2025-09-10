@@ -5,6 +5,7 @@ import {
     Pressable, Linking, RefreshControl, Clipboard
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Audio } from 'expo-av';
 import { useTheme } from './ThemeContext';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +24,8 @@ import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
-
+// (Всі ваші допоміжні компоненти залишаються без змін: SelectionHeader, SelectionCircle, і т.д.)
+// ...
 const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -39,6 +41,28 @@ const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
         </View>
     );
 };
+
+const SelectionCircle = memo(({ isSelected }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    return (
+        <View style={styles.selectionCircleContainer}>
+            <AnimatePresence>
+                {isSelected ? (
+                    <MotiView from={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                        <Ionicons name="checkmark-circle" size={26} color={colors.primary} />
+                    </MotiView>
+                ) : (
+                    <MotiView
+                        from={{ scale: 1 }} animate={{ scale: 1 }}
+                        style={styles.selectionCircleEmpty}
+                    />
+                )}
+            </AnimatePresence>
+        </View>
+    );
+});
+
 
 const DateSeparator = memo(({ date }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation();
@@ -76,55 +100,66 @@ const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, on
     );
 };
 
+
+// ✨ 1. Оновлюємо компонент MessageBubble для кращої анімації
 const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const isMyMessage = message.sender_id === currentUserId; const lastTap = useRef(0);
-    
+    const [isPressed, setIsPressed] = useState(false);
+
     const handlePress = () => {
-        if (selectionMode) {
-            if (isMyMessage) { onSelect(message.id); }
-            return;
-        }
+        if (selectionMode) { if (isMyMessage) onSelect(message.id); return; }
         const now = Date.now(); const DOUBLE_PRESS_DELAY = 300;
-        if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) { onDoubleTap(message); } }
+        if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); }
         lastTap.current = now;
     };
     const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="large" color="#FFFFFF" /></View>);
 
     return (
-        <AnimatePresence>
-            <MotiView from={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'timing', duration: 250 }}>
-                <Pressable onLongPress={() => onLongPress(message)} onPress={handlePress} style={styles.messageContainer}>
-                    <AnimatePresence>
-                        {isSelected && (
-                             <MotiView
-                                from={{ scale: 1.1, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 1.1, opacity: 0 }}
-                                transition={{ type: 'timing', duration: 150 }}
-                                style={styles.selectionOverlay}
-                            />
-                        )}
-                    </AnimatePresence>
-                    <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
-                        <View style={{ maxWidth: '80%' }}>
-                            <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
-                                {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
-                                {message.image_url && (<TouchableOpacity onPress={() => onImagePress(message.image_url)}><Image source={{ uri: message.image_url }} style={[styles.messageImage, message.status === 'uploading' && styles.uploadingImage]} contentFit="cover" transition={300} cachePolicy="disk" />{message.status === 'uploading' && <UploadingIndicator />}</TouchableOpacity>)}
-                                {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
-                                <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
-                            </View>
-                            {message.reactions && message.reactions.length > 0 && (<View style={[styles.reactionsContainer, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>{message.reactions.map(r => ( <View key={r.emoji} style={styles.reactionBadge}><Text style={styles.reactionBadgeText}>{r.emoji} {r.count}</Text></View> ))}</View>)}
+        <Pressable
+            onPressIn={() => setIsPressed(true)}
+            onPressOut={() => setIsPressed(false)}
+            onLongPress={() => onLongPress(message)}
+            onPress={handlePress}
+            style={styles.messageContainer}
+        >
+            <MotiView
+                from={{
+                    opacity: 0,
+                    scale: 0.9,
+                    translateX: isMyMessage ? 40 : -40, // Початкова позиція за екраном
+                }}
+                animate={{
+                    opacity: 1,
+                    scale: isPressed ? 0.97 : 1,
+                    translateX: 0, // Кінцева позиція
+                }}
+                transition={{
+                    type: 'timing', // Використовуємо 'timing' для більш контрольованої анімації
+                    duration: 250,
+                }}
+            >
+                <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
+                    {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
+                    <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
+                        <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
+                            {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
+                            {message.image_url && (<TouchableOpacity onPress={() => onImagePress(message.image_url)}><Image source={{ uri: message.image_url }} style={[styles.messageImage, message.status === 'uploading' && styles.uploadingImage]} contentFit="cover" transition={300} cachePolicy="disk" />{message.status === 'uploading' && <UploadingIndicator />}</TouchableOpacity>)}
+                            {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
+                            <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
                         </View>
+                        {message.reactions && message.reactions.length > 0 && (<View style={[styles.reactionsContainer, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>{message.reactions.map(r => ( <View key={r.emoji} style={styles.reactionBadge}><Text style={styles.reactionBadgeText}>{r.emoji} {r.count}</Text></View> ))}</View>)}
                     </View>
-                </Pressable>
+                </View>
             </MotiView>
-        </AnimatePresence>
+        </Pressable>
     );
 });
 
+
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function IndividualChatScreen() {
+    // ... (всі ваші хуки і стани залишаються без змін)
     const { colors } = useTheme(); const { t, i18n } = useTranslation(); const styles = getStyles(colors);
     const route = useRoute(); const navigation = useNavigation();
     const { session, profile } = useAuth();
@@ -132,7 +167,10 @@ export default function IndividualChatScreen() {
     
     useEffect(() => { moment.locale(i18n.language); }, [i18n.language]);
 
-    const { roomId: initialRoomId, recipientId, recipientName, recipientAvatar, recipientLastSeen: initialLastSeen } = route.params;
+    const { roomId: initialRoomId, recipientId, recipientLastSeen: initialLastSeen } = route.params;
+    
+    const [recipientInfo, setRecipientInfo] = useState({ name: route.params.recipientName, avatar: route.params.recipientAvatar });
+    const [isLoadingRecipient, setIsLoadingRecipient] = useState(false);
     
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
@@ -153,139 +191,178 @@ export default function IndividualChatScreen() {
 
     const channel = useRef(null);
     const typingTimeout = useRef(null);
+    const sentSound = useRef(new Audio.Sound());
+    const receivedSound = useRef(new Audio.Sound());
+
+    useEffect(() => {
+        const loadSounds = async () => {
+            try {
+                await sentSound.current.loadAsync(require('../assets/sound/send_massege.mp3'));
+                await receivedSound.current.loadAsync(require('../assets/sound/get_massege.mp3'));
+            } catch (error) { console.error("Failed to load sounds", error); }
+        };
+        loadSounds();
+        return () => {
+            sentSound.current.unloadAsync();
+            receivedSound.current.unloadAsync();
+        };
+    }, []);
+
+    const playSentSound = useCallback(async () => { try { await sentSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
+    const playReceivedSound = useCallback(async () => { try { await receivedSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
+    
+    // ... (решта вашого коду без змін)
+    useEffect(() => {
+        const fetchRecipientInfo = async () => {
+            if (!recipientId || (recipientInfo.name && recipientInfo.avatar)) return;
+            setIsLoadingRecipient(true);
+            try {
+                const { data, error } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', recipientId).single();
+                if (error) throw error;
+                if (data) setRecipientInfo({ name: data.full_name, avatar: data.avatar_url });
+            } catch (error) {
+                console.error("Error fetching recipient info:", error.message);
+                setRecipientInfo({ name: t('common.user', 'Користувач'), avatar: null });
+            } finally { setIsLoadingRecipient(false); }
+        };
+        fetchRecipientInfo();
+    }, [recipientId]);
 
     const markAsRead = useCallback(async (roomId) => { if (!roomId) return; try { await supabase.rpc('mark_messages_as_read', { p_room_id: roomId }); } catch (e) { console.error("Error marking as read:", e.message); } }, []);
     const fetchMessages = useCallback(async (roomId) => { if (!roomId) return; const { data, error } = await supabase.from('messages').select('*, reactions(*)').eq('room_id', roomId).order('created_at', { ascending: false }); if (error) { console.error("Fetch Error:", error); } else { setMessages(data || []); } }, []);
+    
     useEffect(() => { const setup = async () => { if (!session || !recipientId) return; let roomId = currentRoomId; if (!roomId) { try { const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId }); roomId = data; setCurrentRoomId(roomId); } catch (e) { console.error("Error getting room ID:", e); return; } } if (roomId) await fetchMessages(roomId); }; setup(); }, [session, recipientId, currentRoomId, fetchMessages]);
-    useEffect(() => { if (!currentRoomId || !session) return; channel.current = supabase.channel(`room-${currentRoomId}`, { config: { presence: { key: session.user.id } } }); const handleNew = (payload) => { setMessages(prev => { const optimisticId = payload.new.client_id; const isAlreadyPresent = prev.some(m => m.id === payload.new.id || (optimisticId && m.id === optimisticId)); if (isAlreadyPresent) { return prev.map(m => (m.id === optimisticId ? payload.new : m)); } return [payload.new, ...prev]; }); if (payload.new.sender_id !== session.user.id) { markAsRead(currentRoomId); } }; const handleUpdate = p => setMessages(prev => prev.map(m => m.id === p.new.id ? p.new : m)); const handleDelete = p => setMessages(prev => prev.filter(m => m.id !== p.old.id)); channel.current.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleNew).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleUpdate).on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleDelete).on('presence', { event: 'sync' }, () => setIsRecipientOnline(Object.keys(channel.current.presenceState()).some(k => k === recipientId))).on('broadcast', { event: 'typing' }, ({ payload }) => { if (payload.user_id === recipientId) { setIsRecipientTyping(true); if (typingTimeout.current) clearTimeout(typingTimeout.current); typingTimeout.current = setTimeout(() => setIsRecipientTyping(false), 2000); } }).subscribe(); const profileSub = supabase.channel(`profiles:${recipientId}`).on('postgres_changes', { event: 'UPDATE', table: 'profiles', filter: `id=eq.${recipientId}` }, p => setRealtimeLastSeen(p.new.last_seen)).subscribe(); return () => { supabase.removeChannel(channel.current); supabase.removeChannel(profileSub); }; }, [currentRoomId, session, recipientId, markAsRead]);
+    
+    useEffect(() => { 
+        if (!currentRoomId || !session) return; 
+        
+        channel.current = supabase.channel(`room-${currentRoomId}`, { config: { presence: { key: session.user.id } } }); 
+
+        const handleNew = (payload) => { 
+            setMessages(prev => { 
+                const optimisticId = payload.new.client_id;
+                // Шукаємо, чи є вже повідомлення з таким client_id
+                const existingMsgIndex = prev.findIndex(m => m.client_id === optimisticId);
+                
+                if (existingMsgIndex !== -1) {
+                    // Якщо є, оновлюємо його
+                    const updatedMessages = [...prev];
+                    updatedMessages[existingMsgIndex] = payload.new;
+                    return updatedMessages;
+                }
+                // Якщо немає, додаємо нове
+                return [payload.new, ...prev];
+            }); 
+            if (payload.new.sender_id !== session.user.id) { 
+                markAsRead(currentRoomId);
+                playReceivedSound();
+            } 
+        }; 
+        const handleUpdate = p => setMessages(prev => prev.map(m => m.id === p.new.id ? p.new : m)); 
+        const handleDelete = p => setMessages(prev => prev.filter(m => m.id !== p.old.id)); 
+        
+        channel.current
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleNew)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleUpdate)
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleDelete)
+            .on('presence', { event: 'sync' }, () => setIsRecipientOnline(Object.keys(channel.current.presenceState()).some(k => k === recipientId)))
+            .on('broadcast', { event: 'typing' }, ({ payload }) => { if (payload.user_id === recipientId) { setIsRecipientTyping(true); if (typingTimeout.current) clearTimeout(typingTimeout.current); typingTimeout.current = setTimeout(() => setIsRecipientTyping(false), 2000); } })
+            .subscribe(); 
+
+        const profileSub = supabase
+            .channel(`profiles-listener:${recipientId}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
+                setRealtimeLastSeen(payload.new.last_seen);
+                setRecipientInfo({ name: payload.new.full_name, avatar: payload.new.avatar_url });
+            })
+            .subscribe();
+
+        return () => { 
+            supabase.removeChannel(channel.current); 
+            supabase.removeChannel(profileSub); 
+        }; 
+    }, [currentRoomId, session, recipientId, markAsRead, playReceivedSound]);
+    
     useFocusEffect(useCallback(() => { if (currentRoomId) { markAsRead(currentRoomId); fetchUnreadCount(); } }, [currentRoomId, markAsRead, fetchUnreadCount]));
+    
     const processedData = useMemo(() => { const rev = [...messages].reverse(); const items = []; rev.forEach((msg, i) => { const prev = rev[i-1]; if (!prev || !moment(msg.created_at).isSame(moment(prev.created_at), 'day')) { items.push({ id: `date-${msg.created_at}`, type: 'date_separator', date: msg.created_at }); } items.push({ ...msg, type: 'message' }); }); return items.reverse(); }, [messages]);
     const formatUserStatus = useCallback((isOnline, lastSeen) => { if (isOnline) return t('chat.onlineStatus'); if (!lastSeen) return t('chat.offlineStatus'); const lsMoment = moment(lastSeen); if (!lsMoment.isValid()) return t('chat.offlineStatus'); if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); }, [t]);
+    
     useEffect(() => { setUserStatus(formatUserStatus(isRecipientOnline, realtimeLastSeen)); }, [isRecipientOnline, realtimeLastSeen, formatUserStatus]);
+    
     const onRefresh = useCallback(async () => { setIsRefreshing(true); await fetchMessages(currentRoomId); setIsRefreshing(false); }, [currentRoomId, fetchMessages]);
     
-    // ✨ 1. Відновлено оригінальну, робочу функцію відправки
+    // ✨ 2. Оновлюємо функцію створення "оптимістичного" повідомлення
+    const createOptimisticMessage = (content, imageUrl = null) => {
+        const tempId = `temp-${Date.now()}`;
+        return {
+            id: tempId,
+            client_id: tempId, // Дуже важливо для стабільного ключа!
+            room_id: currentRoomId,
+            sender_id: session.user.id,
+            content: content,
+            image_url: imageUrl,
+            created_at: new Date().toISOString(),
+            status: imageUrl ? 'uploading' : 'sending',
+            reactions: []
+        };
+    };
+
     const handleSendText = async () => {
         if (editingMessage) { handleEditMessage(); return; } 
         const textToSend = inputText.trim(); 
         if (textToSend.length === 0 || !session || !currentRoomId) return; 
         
-        const tempId = `temp-${Date.now()}`;
-        const optimisticMessage = { id: tempId, room_id: currentRoomId, sender_id: session.user.id, content: textToSend, created_at: new Date().toISOString(), status: 'sending', reactions: [] }; 
+        playSentSound();
+        
+        const optimisticMessage = createOptimisticMessage(textToSend);
         
         setMessages(prev => [optimisticMessage, ...prev]); 
         setInputText(''); 
         
-        // Використовуємо .select(), щоб отримати підтвердження від сервера
-        const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, content: textToSend, client_id: tempId }]).select().single(); 
+        const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, content: textToSend, client_id: optimisticMessage.client_id }]).select().single(); 
         
         if (error) { 
             console.error("[SEND] Error:", error); 
             Alert.alert(t('common.error'), error.message); 
-            setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id)); 
+            setMessages(prev => prev.filter(msg => msg.client_id !== optimisticMessage.client_id)); 
         } else { 
-            supabase.functions.invoke('send-push-notification', { 
-                body: { 
-                    recipient_id: recipientId, 
-                    sender_id: session.user.id, 
-                    message_content: textToSend,
-                    room_id: currentRoomId,
-                    sender_name: profile?.full_name,
-                    sender_avatar: profile?.avatar_url,
-                    sender_last_seen: new Date().toISOString()
-                }
-            }).catch(e => console.error("Push notification error:", e));
+            const pushPayload = { recipient_id: recipientId, sender_id: session.user.id, message_content: textToSend, room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() };
+            supabase.functions.invoke('send-push-notification', { body: pushPayload }).catch(e => console.error("Push notification error:", e));
         } 
     };
-
-    const handleEditMessage = async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); };
-    const handleReaction = async (emoji, message) => { const target = message || selectedMessage; if (!target) return; setMessages(prev => prev.map(msg => { if (msg.id !== target.id) return msg; let reactions = [...(msg.reactions || [])]; const rIdx = reactions.findIndex(r => r.emoji === emoji); if (rIdx > -1) { const uIdx = reactions[rIdx].users.indexOf(session.user.id); if (uIdx > -1) { reactions[rIdx].count--; if (reactions[rIdx].count === 0) reactions.splice(rIdx, 1); } else { reactions[rIdx].count++; reactions[rIdx].users.push(session.user.id); } } else { reactions.push({ emoji, count: 1, users: [session.user.id] }); } return { ...msg, reactions }; })); await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); };
     
-    const handleDeleteMessage = () => {
-        if (!selectedMessage) return;
-        Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const messageId = selectedMessage.id; setMessages(prev => prev.filter(msg => msg.id !== messageId)); await supabase.from('messages').delete().eq('id', messageId); } } ]);
-    };
-
-    const handleLongPress = (message) => {
-        if (selectionMode) {
-            if (message.sender_id === session?.user?.id) { handleToggleSelection(message.id); }
-        } else {
-            setSelectedMessage(message);
-            setActionSheetVisible(true);
-        }
-    };
-
-    const handleToggleSelection = (messageId) => {
-        const newSelection = new Set(selectedMessages);
-        if (newSelection.has(messageId)) { newSelection.delete(messageId); } else { newSelection.add(messageId); }
-        if (newSelection.size === 0) { setSelectionMode(false); }
-        setSelectedMessages(newSelection);
-    };
-
-    const handleCancelSelection = () => {
-        setSelectionMode(false);
-        setSelectedMessages(new Set());
-    };
-
-    const handleDeleteSelected = () => {
-        Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const idsToDelete = Array.from(selectedMessages); setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); handleCancelSelection(); await supabase.from('messages').delete().in('id', idsToDelete); } } ]);
-    };
-    
-    // ✨ 2. Відновлено оригінальну, робочу функцію відправки зображень
     const uploadAndSendImage = async (asset) => { 
-        const tempId = `temp-img-${Date.now()}`; 
-        const optimistic = { id: tempId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading' }; 
-        setMessages(prev => [optimistic, ...prev]); 
+        const optimisticMessage = createOptimisticMessage(null, asset.uri);
+        setMessages(prev => [optimisticMessage, ...prev]); 
         try { 
             const fileExt = asset.uri.split('.').pop().toLowerCase(); 
             const filePath = `${session.user.id}/${Date.now()}.${fileExt}`; 
             const formData = new FormData(); 
             formData.append('file', { uri: asset.uri, name: filePath, type: `image/${fileExt}` }); 
             const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData); 
-            if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError; 
             const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath); 
-            const { error: dbError } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, image_url: urlData.publicUrl, client_id: tempId }]);
-            if (dbError) throw dbError;
-            supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentAnImage'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }});
+            const { error: dbError } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, image_url: urlData.publicUrl, client_id: optimisticMessage.client_id }]); 
+            if (dbError) throw dbError; 
+            supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentAnImage'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}); 
         } catch (e) { 
             Alert.alert(t('common.error'), e.message); 
-            setMessages(prev => prev.filter(m => m.id !== tempId)); 
-        } 
-    };
-    const pickImage = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
-    const takePhoto = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
-    const handleSendLocation = async () => { 
-        setAttachmentModalVisible(false); 
-        let { status } = await Location.requestForegroundPermissionsAsync(); 
-        if (status !== 'granted') return; 
-        setIsSendingLocation(true); 
-        try { 
-            let { coords } = await Location.getCurrentPositionAsync(); 
-            const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, location: { latitude: coords.latitude, longitude: coords.longitude } }]); 
-            if (error) throw error;
-             supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentLocation'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }});
-        } catch (e) { 
-            Alert.alert(t('common.error'), t('chat.locationFetchError')); 
-        } finally { 
-            setIsSendingLocation(false); 
+            setMessages(prev => prev.filter(m => m.client_id !== optimisticMessage.client_id)); 
         } 
     };
 
-    // ✨ 3. Відновлено функцію індикатора друку
-    const handleTyping = (text) => {
-        setInputText(text);
-        if (channel.current && channel.current.state === 'joined') {
-            try {
-                channel.current.send({
-                    type: 'broadcast',
-                    event: 'typing',
-                    payload: { user_id: session.user.id },
-                });
-            } catch (e) {
-                console.error("Broadcast failed:", e);
-            }
-        }
-    };
+    const handleEditMessage = async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); };
+    const handleReaction = async (emoji, message) => { const target = message || selectedMessage; if (!target) return; setMessages(prev => prev.map(msg => { if (msg.id !== target.id) return msg; let reactions = [...(msg.reactions || [])]; const rIdx = reactions.findIndex(r => r.emoji === emoji); if (rIdx > -1) { const uIdx = reactions[rIdx].users.indexOf(session.user.id); if (uIdx > -1) { reactions[rIdx].count--; if (reactions[rIdx].count === 0) reactions.splice(rIdx, 1); } else { reactions[rIdx].count++; reactions[rIdx].users.push(session.user.id); } } else { reactions.push({ emoji, count: 1, users: [session.user.id] }); } return { ...msg, reactions }; })); await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); };
+    const handleDeleteMessage = () => { if (!selectedMessage) return; Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const messageId = selectedMessage.id; setMessages(prev => prev.filter(msg => msg.id !== messageId)); await supabase.from('messages').delete().eq('id', messageId); } } ]); };
+    const handleLongPress = (message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) { handleToggleSelection(message.id); } } else { setSelectedMessage(message); setActionSheetVisible(true); } };
+    const handleToggleSelection = (messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) { newSelection.delete(messageId); } else { newSelection.add(messageId); } if (newSelection.size === 0) { setSelectionMode(false); } setSelectedMessages(newSelection); };
+    const handleCancelSelection = () => { setSelectionMode(false); setSelectedMessages(new Set()); };
+    const handleDeleteSelected = () => { Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const idsToDelete = Array.from(selectedMessages); setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); handleCancelSelection(); await supabase.from('messages').delete().in('id', idsToDelete); } } ]); };
+    const pickImage = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
+    const takePhoto = async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); };
+    const handleSendLocation = async () => { setAttachmentModalVisible(false); let { status } = await Location.requestForegroundPermissionsAsync(); if (status !== 'granted') return; setIsSendingLocation(true); try { let { coords } = await Location.getCurrentPositionAsync(); const { error } = await supabase.from('messages').insert([{ room_id: currentRoomId, sender_id: session.user.id, location: { latitude: coords.latitude, longitude: coords.longitude } }]); if (error) throw error; supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, sender_id: session.user.id, message_content: t('chat.sentLocation'), room_id: currentRoomId, sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}); } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); } finally { setIsSendingLocation(false); } };
+    const handleTyping = (text) => { setInputText(text); if (channel.current && channel.current.state === 'joined') { try { channel.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id }, }); } catch (e) { console.error("Broadcast failed:", e); } } };
 
     const lastMessage = useMemo(() => processedData.find(item => item.type === 'message'), [processedData]);
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id;
@@ -297,19 +374,24 @@ export default function IndividualChatScreen() {
             ) : (
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-                    <View style={styles.headerUserInfo}><Text style={styles.headerUserName}>{recipientName}</Text>{isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}</View>
-                    <Image source={recipientAvatar ? { uri: recipientAvatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
+                    <View style={styles.headerUserInfo}>
+                        <Text style={styles.headerUserName}>
+                            {isLoadingRecipient ? t('common.loading', 'Завантаження...') : recipientInfo.name}
+                        </Text>
+                        {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
+                    </View>
+                    <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
                 </View>
             )}
-
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}>
                 <FlatList
                     data={processedData}
                     renderItem={({ item }) => {
                         if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
                         return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
                     }}
-                    keyExtractor={item => item.id.toString()}
+                    // ✨ 3. Оновлюємо keyExtractor для стабільної роботи анімації
+                    keyExtractor={item => item.client_id || item.id}
                     inverted
                     contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 10, flexGrow: 1 }}
                     style={{ flex: 1 }}
@@ -322,40 +404,34 @@ export default function IndividualChatScreen() {
                             <Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} />
                         </TouchableOpacity>
                     )}
-                    {/* ✨ 4. Відновлено зв'язок з handleTyping */}
                     <TextInput style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSendText}><Ionicons name={editingMessage ? "checkmark" : "paper-plane"} size={24} color="#fff" /></TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-
-            <MessageActionSheet 
-                visible={isActionSheetVisible && !selectionMode} 
-                onClose={() => setActionSheetVisible(false)} 
-                message={selectedMessage} 
-                isMyMessage={selectedMessage?.sender_id === session?.user?.id} 
-                onCopy={() => Clipboard.setString(selectedMessage?.content || '')} 
-                onEdit={() => { 
-                    setEditingMessage(selectedMessage); 
-                    setInputText(selectedMessage?.content || ''); 
-                }} 
-                onDelete={handleDeleteMessage} 
-                onReact={(emoji) => handleReaction(emoji, selectedMessage)}
-                onSelect={() => {
-                    setSelectionMode(true);
-                    setSelectedMessages(new Set([selectedMessage.id]));
-                }}
-            />
+            <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessage} isMyMessage={selectedMessage?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessage?.content || '')} onEdit={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage?.content || ''); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessage)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessage.id])); }} />
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}><Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}><View style={styles.modalContent}><TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity></View></Pressable></Modal>
-             {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
+            {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
         </SafeAreaView>
     );
 }
 
+// ... (стилі залишаються без змін)
 const getStyles = (colors) => StyleSheet.create({
+    selectionCircleContainer: {
+        width: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    selectionCircleEmpty: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: colors.secondaryText,
+    },
     selectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 5, backgroundColor: colors.card },
     selectionCountText: { color: colors.text, fontSize: 18, fontWeight: 'bold' },
-    selectionOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: `${colors.primary}40`, borderRadius: 20, borderWidth: 2, borderColor: `${colors.primary}90` },
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
@@ -365,8 +441,8 @@ const getStyles = (colors) => StyleSheet.create({
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
     headerAvatar: { width: 40, height: 40, borderRadius: 20 },
-    messageContainer: { marginVertical: 4 },
-    messageRow: { flexDirection: 'row' },
+    messageContainer: { marginVertical: 1, paddingHorizontal: 0 },
+    messageRow: { flexDirection: 'row', alignItems: 'center' },
     messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
     myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
     otherMessageBubble: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
@@ -408,4 +484,3 @@ const getStyles = (colors) => StyleSheet.create({
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
 });
-

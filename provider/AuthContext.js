@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 
 const AuthContext = createContext();
@@ -12,87 +12,87 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        console.log("🪵 [AUTH_PROVIDER] Mounting. Setting up auth flow...");
+    // Функція для отримання профілю, винесена для перевикористання
+    const getProfile = useCallback(async (userSession) => {
+        if (!userSession?.user) {
+            console.log("🪵 [AUTH_PROVIDER] No session, clearing profile.");
+            setProfile(null);
+            return;
+        }
 
-        // ✨ 1. Ця функція виконається ОДИН РАЗ для початкового завантаження
+        try {
+            console.log(`🪵 [AUTH_PROVIDER] Fetching profile for user: ${userSession.user.id}`);
+            const { data, error } = await supabase.rpc('get_my_role');
+            if (error) throw error;
+
+            setProfile(data || null);
+            console.log(`🪵 [AUTH_PROVIDER] Profile loaded. Role: ${data?.role || 'none'}`);
+        } catch (error) {
+            console.error("🪵 [AUTH_PROVIDER] Error fetching profile:", error.message);
+            setProfile(null);
+        }
+    }, []);
+
+    // ✨ Ключове виправлення: надійний процес ініціалізації
+    useEffect(() => {
+        let authSubscription = null;
+
         const initializeAuth = async () => {
-            console.log("🪵 [AUTH_PROVIDER] Running initializeAuth function...");
+            console.log("🪵 [AUTH_PROVIDER] Initializing auth state...");
+            setIsLoading(true);
+
             try {
-                // Отримуємо поточну сесію.
-                console.log("🪵 [AUTH_PROVIDER] Calling supabase.auth.getSession()...");
-                const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-                console.log(`🪵 [AUTH_PROVIDER] getSession() finished. Session exists: ${!!initialSession}`);
-                if (sessionError) {
-                    throw new Error(`Session Error: ${sessionError.message}`);
-                }
+                // 1. Негайно отримуємо поточну сесію при старті.
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+                console.log(`🪵 [AUTH_PROVIDER] Initial session check complete. Session exists: ${!!initialSession}`);
                 setSession(initialSession);
 
-                // Якщо сесія є, завантажуємо профіль.
-                if (initialSession?.user) {
-                    console.log(`🪵 [AUTH_PROVIDER] Initial session found. Fetching profile for user: ${initialSession.user.id}`);
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .select(`role`)
-                        .eq('id', initialSession.user.id)
-                        .single();
+                // 2. Одразу завантажуємо профіль для початкової сесії.
+                await getProfile(initialSession);
 
-                    if (error && error.status !== 406) {
-                        throw new Error(`Profile Error: ${error.message}`);
+                // 3. Тепер підписуємося на майбутні зміни (вхід, вихід, оновлення токену).
+                const { data: { subscription } } = supabase.auth.onAuthStateChange(
+                    async (_event, currentSession) => {
+                        console.log(`🪵 [AUTH_PROVIDER] Auth event: ${_event}. Session is now: ${currentSession ? 'active' : 'null'}`);
+                        setSession(currentSession);
+                        // Оновлюємо профіль при кожній зміні сесії.
+                        await getProfile(currentSession);
                     }
-                    setProfile(data || null);
-                    console.log(`🪵 [AUTH_PROVIDER] Initial profile fetch successful. Role: ${data?.role || 'null'}`);
-                } else {
-                    setProfile(null);
-                    console.log("🪵 [AUTH_PROVIDER] No initial session, profile set to null.");
-                }
-            } catch (e) {
-                console.error("🪵 [AUTH_PROVIDER] CRITICAL ERROR during initialization:", e.message);
-                setSession(null);
-                setProfile(null);
+                );
+                authSubscription = subscription;
+
+            } catch (error) {
+                console.error("🪵 [AUTH_PROVIDER] Critical error during auth initialization:", error.message);
             } finally {
-                // ✨ 2. ГАРАНТОВАНО вимикаємо завантаження. Це найнадійніший спосіб.
-                console.log("🪵 [AUTH_PROVIDER] initializeAuth finished. Calling setIsLoading(false).");
+                // 4. Гарантовано вимикаємо завантаження, щоб уникнути "зависання".
+                console.log("🪵 [AUTH_PROVIDER] Auth initialization finished.");
                 setIsLoading(false);
             }
         };
 
-        // Запускаємо початкову перевірку
         initializeAuth();
 
-        // ✨ 3. Встановлюємо слухача, який буде реагувати на майбутні зміни (логін/логаут)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                console.log(`🪵 [AUTH_PROVIDER] onAuthStateChange event: ${_event}. Session exists: ${!!session}`);
-                setSession(session);
-                
-                // Оновлюємо профіль, якщо сесія змінилася
-                if (session?.user) {
-                     const { data } = await supabase.from('profiles').select(`role`).eq('id', session.user.id).single();
-                     setProfile(data || null);
-                } else {
-                     setProfile(null);
-                }
-            }
-        );
-
+        // Функція очищення для відписки
         return () => {
-            console.log("🪵 [AUTH_PROVIDER] Unmounting. Unsubscribing from auth changes.");
-            subscription.unsubscribe();
+            if (authSubscription) {
+                console.log("🪵 [AUTH_PROVIDER] Unsubscribing from auth changes.");
+                authSubscription.unsubscribe();
+            }
         };
-    }, []);
-      
-    const signIn = async ({ email, password }) => {
+    }, [getProfile]); // Залежність від getProfile
+
+    // Функції signIn, signUp, signOut залишаються майже без змін
+    const signIn = useCallback(async ({ email, password }) => {
         return await supabase.auth.signInWithPassword({ email, password });
-    };
+    }, []);
 
-    const signUp = async ({ email, password, options }) => {
+    const signUp = useCallback(async ({ email, password, options }) => {
         return await supabase.auth.signUp({ email, password, options });
-    };
+    }, []);
 
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
         return await supabase.auth.signOut();
-    };
+    }, []);
 
     const value = { session, profile, isLoading, signIn, signUp, signOut };
 
@@ -102,4 +102,3 @@ export const AuthProvider = ({ children }) => {
         </AuthContext.Provider>
     );
 };
-

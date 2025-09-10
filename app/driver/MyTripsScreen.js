@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, RefreshControl, Linking, Alert, TouchableOpacity, Platform } from 'react-native';
-// ✨ 1. Імпортуємо покращений компонент Image
 import { Image } from 'expo-image';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
@@ -13,10 +12,11 @@ import moment from 'moment';
 import 'moment/locale/uk';
 
 
-// Компонент для відображення однієї картки поїздки
-const TripCard = ({ item, t, navigation, onDelete }) => {
+// ✨ 1. Додаємо пропс `onPress` і прибираємо непотрібний `navigation`
+const TripCard = ({ item, t, onDelete, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
+    const navigation = useNavigation(); // Використовуємо хук тут для кнопок
     
     const tripDate = new Date(item.transfer_datetime);
     const formattedDate = tripDate.toLocaleDateString([], { day: '2-digit', month: 'long', year: 'numeric' });
@@ -57,11 +57,11 @@ const TripCard = ({ item, t, navigation, onDelete }) => {
         }
     };
 
+    // ✨ 2. Огортаємо всю картку в TouchableOpacity і передаємо onPress
     return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
             <View style={styles.cardHeader}>
                 <View style={styles.passengerInfo}>
-                    {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
                     <Image 
                         source={item.passenger?.avatar_url ? { uri: item.passenger.avatar_url } : require('../../assets/default-avatar.png')} 
                         style={styles.avatarImage}
@@ -102,7 +102,7 @@ const TripCard = ({ item, t, navigation, onDelete }) => {
             </View>
 
             {onDelete && (<TouchableOpacity style={styles.deleteButton} onPress={onDelete}><Ionicons name="trash-outline" size={20} color="#D32F2F" /><Text style={styles.deleteButtonText}>{t('myTrips.delete')}</Text></TouchableOpacity>)}
-        </View>
+        </TouchableOpacity>
     );
 };
 
@@ -120,7 +120,6 @@ export default function MyTripsScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Цей хук залишається, він має спрацьовувати при кожному фокусі
     useFocusEffect(useCallback(() => { clearNewTripsCount(); }, [clearNewTripsCount]));
 
     const fetchTrips = useCallback(async () => {
@@ -132,20 +131,18 @@ export default function MyTripsScreen() {
         } catch (e) { console.error("Error fetching trips:", e); } 
     }, [session]);
 
-    // ✨ 3. Замінено useFocusEffect на useEffect для одноразового завантаження та стабільних підписок
     useEffect(() => {
         if (session?.user?.id) {
             setIsLoading(true);
             fetchTrips().finally(() => setIsLoading(false));
 
-            // Налаштовуємо real-time підписку на зміни
             const tripsSubscription = supabase
                 .channel('public:transfers:driver_trips')
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'transfers', filter: `driver_id=eq.${session.user.id}` },
                     (payload) => {
                         console.log('My Trips received an update:', payload);
-                        fetchTrips(); // Перезавантажуємо список при будь-якій зміні
+                        fetchTrips();
                     }
                 )
                 .subscribe();
@@ -181,13 +178,12 @@ export default function MyTripsScreen() {
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('common.confirm'), style: 'destructive', onPress: async () => {
-                    // Оптимістичне видалення для кращого UX
                     const originalTrips = allTrips;
                     setAllTrips(prevTrips => prevTrips.filter(trip => trip.id !== tripId));
                     const { error } = await supabase.from('transfers').delete().eq('id', tripId);
                     if (error) { 
                         Alert.alert(t('common.error'), error.message); 
-                        setAllTrips(originalTrips); // Повертаємо, якщо сталася помилка
+                        setAllTrips(originalTrips);
                     } 
                 }}
             ]
@@ -214,7 +210,15 @@ export default function MyTripsScreen() {
             ) : (
                 <FlatList
                     data={tripsToDisplay}
-                    renderItem={({ item }) => <TripCard item={item} t={t} navigation={navigation} onDelete={viewMode === 'archived' ? () => handleDeleteTrip(item.id) : null} />}
+                    // ✨ 3. Передаємо функцію навігації в `onPress` для кожної картки
+                    renderItem={({ item }) => (
+                        <TripCard 
+                            item={item} 
+                            t={t} 
+                            onDelete={viewMode === 'archived' ? () => handleDeleteTrip(item.id) : null}
+                            onPress={() => navigation.navigate('DriverRequest', { transferId: item.id })}
+                        />
+                    )}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={{ flexGrow: 1, paddingBottom: 20, paddingHorizontal: 16 }}
                     ListEmptyComponent={

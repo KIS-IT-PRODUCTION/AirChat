@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
+import React, { useState, useCallback, useMemo, memo } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
@@ -8,8 +9,8 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../config/supabase';
 import moment from 'moment';
 
-// Компонент для статистики
-const StatCard = ({ icon, value, label, colors }) => {
+// ✨ 1. Оптимізація: Компонент обгорнуто в React.memo для уникнення зайвих рендерів
+const StatCard = memo(({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
         <View style={styles.statItem}>
@@ -18,7 +19,7 @@ const StatCard = ({ icon, value, label, colors }) => {
             <Text style={styles.statLabel}>{label}</Text>
         </View>
     );
-};
+});
 
 export default function PublicDriverProfileScreen() {
   const { colors } = useTheme();
@@ -26,19 +27,22 @@ export default function PublicDriverProfileScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { session } = useAuth();
-  const { driverId, driverName } = route.params;
+  const { driverId } = route.params;
   const styles = getStyles(colors);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
 
+  // ✨ 2. Ключова логіка: визначаємо, чи це профіль поточного користувача
+  const isMyProfile = useMemo(() => session?.user?.id === driverId, [session, driverId]);
+
   const calculateTimeInApp = (joinDate) => {
-    if (!joinDate) return `0 ${t('profile.years', 'років')}`;
+    if (!joinDate) return `0 ${t('profile.years')}`;
     const years = moment().diff(moment(joinDate), 'years');
     if (years > 0) return `${years} ${t('profile.year', { count: years })}`;
     const months = moment().diff(moment(joinDate), 'months');
     if (months > 0) return `${months} ${t('profile.month', { count: months })}`;
-    return `< 1 ${t('profile.month_one', 'місяця')}`;
+    return `< 1 ${t('profile.month_one')}`;
   };
 
   const fetchProfileData = useCallback(async () => {
@@ -55,7 +59,7 @@ export default function PublicDriverProfileScreen() {
       if (error) throw error;
       setProfile(data);
     } catch (error) {
-      Alert.alert(t('common.error', 'Помилка'), error.message);
+      Alert.alert(t('common.error'), error.message);
     } finally {
       setLoading(false);
     }
@@ -65,39 +69,40 @@ export default function PublicDriverProfileScreen() {
 
   const handleCall = () => {
     if (!profile?.phone) {
-        Alert.alert(t('common.error', 'Помилка'), t('profile.noPhoneDriver', 'Водій не вказав номер телефону.'));
+        Alert.alert(t('common.error'), t('profile.noPhoneDriver'));
         return;
     }
     Alert.alert(
-        t('profile.confirmCallTitle', 'Подзвонити водію?'),
+        t('profile.confirmCallTitle'),
         profile.phone,
         [
-            { text: t('common.cancel', 'Скасувати'), style: 'cancel' },
-            { text: t('common.call', 'Подзвонити'), onPress: () => Linking.openURL(`tel:${profile.phone}`) }
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('common.call'), onPress: () => Linking.openURL(`tel:${profile.phone}`) }
         ]
     );
   };
 
-  // ✨ ВИПРАВЛЕНА ФУНКЦІЯ
+  // ✨ 3. Оптимізація: функція тепер створює чат і переходить прямо в нього
   const handleMessage = async () => {
     if (!session?.user) {
-        Alert.alert(t('common.error', 'Помилка'), t('profile.loginToWrite', 'Будь ласка, увійдіть в акаунт, щоб написати водію.'));
+        Alert.alert(t('common.error'), t('profile.loginToWrite'));
         return;
     }
     try {
-        // Цей крок гарантує, що чат буде створено, якщо його не існує
-        const { error } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: driverId });
+        const { data: roomId, error } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: driverId });
         if (error) throw error;
         
-        // Перекидаємо користувача на головний екран з усіма чатами
-         navigation.navigate('MainTabs', { screen: 'MessagesTab' });
+        navigation.navigate('IndividualChat', {
+            roomId,
+            recipientId: driverId,
+            recipientName: profile.full_name,
+            recipientAvatar: profile.avatar_url,
+        });
 
     } catch (error) { 
-        Alert.alert(t('common.error', 'Помилка'), error.message); 
+        Alert.alert(t('common.error'), error.message); 
     }
   };
-
-  // ✨ Функцію handleShare видалено
 
   if (loading) {
     return (
@@ -106,7 +111,7 @@ export default function PublicDriverProfileScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{driverName || t('profile.driverProfile', 'Профіль водія')}</Text>
+                <Text style={styles.headerTitle}>{t('profile.loadingProfile', 'Завантаження профілю...')}</Text>
                 <View style={{ width: 40 }} />
             </View>
             <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
@@ -121,7 +126,7 @@ export default function PublicDriverProfileScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{driverName || t('profile.driverProfile', 'Профіль водія')}</Text>
+                <Text style={styles.headerTitle}>{t('profile.driverProfile', 'Профіль водія')}</Text>
                 <View style={{ width: 40 }} />
             </View>
             <View style={styles.content}>
@@ -137,7 +142,10 @@ export default function PublicDriverProfileScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{profile.full_name || driverName}</Text>
+        {/* ✨ 4. Динамічний заголовок: різний текст для свого та чужого профілю */}
+        <Text style={styles.headerTitle}>
+            {isMyProfile ? t('profile.yourPublicProfile', 'Ваш публічний профіль') : profile.full_name}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -146,21 +154,25 @@ export default function PublicDriverProfileScreen() {
           <Image 
             source={profile.avatar_url ? { uri: profile.avatar_url } : require('../../assets/default-avatar.png')} 
             style={styles.avatar} 
+            contentFit="cover"
+            transition={300}
+            cachePolicy="disk"
           />
           <Text style={styles.fullName}>{profile.full_name}</Text>
           
-          {/* ✨ ОНОВЛЕНИЙ БЛОК ДІЙ */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleMessage}>
-                <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
-                <Text style={styles.actionButtonText}>{t('profile.message', 'Написати')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-                <Ionicons name="call-outline" size={24} color={colors.primary} />
-                <Text style={styles.actionButtonText}>{t('profile.call', 'Подзвонити')}</Text>
-            </TouchableOpacity>
-            {/* Кнопку "Поширити" видалено */}
-          </View>
+          {/* ✨ 5. Умовний рендер: кнопки видно тільки на чужому профілі */}
+          {!isMyProfile && (
+            <View style={styles.actionsContainer}>
+                <TouchableOpacity style={styles.actionButton} onPress={handleMessage}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
+                    <Text style={styles.actionButtonText}>{t('profile.message', 'Написати')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
+                    <Ionicons name="call-outline" size={24} color={colors.primary} />
+                    <Text style={styles.actionButtonText}>{t('profile.call', 'Подзвонити')}</Text>
+                </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.infoCard}>

@@ -1,11 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, Linking, Alert, Platform } from 'react-native';
-// ✨ 1. Зберігаємо імпорт покращеного компонента Image
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import moment from 'moment';
 import 'moment/locale/uk';
@@ -14,8 +13,7 @@ import { useTranslation } from 'react-i18next';
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
     case 'pending':
-      if (item.unread_offers_count > 0 || item.offers_count > 0) {
-        // ✨ Ключі перекладів повернуто без значень за замовчуванням
+      if (item.offers_count > 0) {
         return { title: t('transferStatus.offersAvailable.title'), text: t('transferStatus.offersAvailable.text'), color: '#FFA000', icon: 'notifications-circle-outline' };
       }
       return { title: t('transferStatus.pending.title'), text: t('transferStatus.pending.text'), color: '#0288D1', icon: 'hourglass-outline' };
@@ -70,17 +68,45 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
       style={[ styles.card, (item.status === 'completed' || item.status === 'cancelled') && styles.archivedCard, isSelected && styles.selectedCard ]}
     >
       <View style={styles.cardHeader}>
-        {/* ✨ Повернуто оригінальний формат дати без ключа перекладу */}
         <Text style={styles.dateText}>{moment(item.transfer_datetime).format('D MMMM, HH:mm')}</Text>
-        {item.status === 'pending' && item.unread_offers_count > 0 && (
-          <View style={styles.badge}><Text style={styles.badgeText}>{item.unread_offers_count}</Text></View>
+        
+        {item.status === 'pending' && item.offers_count > 0 && (
+          <View style={[
+            styles.badgeBase,
+            item.unread_offers_count > 0 
+              ? styles.badgeUnread
+              : styles.badgeTotal
+          ]}>
+            <Text style={styles.badgeText}>{item.offers_count}</Text>
+          </View>
         )}
       </View>
+      
+      {/* ✨ ЗМІНИ ТУТ: Умовне відображення іконок */}
       <View style={styles.routeContainer}>
-        <View style={styles.locationRow}><View style={styles.routeIconContainer}><Ionicons name="airplane-outline" size={20} color={colors.secondaryText} /></View><Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text></View>
+        <View style={styles.locationRow}>
+          <View style={styles.routeIconContainer}>
+            <Ionicons 
+              name={item.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} 
+              size={20} 
+              color={colors.secondaryText} 
+            />
+          </View>
+          <Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text>
+        </View>
         <View style={styles.dottedLine} />
-        <View style={styles.locationRow}><View style={styles.routeIconContainer}><Ionicons name="location-outline" size={20} color={colors.secondaryText} /></View><Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text></View>
+        <View style={styles.locationRow}>
+          <View style={styles.routeIconContainer}>
+            <Ionicons 
+              name={item.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} 
+              size={20} 
+              color={colors.secondaryText} 
+            />
+          </View>
+          <Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text>
+        </View>
       </View>
+      {/* ✨ КІНЕЦЬ ЗМІН */}
       
       <View style={[styles.statusInfoBox, { backgroundColor: `${displayStatus.color}1A`, borderColor: displayStatus.color }]}>
         <Ionicons name={displayStatus.icon} size={24} color={displayStatus.color} />
@@ -137,7 +163,10 @@ export default function TransfersScreen() {
   const [error, setError] = useState(null);
 
   const fetchTransfers = useCallback(async () => {
-    if (!session?.user) { setLoading(false); return; }
+    if (!session?.user) { 
+      setLoading(false); 
+      return; 
+    }
     setError(null);
     try {
       const { data, error: fetchError } = await supabase.rpc('get_my_transfers', { p_id: session.user.id });
@@ -146,34 +175,53 @@ export default function TransfersScreen() {
     } catch (err) {
         console.error("Error fetching transfers:", err.message);
         setError(err.message);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   }, [session]);
 
-  useEffect(() => {
-    if (session?.user) {
+  useFocusEffect(
+    useCallback(() => {
+      if(session?.user){
         setLoading(true);
-        fetchTransfers(); 
+        fetchTransfers();
+      }
+    }, [fetchTransfers, session])
+  );
 
-        const transfersSubscription = supabase
-            .channel('public:transfers')
-            .on('postgres_changes', 
-                { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
-                (payload) => {
-                    console.log('Real-time update on transfers received!', payload);
-                    fetchTransfers(); 
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(transfersSubscription);
-        };
-    } else {
+  useEffect(() => {
+    if (!session?.user) {
         setTransfers([]);
-        setLoading(false);
+        return;
     }
-  }, [session, fetchTransfers]);
 
+    const transfersSubscription = supabase
+        .channel('passenger-transfers-channel')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
+            (payload) => {
+                console.log('Зміна в таблиці TRANSFERS! Оновлюємо список...');
+                fetchTransfers(); 
+            }
+        )
+        .subscribe();
+
+    const offersSubscription = supabase
+        .channel('passenger-offers-channel')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'transfer_offers' },
+            (payload) => {
+                console.log('Зміна в таблиці TRANSFER_OFFERS! Оновлюємо список...');
+                fetchTransfers();
+            }
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(transfersSubscription);
+        supabase.removeChannel(offersSubscription);
+    };
+  }, [session, fetchTransfers]);
 
   const { activeTransfers, archivedTransfers } = useMemo(() => {
     const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
@@ -259,7 +307,7 @@ export default function TransfersScreen() {
     </SafeAreaView>
   );
 }
-// Стилі залишаються без змін
+
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -275,8 +323,22 @@ const getStyles = (colors) => StyleSheet.create({
   routeIconContainer: { width: 30, alignItems: 'center' },
   locationText: { color: colors.text, fontSize: 16, marginLeft: 12, fontWeight: '500' },
   dottedLine: { height: 24, width: 2, backgroundColor: colors.border, marginLeft: 14, marginVertical: 4 },
-  badge: { backgroundColor: '#D32F2F', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6, marginLeft: 'auto' },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  badgeBase: {
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 'auto'
+  },
+  badgeUnread: {
+    backgroundColor: '#D32F2F',
+  },
+  badgeTotal: {
+    backgroundColor: '#0288D1',
+  },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100, paddingHorizontal: 20 },
   emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
   driverFooter: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
@@ -306,4 +368,3 @@ const getStyles = (colors) => StyleSheet.create({
   priceLabel: { fontSize: 14, color: colors.secondaryText },
   priceValue: { fontSize: 18, fontWeight: 'bold', color: colors.text },
 });
-

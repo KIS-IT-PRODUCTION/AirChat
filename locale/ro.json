@@ -1,40 +1,43 @@
 {
-  "home": {
-    "toAirport": "La Aeroport",
-    "fromAirport": "De la Aeroport",
-    "title": "Comandați un transfer la/de la aeroport",
-    "fromPlaceholder": "De unde? (aeroport)",
-    "fromPlaceholderAddress": "De unde? (adresă, hotel...)",
-    "dropoffPlaceholder": "Locația de destinație (hotel, adresă...)",
-    "dropoffPlaceholderAirport": "Unde? (aeroport)",
-    "luggagePlaceholder": "Număr de bagaje",
-    "dateLabel": "Data",
-    "timeLabel": "Ora",
-    "passengersLabel": "Pasageri",
-    "individualTransfer": "Transfer Individual",
-    "groupTransfer": "Transfer de Grup",
-    "travelingWithPet": "Călătoresc cu un animal de companie",
-    "petSubtext": "(de ex., pisică sau câine)",
-    "orderButton": "Comandați Transfer",
-    "flightInfoTitle": "Numărul zborului",
-    "flightInfoMessage": "Introduceți numărul zborului, de exemplu, PS352 sau W6123. Acest lucru va ajuta șoferul să vă urmărească cererea.",
-    "error": {
-      "fillFields": "Vă rugăm să completați câmpurile 'De la' și 'La'.",
-      "noAdults": "Trebuie să existe cel puțin un pasager adult.",
-      "flightNumberRequired": "Vă rugăm să introduceți numărul zborului."
-    }
-  },
+"home": {
+  "toAirport": "La Aeroport",
+  "fromAirport": "De la Aeroport",
+  "title": "Comandați un transfer la/de la aeroport",
+  "fromPlaceholder": "De unde? (aeroport)",
+  "fromPlaceholderAddress": "De unde? (adresă, hotel...)",
+  "dropoffPlaceholder": "Locația de destinație (hotel, adresă...)",
+  "dropoffPlaceholderAirport": "Unde? (aeroport)",
+  "luggagePlaceholder": "Număr de bagaje",
+  "dateLabel": "Data",
+  "timeLabel": "Ora",
+  "passengersLabel": "Pasageri",
+  "individualTransfer": "Transfer Individual",
+  "groupTransfer": "Transfer de Grup",
+  "travelingWithPet": "Călătoresc cu un animal de companie",
+  "petSubtext": "(de ex., pisică sau câine)",
+  "orderButton": "Comandați Transfer",
+  "flightInfoTitle": "Numărul zborului (opțional)",
+  "flightNumberPlaceholder": "Numărul zborului (opțional)",
+  "flightInfoMessage": "Introduceți numărul zborului, de exemplu, PS352 sau W6123. Acest lucru va ajuta șoferul să vă urmărească cererea.",
+  "meetWithSign": "Întâlnire cu pancartă",
+  "signSubtext": "Șoferul vă va aștepta cu numele dvs.",
+  "error": {
+    "fillFields": "Vă rugăm să completați câmpurile 'De la' și 'La'.",
+    "noAdults": "Trebuie să existe cel puțin un pasager adult.",
+    "flightNumberRequired": "Vă rugăm să introduceți numărul zborului."
+  }
+},
   "addCommentModal": {
-    "title": "Preferințe de călătorie",
-    "subtitle": "Puteți adăuga un comentariu pentru șofer, de exemplu, despre un scaun pentru copii sau bagaje mari.",
-    "commentPlaceholder": "de ex., scaun pentru copii...",
+    "title": "Adăugați o dorință",
+    "subtitle": "Scrieți informații importante pentru șofer: scaun pentru copii, bagaje mari sau alte detalii.",
+    "commentPlaceholder": "De exemplu: scaun pentru copii...",
     "skipButton": "Omite",
     "sendButton": "Trimite"
   },
   "transferSuccess": {
-    "title": "Cerere trimisă cu succes!",
-    "subtitle": "Vă vom notifica când un șofer va accepta comanda dvs.",
-    "viewTransfersButton": "Vedeți transferurile mele",
+    "title": "Cerere trimisă!",
+    "subtitle": "Șoferii au primit deja solicitarea dvs. și vor trimite în curând opțiunile de călătorie.",
+    "viewTransfersButton": "Vedeți transferurile",
     "closeButton": "Închide"
   },
   "authScreen": {
@@ -70,25 +73,35 @@
   },
   "profile": {
     "myProfile": "Profilul Meu",
+    "driverProfile": "Profil șofer",
+    "yourPublicProfile": "Profilul dvs. public",
+    "loadingProfile": "Se încarcă profilul...",
     "noData": "Nu s-a putut încărca profilul.",
     "noName": "Utilizator fără nume",
     "noPhone": "Nu este specificat",
+    "noPhoneDriver": "Șoferul nu a furnizat un număr de telefon.",
     "rating": "Rating",
     "completedTrips": "Curse finalizate",
-    "experience": "Experiență",
+    "experience": "Experiență de condus",
     "totalMileage": "Kilometraj total",
     "role": "Rol",
-    "adsCount": "Număr de anunțuri trimise",
-    "yearsInApp": "În aplicație",
+    "adsCount": "Cereri trimise",
+    "yearsInApp": "Timp în aplicație",
     "phone": "Tel",
-    "settings": "Setări",
+    "settings": "Setări profil",
     "inApp": "În aplicație",
     "year_one": "an",
     "year_few": "ani",
-    "year_other": "de ani",
+    "year_many": "de ani",
     "month_one": "lună",
     "month_few": "luni",
-    "month_other": "de luni"
+    "month_many": "de luni",
+    "shareMessage": "Vezi profilul șoferului {{driverName}} în aplicația {{appName}}: {{link}}",
+    "message": "Scrie",
+    "call": "Sună",
+    "confirmCallTitle": "Sunați șoferul?",
+    "loginToWrite": "Vă rugăm să vă autentificați pentru a scrie șoferului.",
+    "carInfo": "Automobil"
   },
   "settings": {
     "title": "Setări",
@@ -126,18 +139,20 @@
     "passwordChangedSuccess": "Parola a fost schimbată cu succes!",
     "notSet": "Nu este setat"
   },
-  "tabs": {
-    "home": "Acasă",
-    "transfers": "Transferurile Mele",
-    "messages": "Mesaje",
-    "profile": "Profil",
-    "driver": {
-      "home": "Transferuri"
-    }
-  },
+"tabs": {
+  "home": "Acasă",
+  "transfers": "Transferurile Mele",
+  "messages": "Mesaje",
+  "profile": "Profil",
+  "flights": "Zboruri",
+  "driver": {
+    "home": "Transferuri",
+    "myTrips": "Călătoriile mele"
+  }
+},
   "footer": {
-    "question": "Nu știți cum funcționează aplicația?",
-    "link": "Instrucțiuni și prezentarea funcțiilor"
+    "question": "Cum se utilizează aplicația?",
+    "link": "[Instrucțiuni și sfaturi pentru pasageri]"
   },
   "auth": {
     "register": "Înregistrare",
@@ -154,7 +169,10 @@
     "yes": "Da",
     "comingSoon": "Această secțiune este în dezvoltare",
     "delete": "Șterge",
-    "close": "Închide"
+    "close": "Închide",
+    "currency_uah": "UAH",
+    "user": "Utilizator",
+    "call": "Sună"
   },
   "support": {
     "title": "Suport",
@@ -167,7 +185,7 @@
     "messageSent": "Mulțumim! Feedback-ul dvs. a fost trimis."
   },
   "transferDetail": {
-    "title": "Detalii Cerere",
+    "title": "Detalii Călătorie",
     "notFound": "Cererea nu a fost găsită.",
     "from": "De la",
     "to": "La",
@@ -178,17 +196,19 @@
     "luggage": "Bagaje",
     "withPet": "Cu animal de companie",
     "yes": "Da",
+    "flightNumber": "Numărul zborului",
     "transferType": "Tip Transfer",
     "clientComment": "Comentariul Pasagerului",
     "route": "Traseu pe hartă",
     "start": "Start",
     "finish": "Finish",
-    "cancelTransfer": "Anulează Cererea",
+    "cancelTransfer": "Anulează Călătoria",
     "cancelledSuccess": "Cererea a fost anulată cu succes.",
-    "cancelConfirmTitle": "Anulați cererea?",
+    "cancelConfirmTitle": "Anulați călătoria?",
     "cancelConfirmText": "Această acțiune nu poate fi anulată.",
-    "driverOffers": "Oferte Șoferi",
-    "noOffers": "Încă nu există oferte. Vă rugăm așteptați, șoferii vor răspunde în curând.",
+    "driverOffers": "Oferte de la șoferi",
+    "otherOffers": "Alte oferte",
+    "noOffers": "Încă nu există oferte. Așteptați, șoferii vor răspunde în curând.",
     "chosenDriver": "Șoferul Dvs.",
     "acceptOffer": "Acceptă",
     "driverConfirmed": "Șofer confirmat!",
@@ -198,7 +218,8 @@
     "fromAirport": "De la Aeroport",
     "toAirport": "La Aeroport",
     "completed": "Finalizat",
-    "cancelled": "Anulat"
+    "cancelled": "Anulat",
+    "finalPrice": "Preț Final"
   },
   "transfersScreen": {
     "title": "Transferurile Mele",
@@ -210,13 +231,29 @@
     "deleteConfirmTitle": "Ștergeți transferurile?",
     "deleteConfirmBody_one": "Sunteți sigur că doriți să ștergeți {{count}} transfer selectat? Această acțiune nu poate fi anulată.",
     "deleteConfirmBody_few": "Sunteți sigur că doriți să ștergeți {{count}} transferuri selectate? Această acțiune nu poate fi anulată.",
-    "deleteConfirmBody_other": "Sunteți sigur că doriți să ștergeți {{count}} de transferuri selectate? Această acțiune nu poate fi anulată."
+    "deleteConfirmBody_many": "Sunteți sigur că doriți să ștergeți {{count}} de transferuri selectate? Această acțiune nu poate fi anulată."
   },
   "transferStatus": {
-    "pending": "Se caută șofer",
-    "accepted": "Șofer găsit",
-    "completed": "Finalizat",
-    "cancelled": "Anulat"
+    "pending": {
+      "title": "Se caută șofer",
+      "text": "Se așteaptă oferte de la șoferi…"
+    },
+    "accepted": {
+      "title": "Șofer găsit",
+      "text": "Șoferul a fost găsit și confirmat."
+    },
+    "completed": {
+      "title": "Finalizat",
+      "text": "Călătoria a fost finalizată cu succes."
+    },
+    "cancelled": {
+      "title": "Anulat",
+      "text": "Comanda a fost anulată."
+    },
+    "offersAvailable": {
+      "title": "Există oferte",
+      "text": "Alegeți opțiunea care vi se potrivește."
+    }
   },
   "transferCard": {
     "pendingFooter": "Se așteaptă oferte de la șoferi"
@@ -259,27 +296,29 @@
   },
   "chatList": {
     "title": "Mesaje",
-    "noChats": "Nu aveți încă chaturi."
+    "noChats": "Nu aveți încă chaturi.",
+    "deleteTitle": "Ștergeți chatul?",
+    "deleteBody": "Sunteți sigur că doriți să ștergeți chatul cu {{name}}? Tot istoricul conversației se va pierde."
   },
   "chat": {
     "onlineStatus": "online",
     "offlineStatus": "offline",
     "typingStatus": "scrie...",
-    "placeholder": "Mesaj...",
-    "locationLabel": "Locație",
+    "placeholder": "Scrie un mesaj...",
+    "locationLabel": "Geolocație",
     "takePhoto": "Fă o fotografie",
     "pickFromGallery": "Alege din Galerie",
-    "shareLocation": "Partajează Locația",
+    "shareLocation": "Partajează Geolocația",
     "galleryPermissionError": "Este necesară permisiunea de a accesa galeria.",
     "cameraPermissionError": "Este necesară permisiunea de a accesa camera.",
-    "locationPermissionError": "Este necesară permisiunea de a accesa locația.",
-    "readStatus": "Citit",
+    "locationPermissionError": "Este necesară permisiunea de a accesa geolocația.",
+    "readStatus": "Văzut",
     "messageActions": "Acțiuni Mesaj",
     "edit": "Editează",
     "delete": "Șterge",
     "deleteConfirmTitle": "Ștergeți mesajul?",
     "deleteConfirmBody": "Această acțiune nu poate fi anulată.",
-    "editing": "Editare...",
+    "editing": "Se editează...",
     "editCancel": "Anulează",
     "editSave": "Salvează",
     "messageDeleted": "Mesaj șters",
@@ -289,19 +328,31 @@
     "driver": "Șofer",
     "passenger": "Pasager",
     "sentAFile": "A trimis un fișier",
-    "today": "Astăzi",
-    "yesterday": "Ieri",
     "sentAnImage": "A trimis o imagine",
     "sentLocation": "A partajat locația",
+    "select": "Selectează",
+    "copy": "Copiază",
+    "deleteMultipleConfirmTitle": "Ștergeți mesajele?",
+    "deleteMultipleConfirmBody_one": "Sunteți sigur că doriți să ștergeți {{count}} mesaj selectat?",
+    "deleteMultipleConfirmBody_few": "Sunteți sigur că doriți să ștergeți {{count}} mesaje selectate?",
+    "deleteMultipleConfirmBody_many": "Sunteți sigur că doriți să ștergeți {{count}} de mesaje selectate?",
+    "locationFetchError": "Nu s-a putut obține locația dvs.",
+    "fetchingLocation": "Se obține locația exactă...",
     "lastSeen": {
-      "justNow": "văzut(ă) adineauri",
-      "minutesAgo_one": "văzut(ă) acum {{count}} minut",
-      "minutesAgo_few": "văzut(ă) acum {{count}} minute",
-      "minutesAgo_other": "văzut(ă) acum {{count}} de minute",
-      "todayAt": "văzut(ă) astăzi la {{time}}",
-      "yesterdayAt": "văzut(ă) ieri la {{time}}",
-      "onDate": "văzut(ă) pe {{date}}"
+      "justNow": "a fost adineauri",
+      "minutesAgo_one": "a fost acum {{count}} minut",
+      "minutesAgo_few": "a fost acum {{count}} minute",
+      "minutesAgo_many": "a fost acum {{count}} de minute",
+      "todayAt": "a fost astăzi la {{time}}",
+      "yesterdayAt": "a fost ieri la {{time}}",
+      "onDate": "a fost pe {{date}}",
+      "onDateAt": "a fost pe {{date}} la {{time}}",
+      "dateFormat": "D MMMM YYYY"
     }
+  },
+  "dates": {
+    "today": "Astăzi",
+    "yesterday": "Ieri"
   },
   "driverHome": {
     "title": "Transferuri Disponibile",
@@ -310,11 +361,12 @@
     "date": "Data",
     "time": "Ora",
     "people": "Persoane",
-    "noNewRequests": "Nicio solicitare nouă necitită",
+    "noNewRequests": "Nicio solicitare nouă nevizualizată",
     "newRequests_one": "Există {{count}} solicitare nouă",
     "newRequests_few": "Există {{count}} solicitări noi",
-    "newRequests_other": "Există {{count}} de solicitări noi",
-    "memberSince": "Membru din {{date}}"
+    "newRequests_many": "Există {{count}} de solicitări noi",
+    "memberSince": "Membru din {{date}}",
+    "posted": "Publicat"
   },
   "driverOffer": {
     "requestDetails": "Detalii Cerere",
@@ -324,11 +376,10 @@
     "noOtherOffers": "Sunteți primul care face o ofertă!",
     "alreadyOffered": "Ați trimis deja o ofertă",
     "yourOffer": "Oferta Dvs.",
-    "passengerNotified": "Pasagerul a primit oferta dvs. Vă rugăm așteptați un răspuns.",
+    "passengerNotified": "Pasagerul a primit oferta dvs. Așteptați un răspuns.",
     "pricePlaceholder": "0",
     "commentPlaceholder": "Comentariul dvs. (opțional)",
-    "submitButton": "Trimite Oferta",
-    "chosenDriver": "Șofer Ales"
+    "submitButton": "Trimite Oferta"
   },
   "passengers": {
     "title": "Pasageri",
@@ -340,10 +391,9 @@
     "infantsAge": "sub 2 ani"
   },
   "authPrompt": {
-    "title": "Este necesară autorizarea",
+    "title": "Este necesară autentificarea",
     "subtitle": "Pentru a comanda un transfer, vă rugăm să vă conectați sau să vă înregistrați."
   },
-  "home.flightNumberPlaceholder": "Numărul Zborului",
   "flights": {
     "title": "Orar Zboruri",
     "selectDate": "Selectați Data",
@@ -362,7 +412,10 @@
   },
   "errors": {
     "apiError": "Eroare API",
-    "unexpectedData": "Structură de date neașteptată primită"
+    "unexpectedData": "Structură de date neașteptată primită",
+    "networkTitle": "Eroare de rețea",
+    "networkSubtitle": "Nu s-a putut conecta la server. Verificați conexiunea la internet.",
+    "retryButton": "Reîncărcați"
   },
   "status": {
     "scheduled": "Programat",
@@ -385,6 +438,13 @@
     "call": "Sună",
     "message": "Mesaj",
     "error": "Eroare",
-    "noPhone": "Pasagerul nu a furnizat un număr de telefon."
+    "noPhone": "Pasagerul nu a furnizat un număr de telefon.",
+    "active": "Active",
+    "archive": "Arhivă",
+    "emptyListActive": "Nu aveți călătorii active",
+    "emptyListArchived": "Arhiva este goală",
+    "delete": "Șterge din arhivă",
+    "confirmDeleteTitle": "Ștergeți călătoria?",
+    "confirmDeleteText": "Această acțiune este ireversibilă."
   }
 }

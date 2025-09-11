@@ -3,7 +3,6 @@ import {
   StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity,
   TextInput, Modal, Pressable, ActivityIndicator, Alert, Platform, KeyboardAvoidingView
 } from 'react-native';
-// ✨ 1. Видалено імпорт CachePolicy, він не потрібен
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,12 +19,12 @@ import GroupTransferIcon from '../assets/group.svg';
 import IndividualTransferIcon from '../assets/induvidual.svg';
 import Pet from '../assets/pets.png';
 
-// --- (Компоненти модальних вікон залишаються без змін) ---
+// --- (Інші допоміжні компоненти залишаються без змін) ---
 const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(colors);
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.centeredModalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>);
+    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>);
 };
 const AddCommentModal = ({ visible, onClose, onCommentSubmit }) => {
     const { colors } = useTheme();
@@ -33,13 +32,13 @@ const AddCommentModal = ({ visible, onClose, onCommentSubmit }) => {
     const styles = getStyles(colors);
     const [comment, setComment] = useState('');
     const handleSendComment = () => { onCommentSubmit(comment); };
-    return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.centeredModalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('addCommentModal.title')}</Text><Text style={styles.modalSubtitle}>{t('addCommentModal.subtitle')}</Text><TextInput style={styles.modalCommentInput} placeholder={t('addCommentModal.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline /><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}><Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text></TouchableOpacity></View></View></KeyboardAvoidingView></Modal> );
+    return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackdrop}><Pressable style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('addCommentModal.title')}</Text><Text style={styles.modalSubtitle}>{t('addCommentModal.subtitle')}</Text><TextInput style={styles.modalCommentInput} placeholder={t('addCommentModal.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline /><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}><Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text></TouchableOpacity></View></Pressable></KeyboardAvoidingView></Modal> );
 };
 const TransferSuccessModal = ({ visible, onClose, onViewTransfers }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(colors);
-    return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.centeredModalBackdrop}><View style={styles.modalContent}><View style={styles.successIconContainer}><Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} /></View><Text style={styles.modalTitle}>{t('transferSuccess.title')}</Text><Text style={styles.modalSubtitle}>{t('transferSuccess.subtitle')}</Text><View style={styles.modalButtonColumn}><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}><Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text></TouchableOpacity></View></View></View></Modal> );
+    return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><View style={styles.successIconContainer}><Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} /></View><Text style={styles.modalTitle}>{t('transferSuccess.title')}</Text><Text style={styles.modalSubtitle}>{t('transferSuccess.subtitle')}</Text><View style={styles.modalButtonColumn}><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}><Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text></TouchableOpacity></View></View></View></Modal> );
 };
 const InputRow = ({ icon, placeholderKey, value, onChangeText, style }) => {
     const { colors } = useTheme();
@@ -47,15 +46,74 @@ const InputRow = ({ icon, placeholderKey, value, onChangeText, style }) => {
     const styles = getStyles(colors);
     return (<View style={[styles.inputRow, style]}><Ionicons name={icon} size={20} color={colors.secondaryText} /><TextInput placeholder={t(placeholderKey)} placeholderTextColor={colors.secondaryText} style={styles.textInput} value={value} onChangeText={onChangeText} /></View>);
 };
+
+// ✨ 1. НОВИЙ, ПЕРЕРОБЛЕНИЙ КОМПОНЕНТ МОДАЛЬНОГО ВІКНА
+// Компонент для одного рядка пасажирів (напр. "Дорослі")
+const PassengerRow = ({ label, sublabel, count, onUpdate, minCount = 0 }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    return (
+        <View style={styles.passengerRow}>
+            <View>
+                <Text style={styles.passengerLabel}>{label}</Text>
+                <Text style={styles.passengerSublabel}>{sublabel}</Text>
+            </View>
+            <View style={styles.passengerCounter}>
+                <TouchableOpacity onPress={() => onUpdate(-1)} disabled={count <= minCount}>
+                    <Ionicons name="remove-circle" size={32} color={count <= minCount ? colors.border : colors.primary} />
+                </TouchableOpacity>
+                <Text style={styles.passengerCountText}>{count}</Text>
+                <TouchableOpacity onPress={() => onUpdate(1)}>
+                    <Ionicons name="add-circle" size={32} color={colors.primary} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
 const PassengerSelectorModal = ({ visible, onClose, passengerCounts, setPassengerCounts }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(colors);
-    const updateCount = (type, amount) => { setPassengerCounts(prev => { const currentCount = prev[type]; const newCount = currentCount + amount; if (type === 'adults' && newCount < 1) return prev; if (newCount < 0) return prev; return { ...prev, [type]: newCount }; }); };
-    return ( <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.centeredModalBackdrop} onPress={onClose}><View style={styles.modalContent}><Text style={styles.modalTitle}>{t('passengers.title')}</Text><View style={styles.stepperRow}><View><Text style={styles.stepperLabel}>{t('passengers.adults')}</Text><Text style={styles.stepperSublabel}>{t('passengers.adultsAge')}</Text></View><View style={styles.stepper}><TouchableOpacity onPress={() => updateCount('adults', -1)}><Ionicons name="remove-circle-outline" size={30} color={colors.primary} /></TouchableOpacity><Text style={styles.passengerCount}>{passengerCounts.adults}</Text><TouchableOpacity onPress={() => updateCount('adults', 1)}><Ionicons name="add-circle-outline" size={30} color={colors.primary} /></TouchableOpacity></View></View><View style={styles.stepperRow}><View><Text style={styles.stepperLabel}>{t('passengers.children')}</Text><Text style={styles.stepperSublabel}>{t('passengers.childrenAge')}</Text></View><View style={styles.stepper}><TouchableOpacity onPress={() => updateCount('children', -1)}><Ionicons name="remove-circle-outline" size={30} color={colors.primary} /></TouchableOpacity><Text style={styles.passengerCount}>{passengerCounts.children}</Text><TouchableOpacity onPress={() => updateCount('children', 1)}><Ionicons name="add-circle-outline" size={30} color={colors.primary} /></TouchableOpacity></View></View><View style={styles.stepperRow}><View><Text style={styles.stepperLabel}>{t('passengers.infants')}</Text><Text style={styles.stepperSublabel}>{t('passengers.infantsAge')}</Text></View><View style={styles.stepper}><TouchableOpacity onPress={() => updateCount('infants', -1)}><Ionicons name="remove-circle-outline" size={30} color={colors.primary} /></TouchableOpacity><Text style={styles.passengerCount}>{passengerCounts.infants}</Text><TouchableOpacity onPress={() => updateCount('infants', 1)}><Ionicons name="add-circle-outline" size={30} color={colors.primary} /></TouchableOpacity></View></View><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onClose}><Text style={styles.modalPrimaryButtonText}>{t('common.done')}</Text></TouchableOpacity></View></Pressable></Modal> );
+
+    const updateCount = (type, amount) => {
+        setPassengerCounts(prev => ({ ...prev, [type]: Math.max(0, prev[type] + amount) }));
+    };
+
+    return (
+        <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
+            <Pressable style={styles.modalBackdrop} onPress={onClose}>
+                <Pressable style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>{t('passengers.title')}</Text>
+                    <PassengerRow
+                        label={t('passengers.adults')}
+                        sublabel={t('passengers.adultsAge')}
+                        count={passengerCounts.adults}
+                        onUpdate={(amount) => updateCount('adults', amount)}
+                        minCount={1} // Завжди має бути хоча б один дорослий
+                    />
+                    <PassengerRow
+                        label={t('passengers.children')}
+                        sublabel={t('passengers.childrenAge')}
+                        count={passengerCounts.children}
+                        onUpdate={(amount) => updateCount('children', amount)}
+                    />
+                    <PassengerRow
+                        label={t('passengers.infants')}
+                        sublabel={t('passengers.infantsAge')}
+                        count={passengerCounts.infants}
+                        onUpdate={(amount) => updateCount('infants', amount)}
+                    />
+                    <TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onClose}>
+                        <Text style={styles.modalPrimaryButtonText}>{t('common.done')}</Text>
+                    </TouchableOpacity>
+                </Pressable>
+            </Pressable>
+        </Modal>
+    );
 };
 
-// --- Основний компонент ---
+// --- Основний компонент (без критичних змін) ---
 export default function HomeScreen({ navigation }) {
     const { colors, theme } = useTheme();
     const { session } = useAuth();
@@ -65,7 +123,7 @@ export default function HomeScreen({ navigation }) {
     const [toLocation, setToLocation] = useState('');
     const [flightNumber, setFlightNumber] = useState('');
     const [luggageInfo, setLuggageInfo] = useState('');
-    const [activeTab, setActiveTab] = useState('from');
+    const [activeTab, setActiveTab] = useState('to');
     const [transferType, setTransferType] = useState('individual');
     const [withPet, setWithPet] = useState(false);
     const [meetWithSign, setMeetWithSign] = useState(false);
@@ -179,7 +237,6 @@ export default function HomeScreen({ navigation }) {
                                     style={styles.profilePic}
                                     contentFit="cover"
                                     transition={300}
-                                    // ✨ 2. Змінено значення cachePolicy на рядок 'disk'
                                     cachePolicy="disk"
                                 />
                             ) : (
@@ -248,7 +305,8 @@ export default function HomeScreen({ navigation }) {
         </SafeAreaView>
     );
 }
-// --- (Стилі залишаються без змін) ---
+
+// ✨ 2. ОНОВЛЕНІ СТИЛІ: Додано стилі для нового модального вікна
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3.84, elevation: 5 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container:{flex:1,backgroundColor:colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0},
@@ -256,9 +314,8 @@ const getStyles = (colors, theme) => StyleSheet.create({
     header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:24},
     headerIcons:{flexDirection:'row',alignItems:'center',gap:12},
     iconButton:{backgroundColor:colors.card,borderRadius:20,paddingHorizontal:12,paddingVertical:8,flexDirection:'row',alignItems:'center',minWidth:50,justifyContent:'center',...(theme==='light'?shadowStyle:{})},
-    iconButtonText:{color:colors.text,marginLeft:6,fontWeight:'600'},
     profilePic:{width:40,height:40,borderRadius:20},
-    profilePlaceholder:{width:40,height:40,borderRadius:20,backgroundColor:colors.card,justifyContent:'center',alignItems:'center',borderWidth:1,borderColor:colors.border},
+    profilePlaceholder:{backgroundColor:colors.card,justifyContent:'center',alignItems:'center',borderWidth:1,borderColor:colors.border},
     tabContainer:{flexDirection:'row',backgroundColor:colors.card,borderRadius:12,padding:4,marginBottom:24,...(theme==='light'?shadowStyle:{})},
     tab:{flex:1,paddingVertical:16,borderRadius:8},
     activeTab:{backgroundColor:colors.primary},
@@ -275,8 +332,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
     detailValueContainer:{flexDirection:'row',alignItems:'center'},
     detailValue:{color:colors.text,fontSize:16,fontWeight:'600'},
     verticalDivider:{height:'60%',width:1,backgroundColor:colors.border||'#3A3A3C'},
-    stepper:{flexDirection:'row',alignItems:'center',gap:10},
-    passengerCount:{color:colors.text,fontSize:16,fontWeight:'bold'},
     radioGroupContainer:{flexDirection:'row',gap:12,marginBottom:16},
     radioContainer:{flex:1,padding:16,borderRadius:16,borderWidth:1.5,backgroundColor:colors.card,borderColor:colors.border,alignItems:'center', justifyContent: 'center', gap: 2, height: 110, ...(theme==='light'?shadowStyle:{})},
     radioContainerActive:{backgroundColor:theme==='light'?'#EBF5FF':'rgba(10, 132, 255, 0.2)',borderColor:colors.primary},
@@ -288,9 +343,9 @@ const getStyles = (colors, theme) => StyleSheet.create({
     checkboxSubtext:{color:colors.secondaryText,fontSize:14, textAlign: 'center'},
     submitButton:{backgroundColor:colors.primary,paddingVertical:16,borderRadius:16,alignItems:'center',...(theme==='light'?shadowStyle:{})},
     submitButtonText:{color:'#FFFFFF',fontSize:18,fontWeight:'bold'},
-    centeredModalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
+    modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     bottomModalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-    modalContent: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '90%', alignItems: 'center', ...shadowStyle },
+    modalContent: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '90%', maxWidth: 400, alignItems: 'center', ...shadowStyle },
     bottomModalContent: { backgroundColor: colors.card, padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 },
     modalCloseButton:{position:'absolute',top:16,right:16},
     modalTitle:{fontSize:22,fontWeight:'bold',color:colors.text,marginBottom:8, textAlign: 'center'},
@@ -298,20 +353,47 @@ const getStyles = (colors, theme) => StyleSheet.create({
     modalCommentInput:{backgroundColor:colors.background,borderColor:colors.border,borderWidth:1,borderRadius:12,width:'100%',height:80,padding:12,fontSize:16,color:colors.text,textAlignVertical:'top',marginBottom:24},
     modalButtonRow:{flexDirection:'row',justifyContent:'space-between',width:'100%'},
     modalRowPrimaryButton:{backgroundColor:colors.primary,paddingVertical:14,borderRadius:12,flex:1,marginLeft:8,alignItems:'center',justifyContent:'center'},
-    modalFullWidthPrimaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center' },
+    modalFullWidthPrimaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
     modalFullWidthSecondaryButton: { backgroundColor: 'transparent', paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
     modalSecondaryButton:{backgroundColor:colors.background,paddingVertical:14,borderRadius:12,flex:1,marginRight:8,alignItems:'center',justifyContent:'center',borderColor:colors.border,borderWidth:1},
     modalSecondaryButtonText:{color:colors.text,fontSize:16,fontWeight:'600'},
     modalPrimaryButtonText:{color:'#FFFFFF',fontSize:16,fontWeight:'bold'},
     langButton:{paddingVertical:16,borderBottomWidth:1,borderBottomColor:colors.border||'#3A3A3C'},
     langButtonText:{color:colors.text,fontSize:18,textAlign:'center'},
-    stepperRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    stepperLabel: { color: colors.text, fontSize: 16, fontWeight: '600' },
-    stepperSublabel: { color: colors.secondaryText, fontSize: 12 },
     successIconContainer: { marginBottom: 16 },
     modalButtonColumn: { width: '100%', marginTop: 8 },
     flightInputContainer: {flexDirection: 'row', alignItems: 'center'},
     infoIcon: {paddingLeft: 12, paddingVertical: 14},
     signIcon: { width: 40, height: 40, textAlign: 'center' },
+    // Нові стилі для PassengerSelectorModal
+    passengerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    passengerLabel: {
+        color: colors.text,
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    passengerSublabel: {
+        color: colors.secondaryText,
+        fontSize: 13,
+    },
+    passengerCounter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+    },
+    passengerCountText: {
+        color: colors.text,
+        fontSize: 22,
+        fontWeight: 'bold',
+        minWidth: 30,
+        textAlign: 'center',
+    }
 });
-

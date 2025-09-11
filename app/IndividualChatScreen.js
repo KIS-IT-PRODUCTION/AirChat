@@ -203,9 +203,18 @@ export default function IndividualChatScreen() {
         };
     }, []);
 
-    const playSentSound = useCallback(async () => { try { await sentSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
-    const playReceivedSound = useCallback(async () => { try { await receivedSound.current.replayAsync(); } catch (e) { console.error(e); } }, []);
-    
+    const playSound = useCallback(async (soundObject) => {
+        try {
+            const status = await soundObject.current.getStatusAsync();
+            if (status.isLoaded && !status.isPlaying) {
+                await soundObject.current.setPositionAsync(0);
+                await soundObject.current.playAsync();
+            }
+        } catch (e) {
+            console.error('Failed to play sound', e);
+        }
+    }, []);
+
     useEffect(() => {
         const fetchRecipientInfo = async () => {
             if (!recipientId || (recipientInfo.name && recipientInfo.avatar)) return;
@@ -228,7 +237,7 @@ export default function IndividualChatScreen() {
         if (!roomId) return; 
         const { data, error } = await supabase
             .from('messages')
-            .select('*, reactions(*)') // Спрощений запит
+            .select('*, reactions(*)')
             .eq('room_id', roomId)
             .order('created_at', { ascending: false }); 
         
@@ -247,7 +256,7 @@ export default function IndividualChatScreen() {
             fetchMessages(currentRoomId);
             if (payload.new.sender_id !== session.user.id) { 
                 markAsRead(currentRoomId);
-                playReceivedSound();
+                playSound(receivedSound);
             } 
         }; 
         const handleUpdate = p => setMessages(prev => prev.map(m => m.id === p.new.id ? p.new : m)); 
@@ -273,7 +282,7 @@ export default function IndividualChatScreen() {
             supabase.removeChannel(channel.current); 
             supabase.removeChannel(profileSub); 
         }; 
-    }, [currentRoomId, session, recipientId, markAsRead, playReceivedSound, fetchMessages]);
+    }, [currentRoomId, session, recipientId, markAsRead, playSound, fetchMessages]);
     
     useFocusEffect(useCallback(() => { if (currentRoomId) { markAsRead(currentRoomId); fetchUnreadCount(); } }, [currentRoomId, markAsRead, fetchUnreadCount]));
     
@@ -291,7 +300,7 @@ export default function IndividualChatScreen() {
             ...messageData,
         };
         
-        playSentSound();
+        playSound(sentSound);
         setInputText('');
 
         const { error } = await supabase.from('messages').insert([fullMessageData]);
@@ -309,7 +318,7 @@ export default function IndividualChatScreen() {
             };
             supabase.functions.invoke('send-push-notification', { body: pushPayload }).catch(e => console.error("Push notification error:", e));
         }
-    }, [currentRoomId, session, playSentSound, t, recipientId, profile]);
+    }, [currentRoomId, session, playSound, t, recipientId, profile]);
 
     const handleSendText = useCallback(async () => {
         if (editingMessage) { handleEditMessage(); return; } 
@@ -323,8 +332,7 @@ export default function IndividualChatScreen() {
         const optimisticMessage = { id: tempId, client_id: tempId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
         
         setMessages(prev => [optimisticMessage, ...prev]);
-        playSentSound();
-
+        
         try { 
             const fileExt = asset.uri.split('.').pop().toLowerCase(); 
             const filePath = `${session.user.id}/${Date.now()}.${fileExt}`; 
@@ -340,7 +348,7 @@ export default function IndividualChatScreen() {
             Alert.alert(t('common.error'), e.message); 
             setMessages(prev => prev.filter(m => m.client_id !== tempId)); 
         } 
-    }, [session, sendMessage, playSentSound, t]);
+    }, [session, sendMessage, t]);
 
     const handleSendLocation = useCallback(async () => { 
         setAttachmentModalVisible(false);
@@ -419,6 +427,7 @@ export default function IndividualChatScreen() {
     );
 }
 
+// Стилі залишаються без змін
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },

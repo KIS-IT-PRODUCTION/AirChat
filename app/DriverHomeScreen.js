@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
+import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, Switch, Alert, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { useTranslation } from 'react-i18next';
@@ -8,17 +8,20 @@ import { supabase } from '../config/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
 import 'moment/locale/uk';
-import Logo from '../assets/icon.svg';
+import 'moment/locale/ro';
+import 'moment/locale/en-gb';
 import IndividualTransferIcon from '../assets/induvidual.svg'; 
 import GroupTransferIcon from '../assets/group.svg';
+import { useAuth } from '../provider/AuthContext';
+import { MotiView } from 'moti';
+// ✨ 1. Імпортуємо логотип
+import Logo from '../assets/icon.svg';
 
-// ✨ 1. Додаємо новий пропс `isExpiring`
-const TransferRequestCard = ({ item, onPress, isExpiring }) => {
+const TransferRequestCard = memo(({ item, onPress, isExpiring }) => {
     const { colors, theme } = useTheme();
     const { t } = useTranslation();
     const styles = getStyles(colors, theme);
 
-    const isAccepted = item.status === 'accepted';
     const getShortName = (name) => {
         if (!name) return '';
         const parts = name.split(' ');
@@ -39,8 +42,7 @@ const TransferRequestCard = ({ item, onPress, isExpiring }) => {
         : item.passenger_comment;
 
     return (
-        // ✨ 2. Застосовуємо умовний стиль для "гарячих" заявок
-        <TouchableOpacity style={[styles.card, isExpiring && styles.expiringCard, isAccepted && styles.acceptedCard]} onPress={onPress} disabled={isAccepted}>
+        <TouchableOpacity style={[styles.card, isExpiring && styles.expiringCard]} onPress={onPress}>
             <View style={styles.cardTop}>
                 <Image 
                     source={avatarSource} 
@@ -79,21 +81,24 @@ const TransferRequestCard = ({ item, onPress, isExpiring }) => {
             )}
         </TouchableOpacity>
     );
-};
+});
 
-export default function DriverHomeScreen() {
+const DriverHomeScreen = () => {
   const { colors, theme } = useTheme();
   const { t, i18n } = useTranslation();
   const navigation = useNavigation();
+  const { profile, switchRole } = useAuth();
   const styles = getStyles(colors, theme);
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newRequestsCount, setNewRequestsCount] = useState(0);
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
 
   useEffect(() => {
-    moment.locale(i18n.language);
+    const locale = i18n.language === 'en' ? 'en-gb' : i18n.language;
+    moment.locale(locale);
   }, [i18n.language]);
 
   const fetchDriverData = useCallback(async () => {
@@ -106,8 +111,8 @@ export default function DriverHomeScreen() {
         if (requestsPromise.error) throw requestsPromise.error;
         if (countPromise.error) throw countPromise.error;
 
-        setRequests(requestsPromise.data);
-        setNewRequestsCount(countPromise.data);
+        setRequests(requestsPromise.data || []);
+        setNewRequestsCount(countPromise.data || 0);
     } catch (error) {
         console.error("Error fetching driver data:", error.message);
     }
@@ -127,10 +132,7 @@ export default function DriverHomeScreen() {
       .channel('public:transfers:driver_home')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'transfers' },
-        (payload) => {
-          console.log('Driver feed received an update:', payload);
-          fetchDriverData();
-        }
+        () => fetchDriverData()
       )
       .subscribe();
 
@@ -139,78 +141,138 @@ export default function DriverHomeScreen() {
     };
   }, [fetchDriverData]);
 
-  const handleCardPress = (item) => {
-    supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: item.id }).then(({ error }) => {
-        if (error) console.error("Error marking as viewed:", error.message);
-    });
+  const handleCardPress = useCallback((item) => {
+    supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: item.id });
     navigation.navigate('DriverRequest', { transferId: item.id });
-  };
+  }, [navigation]);
   
-  if (loading && !refreshing) {
-      return (
-          <SafeAreaView style={styles.container}>
-              <View style={styles.header}><Text style={styles.title}>{t('driverHome.title')}</Text><Logo width={40} height={40} /></View>
-              <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
-          </SafeAreaView>
-      );
-  }
-
+  const handleRoleSwitch = useCallback(async (isDriver) => {
+    const newRole = isDriver ? 'driver' : 'client';
+    setIsSwitchingRole(true);
+    const { success, error } = await switchRole(newRole);
+    if (!success) {
+      Alert.alert(t('common.error'), error);
+      setIsSwitchingRole(false);
+    }
+  }, [switchRole, t]);
+  
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('driverHome.title')}</Text>
-        <Logo width={40} height={40} />
-      </View>
+      {/* ✨ 2. НОВИЙ АНІМОВАНИЙ ЗАГОЛОВОК */}
+      <MotiView 
+        from={{ translateY: -50, opacity: 0 }}
+        animate={{ translateY: 0, opacity: 1 }}
+        transition={{ type: 'timing', duration: 400 }}
+      >
+        <View style={styles.header}>
+            <Logo width={40} height={40} />
+            
+            {profile?.is_driver && (
+                <View style={styles.switchRow}>
+                    <Ionicons name="person-outline" size={18} color={profile.role === 'client' ? colors.primary : colors.secondaryText} />
+                    <Switch
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : colors.card}
+                        ios_backgroundColor={colors.border}
+                        onValueChange={handleRoleSwitch}
+                        value={profile.role === 'driver'}
+                        disabled={isSwitchingRole}
+                    />
+                    <Ionicons name="car-sport-outline" size={18} color={profile.role === 'driver' ? colors.primary : colors.secondaryText} />
+                </View>
+            )}
 
-      <View style={[styles.statusBanner, newRequestsCount > 0 ? styles.newRequestBanner : styles.noNewRequestBanner]}>
-          <Ionicons 
-              name={newRequestsCount > 0 ? "notifications-circle" : "checkmark-done-circle-outline"} 
-              size={24} 
-              color={newRequestsCount > 0 ? colors.primary : '#28a745'}
-          />
-          <Text style={styles.statusText}>
-              {newRequestsCount > 0 
-                  ? t('driverHome.newRequests', { count: newRequestsCount })
-                  : t('driverHome.noNewRequests')
-              }
-          </Text>
-      </View>
+            <TouchableOpacity onPress={() => navigation.navigate('DriverProfileTab')}>
+                {profile?.avatar_url ? (
+                    <Image
+                        source={{ uri: profile.avatar_url }}
+                        style={styles.profilePic}
+                        contentFit="cover"
+                        transition={300}
+                        cachePolicy="disk"
+                    />
+                ) : (
+                    <View style={[styles.profilePic, styles.profilePlaceholder]}>
+                        <Ionicons name="person-outline" size={22} color={colors.secondaryText} />
+                    </View>
+                )}
+            </TouchableOpacity>
+        </View>
+      </MotiView>
 
       <FlatList
+        ListHeaderComponent={
+            !loading && (
+                <View style={[styles.statusBanner, newRequestsCount > 0 ? styles.newRequestBanner : styles.noNewRequestBanner]}>
+                    <Ionicons name={newRequestsCount > 0 ? "notifications-circle" : "checkmark-done-circle-outline"} size={24} color={newRequestsCount > 0 ? colors.primary : '#28a745'} />
+                    <Text style={styles.statusText}>{newRequestsCount > 0 ? t('driverHome.newRequests', { count: newRequestsCount }) : t('driverHome.noNewRequests')}</Text>
+                </View>
+            )
+        }
         data={requests}
         renderItem={({ item }) => {
-            // ✨ 3. Визначаємо, чи є заявка "гарячою" (в минулому)
             const isExpiring = moment(item.transfer_datetime).isBefore(moment());
             return (
                 <View style={styles.itemContainer}>
-                    <Text style={styles.postedTimeText}>
-                        {t('driverHome.posted', 'Опубліковано')} {moment(item.created_at).fromNow()}
-                    </Text>
+                    <Text style={styles.postedTimeText}>{t('driverHome.posted')} {moment(item.created_at).fromNow()}</Text>
                     <TransferRequestCard 
                         item={item} 
                         onPress={() => handleCardPress(item)}
-                        isExpiring={isExpiring} // Передаємо пропс
+                        isExpiring={isExpiring}
                     />
                 </View>
             );
         }}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
-        ListEmptyComponent={<View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View>}
+        ListEmptyComponent={!loading ? <View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View> : null}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       />
     </SafeAreaView>
   );
 }
 
-// ✨ 4. Додаємо новий стиль для "гарячих" заявок
+export default memo(DriverHomeScreen);
+
+// ✨ 3. ОНОВЛЕНІ СТИЛІ
 const getStyles = (colors, theme) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 16, 
+        paddingTop: Platform.OS === 'android' ? 25 : 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border
+    },
+    profilePic: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    profilePlaceholder: {
+        backgroundColor: colors.card,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    switchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        backgroundColor: colors.card,
+        paddingVertical: Platform.OS === 'ios' ? 6 : 2,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+        ...theme.shadow,
+    },
     content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 50 },
     text: { fontSize: 18, color: colors.secondaryText, textAlign: 'center', marginTop: 16 },
-    statusBanner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, marginBottom: 8, marginTop: 8 },
+    statusBanner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, marginBottom: 8, marginTop: 16 },
     newRequestBanner: { backgroundColor: `${colors.primary}20`, borderColor: colors.primary },
     noNewRequestBanner: { backgroundColor: '#28a74520', borderColor: '#28a745' },
     statusText: { marginLeft: 10, color: colors.text, fontSize: 15, fontWeight: '600' },
@@ -227,11 +289,10 @@ const getStyles = (colors, theme) => StyleSheet.create({
         elevation: 5,
     },
     expiringCard: {
-        backgroundColor: theme === 'dark' ? '#3E2723' : '#FFF3E0', // Темний або світлий відтінок помаранчевого
+        backgroundColor: theme === 'dark' ? '#3E2723' : '#FFF3E0',
         borderColor: '#FFA000',
         borderWidth: 1,
     },
-    acceptedCard: { opacity: 0.5 },
     cardTop: { flexDirection: 'row', alignItems: 'center' },
     avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 16, backgroundColor: colors.background },
     infoContainer: { flex: 1 },
@@ -253,3 +314,4 @@ const getStyles = (colors, theme) => StyleSheet.create({
     commentIcon: { marginRight: 8 },
     commentText: { color: colors.secondaryText, fontSize: 14, fontStyle: 'italic', flex: 1 },
 });
+

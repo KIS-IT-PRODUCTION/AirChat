@@ -132,7 +132,7 @@ export default function DriverProfileScreen() {
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
+    headerTitle: { color: colors.text, fontSize: 28, fontWeight: 'bold' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     scrollContainer: { padding: 16, paddingBottom: 40 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },

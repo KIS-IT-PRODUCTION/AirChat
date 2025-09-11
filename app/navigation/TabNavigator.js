@@ -16,7 +16,8 @@ import ProfileStack from './ProfileStack';
 import MessagesStack from './MessagesStack';
 import Home from '../../assets/panel/home.svg';
 import Home2 from '../../assets/panel/home2.svg';
-
+import Chat from '../../assets/chat.svg';
+import Chat2 from '../../assets/chat2.svg';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -50,7 +51,7 @@ export default function TabNavigator() {
           } else if (route.name === 'TransfersTab') {
             iconName = focused ? 'airplane' : 'airplane-outline';
           } else if (route.name === 'MessagesTab') {
-            iconName = focused ? 'chatbox' : 'chatbox-outline';
+            return focused ? <Chat2 width={size} height={size} fill={color} /> : <Chat width={size} height={size} fill={color} />;
           } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }

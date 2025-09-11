@@ -54,7 +54,7 @@
     "emailPlaceholder": "Введіть Вашу електронну пошту",
     "passwordLabel": "Пароль",
     "passwordPlaceholder": "Введіть Ваш пароль",
-    "phoneLabel": "Телефон (необов'язково)",
+    "phoneLabel": "Телефон",
     "phonePlaceholder": "Введіть Ваш номер телефону",
     "registerButton": "Зареєструватися",
     "alreadyRegistered": "Вже зареєстровані?",
@@ -92,7 +92,7 @@
     "inApp": "В додатку",
     "year_one": "рік",
     "year_few": "роки",
-    "year": "років",
+    "years": "років",
     "month_one": "місяць",
     "month_few": "місяці",
     "month_many": "місяців",
@@ -151,8 +151,14 @@
     "transfers": "Мої трансфери",
     "messages": "Чати",
     "profile": "Профіль",
+    "flights": "Авіарейси",
+
     "driver": {
-      "home": "Трансфери"
+      "home": "Трансфери",
+      "myTrips": "Мої поїздки",
+      "flights": "Авіарейси",
+      "messages": "Чати",
+      "profile": "Профіль"
     }
   },
   "footer": {
@@ -226,6 +232,7 @@
     "cancelled": "Скасовано",
     "finalPrice": "Фінальна ціна"
   },
+  
   "transfersScreen": {
     "title": "Мої трансфери",
     "emptyState": "У вас ще немає створених заявок.",
@@ -299,6 +306,7 @@
     "en": "English",
     "ro": "Română"
   },
+
   "chatList": {
     "title": "Повідомлення",
     "noChats": "У вас ще немає чатів.",
@@ -376,7 +384,8 @@
     "newRequests_few": "Є {{count}} нові заявки",
     "newRequests_many": "Є {{count}} нових заявок",
     "memberSince": "З нами з {{date}}",
-    "posted": "Опубліковано"
+    "posted": "Опубліковано",
+    "greeting": "Привіт!"
   },
   "driverOffer": {
     "requestDetails": "Деталі заявки",
@@ -391,6 +400,7 @@
     "commentPlaceholder": "Ваш коментар (необов'язково)",
     "submitButton": "Надіслати пропозицію"
   },
+  
   "passengers": {
     "title": "Пасажири",
     "adults": "Дорослі",
@@ -410,6 +420,8 @@
     "selectCountry": "Оберіть країну",
     "selectAirport": "Оберіть аеропорт",
     "emptyList": "На обрану дату рейсів немає",
+    "subtitle": "Оберіть маршрут і дату, щоб переглянути доступні рейси.",
+    "tryChangingParams": "Спробуйте іншу дату або напрямок.",
     "status": {
       "scheduled": "За розкладом",
       "active": "В польоті",

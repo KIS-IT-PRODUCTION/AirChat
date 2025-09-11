@@ -199,7 +199,7 @@ export default function PublicDriverProfileScreen() {
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
+    headerTitle: { color: colors.text, fontSize: 22, fontWeight: 'bold' },
     content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     text: { fontSize: 18, color: colors.secondaryText },
     scrollContainer: { padding: 16, paddingBottom: 40 },

@@ -1,34 +1,34 @@
 {
-"home": {
-  "toAirport": "To Airport",
-  "fromAirport": "From Airport",
-  "title": "Order a transfer to/from the airport",
-  "fromPlaceholder": "From? (airport)",
-  "fromPlaceholderAddress": "From? (address, hotel...)",
-  "dropoffPlaceholder": "Drop-off location (hotel, address...)",
-  "dropoffPlaceholderAirport": "To? (airport)",
-  "luggagePlaceholder": "Number of luggage items",
-  "dateLabel": "Date",
-  "timeLabel": "Time",
-  "passengersLabel": "Passengers",
-  "individualTransfer": "Individual Transfer",
-  "groupTransfer": "Group Transfer",
-  "travelingWithPet": "Traveling with a pet",
-  "petSubtext": "(e.g., cat or dog)",
-  "orderButton": "Order Transfer",
-  "flightInfoTitle": "Flight Number (optional)",
-  "flightNumberPlaceholder": "Flight Number (optional)",
-  "flightInfoMessage": "Enter your flight number, for example, PS352 or W6123. This will help the driver track your request.",
-  "meetWithSign": "Meet with a sign",
-  "signSubtext": "The driver will be waiting with your name",
-  "error": {
-    "fillFields": "Please fill in the 'From' and 'To' fields.",
-    "noAdults": "There must be at least one adult passenger.",
-    "flightNumberRequired": "Please enter the flight number."
-  }
-},
+  "home": {
+    "toAirport": "To Airport",
+    "fromAirport": "From Airport",
+    "title": "Order a transfer to/from the airport",
+    "fromPlaceholder": "From? (airport)",
+    "fromPlaceholderAddress": "From? (address, hotel...)",
+    "dropoffPlaceholder": "Drop-off location (hotel, address...)",
+    "dropoffPlaceholderAirport": "To? (airport)",
+    "luggagePlaceholder": "Luggage (number of pieces)",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "passengersLabel": "Passengers",
+    "individualTransfer": "Individual transfer",
+    "groupTransfer": "Group transfer",
+    "travelingWithPet": "Traveling with a pet",
+    "petSubtext": "(cat, dog, etc.)",
+    "orderButton": "Order transfer",
+    "flightInfoTitle": "Flight Number (optional)",
+    "flightNumberPlaceholder": "Flight number (optional)",
+    "flightInfoMessage": "Enter your flight number, e.g., PS352 or W6123. This will help the driver track your request.",
+    "meetWithSign": "Meet with a sign",
+    "signSubtext": "The driver will be waiting with your name",
+    "error": {
+      "fillFields": "Please fill in the 'From' and 'To' fields.",
+      "noAdults": "There must be at least one adult passenger.",
+      "flightNumberRequired": "Please enter the flight number."
+    }
+  },
   "addCommentModal": {
-    "title": "Add a wish",
+    "title": "Add preferences",
     "subtitle": "Write important information for the driver: child seat, large luggage, or other details.",
     "commentPlaceholder": "For example, a child seat...",
     "skipButton": "Skip",
@@ -36,13 +36,13 @@
   },
   "transferSuccess": {
     "title": "Request sent!",
-    "subtitle": "Drivers have already received your request and will soon send their trip options.",
+    "subtitle": "Drivers have received your request and will soon send their trip options.",
     "viewTransfersButton": "View transfers",
     "closeButton": "Close"
   },
   "authScreen": {
-    "title": "AirChat: Airport Transfers To and From",
-    "driverLogin": "Are you a driver? Login to your account"
+    "title": "AirChat: Transfers to and from the airport",
+    "driverLogin": "Are you a driver? Log in to your account"
   },
   "registration": {
     "title": "Create Account",
@@ -58,13 +58,13 @@
     "phonePlaceholder": "Enter Your Phone Number",
     "registerButton": "Register",
     "alreadyRegistered": "Already registered?",
-    "loginLink": "Login",
+    "loginLink": "Log In",
     "emailPasswordRequired": "Email and password are required",
     "fillAllFields": "Please fill in your name, email, and password.",
     "confirmationEmail": "Success! Please check your email to confirm your registration."
   },
   "login": {
-    "title": "Login",
+    "title": "Log In",
     "subtitle": "Welcome back!",
     "fillAllFields": "Please fill in all fields.",
     "forgotPassword": "Forgot password?",
@@ -74,7 +74,7 @@
   "profile": {
     "myProfile": "My Profile",
     "driverProfile": "Driver Profile",
-    "yourPublicProfile": "Your Public Profile",
+    "yourPublicProfile": "Your public profile",
     "loadingProfile": "Loading profile...",
     "noData": "Failed to load profile.",
     "noName": "Unnamed User",
@@ -87,19 +87,19 @@
     "role": "Role",
     "adsCount": "Submitted requests",
     "yearsInApp": "Time in app",
-    "phone": "Tel",
-    "settings": "Profile Settings",
-    "inApp": "In the app",
+    "phone": "Phone",
+    "settings": "Profile settings",
+    "inApp": "In app",
     "year_one": "year",
     "year_other": "years",
     "month_one": "month",
     "month_other": "months",
-    "shareMessage": "Check out driver {{driverName}}'s profile in the {{appName}} app: {{link}}",
+    "shareMessage": "Check out driver {{driverName}}'s profile on the {{appName}} app: {{link}}",
     "message": "Message",
     "call": "Call",
-    "confirmCallTitle": "Call driver?",
+    "confirmCallTitle": "Call the driver?",
     "loginToWrite": "Please log in to message the driver.",
-    "carInfo": "Car"
+    "carInfo": "Vehicle"
   },
   "settings": {
     "title": "Settings",
@@ -107,9 +107,9 @@
     "carInfo": "Car Information",
     "account": "Account",
     "changePhoto": "Change",
-    "fullName": "Full Name",
+    "fullName": "Full name",
     "fullNamePlaceholder": "Enter your full name",
-    "phone": "Phone Number",
+    "phone": "Phone number",
     "phonePlaceholder": "Enter your phone number",
     "carMake": "Car Make",
     "carModel": "Car Model",
@@ -118,24 +118,31 @@
     "language": "App Language",
     "changePassword": "Change password?",
     "saveProfile": "Save",
-    "profileUpdated": "Profile updated successfully!",
+    "profileUpdated": "Profile successfully updated!",
     "darkTheme": "Dark Theme",
     "emailCannotBeChanged": "Email cannot be changed",
     "profileSaved": "Profile saved successfully!",
     "uk": "Ukrainian",
     "en": "English",
     "ro": "Romanian",
-    "logout": "Logout",
+    "logout": "Log Out",
     "logoutConfirm": "Are you sure you want to log out?",
     "avatarModalTitle": "Change Profile Photo",
     "pickFromGallery": "Choose from Gallery",
-    "passwordTooShort": "Password must be at least 6 characters.",
+    "passwordTooShort": "Password must be at least 6 characters long.",
     "passwordsDoNotMatch": "Passwords do not match.",
     "newPassword": "New Password",
     "confirmNewPassword": "Confirm New Password",
     "savePassword": "Save Password",
     "passwordChangedSuccess": "Password changed successfully!",
-    "notSet": "Not set"
+    "notSet": "Not specified",
+    "modeSwitchTitle": "Operating Mode",
+    "driverModeActive": "You are in driver mode",
+    "passengerModeActive": "You are in passenger mode",
+    "modeInfoText": "Driver Mode allows you to view and accept orders. Passenger Mode hides the driver interface, allowing you to use the app as a regular passenger.",
+    "clearCacheTitle": "Clear Cache",
+    "clearCacheBody": "This will remove all downloaded images from your device's memory. They will be re-downloaded as needed. Continue?",
+    "cacheClearedSuccess": "Cache cleared successfully."
   },
   "tabs": {
     "home": "Home",
@@ -145,7 +152,10 @@
     "flights": "Flights",
     "driver": {
       "home": "Transfers",
-      "myTrips": "My Trips"
+      "myTrips": "My Trips",
+      "flights": "Flights",
+      "messages": "Chats",
+      "profile": "Profile"
     }
   },
   "footer": {
@@ -154,7 +164,7 @@
   },
   "auth": {
     "register": "Register",
-    "login": "Login"
+    "login": "Log In"
   },
   "common": {
     "error": "Error",
@@ -174,7 +184,7 @@
   },
   "support": {
     "title": "Support",
-    "formTitle": "Help us get better!",
+    "formTitle": "Help us improve!",
     "formSubtitle": "Leave your feedback, report a problem, or suggest an idea.",
     "messageLabel": "Message",
     "messagePlaceholder": "Your feedback here...",
@@ -190,58 +200,58 @@
     "detailsTitle": "Trip Details",
     "date": "Date",
     "time": "Time",
-    "passengers": "pass.",
+    "passengers": "pax",
     "luggage": "Luggage",
     "withPet": "With a pet",
     "yes": "Yes",
-    "flightNumber": "Flight Number",
-    "transferType": "Transfer Type",
-    "clientComment": "Passenger's Comment",
+    "flightNumber": "Flight number",
+    "transferType": "Transfer type",
+    "clientComment": "Passenger's comment",
     "route": "Route on map",
     "start": "Start",
     "finish": "Finish",
-    "cancelTransfer": "Cancel Trip",
+    "cancelTransfer": "Cancel trip",
     "cancelledSuccess": "Request successfully cancelled.",
     "cancelConfirmTitle": "Cancel trip?",
     "cancelConfirmText": "This action cannot be undone.",
-    "driverOffers": "Driver Offers",
-    "otherOffers": "Other Offers",
+    "driverOffers": "Driver offers",
+    "otherOffers": "Other offers",
     "noOffers": "No offers yet. Please wait, drivers will respond soon.",
-    "chosenDriver": "Your Driver",
+    "chosenDriver": "Your driver",
     "acceptOffer": "Accept",
     "driverConfirmed": "Driver confirmed!",
-    "changeDriver": "Change Driver",
+    "changeDriver": "Change driver",
     "changeDriverConfirmTitle": "Change driver?",
-    "changeDriverConfirmText": "Your trip will become available for other drivers' offers again.",
-    "fromAirport": "From Airport",
-    "toAirport": "To Airport",
+    "changeDriverConfirmText": "Your trip will be available for offers from other drivers again.",
+    "fromAirport": "From airport",
+    "toAirport": "To airport",
     "completed": "Completed",
     "cancelled": "Cancelled",
     "finalPrice": "Final Price"
   },
   "transfersScreen": {
     "title": "My Transfers",
-    "emptyState": "You have no created requests yet.",
+    "emptyState": "You have not created any requests yet.",
     "writeButton": "Message",
     "archiveTitle": "Transfers Archive",
     "finalPrice": "Final Price",
     "emptyArchive": "Your archive is empty. Completed and cancelled trips will appear here.",
     "deleteConfirmTitle": "Delete transfers?",
-    "deleteConfirmBody_one": "Are you sure you want to delete {{count}} selected transfer? This action cannot be undone.",
-    "deleteConfirmBody_other": "Are you sure you want to delete {{count}} selected transfers? This action cannot be undone."
+    "deleteConfirmBody_one": "Are you sure you want to delete the selected transfer? This action cannot be undone.",
+    "deleteConfirmBody_other": "Are you sure you want to delete the {{count}} selected transfers? This action cannot be undone."
   },
   "transferStatus": {
     "pending": {
-      "title": "Searching for driver",
-      "text": "Awaiting offers from drivers…"
+      "title": "Searching for a driver",
+      "text": "Waiting for offers from drivers…"
     },
     "accepted": {
       "title": "Driver found",
-      "text": "Driver has been found and confirmed."
+      "text": "Driver found and confirmed."
     },
     "completed": {
       "title": "Completed",
-      "text": "The trip was successfully completed."
+      "text": "The trip has been successfully completed."
     },
     "cancelled": {
       "title": "Cancelled",
@@ -249,7 +259,7 @@
     },
     "offersAvailable": {
       "title": "Offers available",
-      "text": "Choose a suitable option for you."
+      "text": "Choose the most convenient option for you."
     }
   },
   "transferCard": {
@@ -272,17 +282,17 @@
   "onboarding": {
     "welcomeTitle": "Welcome!",
     "welcomeText": "Our app will help you easily book a transfer.",
-    "configureTitle": "Configure Your Trip",
+    "configureTitle": "Configure your trip",
     "configureText": "Choose the date, time, number of passengers, and luggage.",
-    "readyTitle": "All Set!",
+    "readyTitle": "All set!",
     "readyText": "Press the button below to get started.",
-    "startButton": "Get Started"
+    "startButton": "Start"
   },
   "successModal": {
-    "title": "Request Created!",
+    "title": "Request created!",
     "subtitle": "We will notify you when a driver accepts your order.",
     "commentTitle": "Add a comment",
-    "commentPlaceholder": "e.g., child seat, large luggage...",
+    "commentPlaceholder": "For example: child seat, large luggage...",
     "closeButton": "Close",
     "sendButton": "Send"
   },
@@ -295,22 +305,22 @@
     "title": "Messages",
     "noChats": "You have no chats yet.",
     "deleteTitle": "Delete chat?",
-    "deleteBody": "Are you sure you want to delete the chat with {{name}}? The entire conversation history will be lost."
+    "deleteBody": "Are you sure you want to delete the chat with {{name}}? The entire message history will be lost."
   },
   "chat": {
     "onlineStatus": "online",
     "offlineStatus": "offline",
     "typingStatus": "typing...",
     "placeholder": "Write a message...",
-    "locationLabel": "Geolocation",
-    "takePhoto": "Take Photo",
-    "pickFromGallery": "Choose from Gallery",
-    "shareLocation": "Share Geolocation",
-    "galleryPermissionError": "Permission to access gallery is required.",
-    "cameraPermissionError": "Permission to access camera is required.",
-    "locationPermissionError": "Permission to access location is required.",
-    "readStatus": "Read",
-    "messageActions": "Message Actions",
+    "locationLabel": "Location",
+    "takePhoto": "Take a photo",
+    "pickFromGallery": "Choose from gallery",
+    "shareLocation": "Share location",
+    "galleryPermissionError": "Gallery access permission is required.",
+    "cameraPermissionError": "Camera access permission is required.",
+    "locationPermissionError": "Location access is required.",
+    "readStatus": "Seen",
+    "messageActions": "Message actions",
     "edit": "Edit",
     "delete": "Delete",
     "deleteConfirmTitle": "Delete message?",
@@ -330,19 +340,24 @@
     "select": "Select",
     "copy": "Copy",
     "deleteMultipleConfirmTitle": "Delete messages?",
-    "deleteMultipleConfirmBody_one": "Are you sure you want to delete {{count}} selected message?",
-    "deleteMultipleConfirmBody_other": "Are you sure you want to delete {{count}} selected messages?",
-    "locationFetchError": "Failed to get your location.",
+    "deleteMultipleConfirmBody_one": "Are you sure you want to delete the selected message?",
+    "deleteMultipleConfirmBody_other": "Are you sure you want to delete the {{count}} selected messages?",
+    "deleteMultipleConfirmBody": "This action cannot be undone.",
+    "noMessages": "No messages yet. Write the first one!",
+    "reply": "Reply",
+    "photo": "Photo",
+    "location": "Location",
+    "locationFetchError": "Could not get your location.",
     "fetchingLocation": "Getting precise location...",
     "lastSeen": {
-      "justNow": "was last seen just now",
-      "minutesAgo_one": "was last seen {{count}} minute ago",
-      "minutesAgo_other": "was last seen {{count}} minutes ago",
-      "todayAt": "was last seen today at {{time}}",
-      "yesterdayAt": "was last seen yesterday at {{time}}",
-      "onDate": "was last seen on {{date}}",
-      "onDateAt": "was last seen on {{date}} at {{time}}",
-      "dateFormat": "MMMM D, YYYY"
+      "justNow": "was just now",
+      "minutesAgo_one": "was {{count}} minute ago",
+      "minutesAgo_other": "was {{count}} minutes ago",
+      "todayAt": "was today at {{time}}",
+      "yesterdayAt": "was yesterday at {{time}}",
+      "onDate": "was on {{date}}",
+      "onDateAt": "was on {{date}} at {{time}}",
+      "dateFormat": "D MMMM YYYY"
     }
   },
   "dates": {
@@ -359,12 +374,12 @@
     "noNewRequests": "No new unread requests",
     "newRequests_one": "There is {{count}} new request",
     "newRequests_other": "There are {{count}} new requests",
-    "memberSince": "Member since {{date}}",
+    "memberSince": "With us since {{date}}",
     "posted": "Posted"
   },
   "driverOffer": {
     "requestDetails": "Request Details",
-    "priceRequired": "Please enter a price.",
+    "priceRequired": "Please specify a price.",
     "offerSent": "Your offer has been sent to the passenger!",
     "otherOffersTitle": "Other drivers' offers",
     "noOtherOffers": "You are the first to make an offer!",
@@ -385,23 +400,28 @@
     "infantsAge": "under 2 years"
   },
   "authPrompt": {
-    "title": "Authorization Required",
+    "title": "Authorization required",
     "subtitle": "To order a transfer, please log in or register."
   },
   "flights": {
     "title": "Flight Schedule",
-    "selectDate": "Select Date",
-    "selectCountry": "Select Country",
-    "selectAirport": "Select Airport",
-    "emptyList": "No flights for the selected date",
+    "selectDate": "Select a date",
+    "selectCountry": "Select a country",
+    "selectAirport": "Select an airport",
+    "emptyList": "No flights on the selected date",
+    "subtitle": "Select a route and date to view available flights.",
+    "tryChangingParams": "Try a different date or direction.",
     "status": {
       "scheduled": "Scheduled",
-      "active": "In Flight",
+      "active": "In-flight",
       "landed": "Landed",
       "cancelled": "Cancelled",
       "diverted": "Diverted",
       "Unknown": "Unknown",
-      "DEPARTURE": "Departed"
+      "DEPARTURE": "Departed",
+      "GateClosed": "Gate Closed",
+      "Boarding": "Boarding",
+      "Expected": "Expected"
     }
   },
   "errors": {
@@ -413,7 +433,7 @@
   },
   "status": {
     "scheduled": "Scheduled",
-    "active": "In Flight",
+    "active": "In-flight",
     "landed": "Landed",
     "cancelled": "Cancelled",
     "diverted": "Diverted",
@@ -425,14 +445,14 @@
   },
   "myTrips": {
     "title": "My Trips",
-    "emptyList": "You have no accepted trips yet.",
+    "emptyList": "You have no accepted trips yet",
     "from": "From",
     "to": "To",
     "noName": "Name not specified",
     "call": "Call",
     "message": "Message",
     "error": "Error",
-    "noPhone": "Passenger has not provided a phone number.",
+    "noPhone": "The passenger has not provided a phone number.",
     "active": "Active",
     "archive": "Archive",
     "emptyListActive": "You have no active trips",

@@ -1,40 +1,39 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, RefreshControl, Linking, Alert, TouchableOpacity, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../config/supabase';
-import { useAuth } from '../../provider/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useNewTrips } from '../../provider/NewTripsContext';
+import { useAuth } from '../../provider/AuthContext';
+import Logo from '../../assets/icon.svg';
 import moment from 'moment';
-// ✨ 1. Імпортуємо всі необхідні локалі для moment
 import 'moment/locale/uk';
 import 'moment/locale/ro';
-import 'moment/locale/en-gb'; // en-gb як стандарт для англійської
+import 'moment/locale/en-gb';
+import { MotiView } from 'moti';
 
-
-const TripCard = ({ item, t, onDelete, onPress }) => {
-    const { colors } = useTheme();
-    const styles = getStyles(colors);
+const TripCard = memo(({ item, t, onDelete, onPress }) => {
+    const { colors, theme } = useTheme();
+    const styles = getStyles(colors, theme);
     const navigation = useNavigation();
     
-    // ✨ 2. Використовуємо moment для форматування, який тепер знає про поточну мову
     const formattedDate = moment(item.transfer_datetime).format('D MMMM YYYY');
     const formattedTime = moment(item.transfer_datetime).format('HH:mm');
     const totalPassengers = (item.adults_count || 0) + (item.children_count || 0) + (item.infants_count || 0);
     
-    const handleCall = () => {
+    const handleCall = useCallback(() => {
         const passengerPhone = item.passenger?.phone;
         if (passengerPhone) {
             Linking.openURL(`tel:${passengerPhone}`);
         } else {
             Alert.alert(t('myTrips.error'), t('myTrips.noPhone'));
         }
-    };
+    }, [item.passenger, t]);
 
-    const handleMessage = async () => {
+    const handleMessage = useCallback(async () => {
         if (!item.passenger?.id) {
             Alert.alert(t('common.error'), 'Passenger ID is missing.');
             return;
@@ -44,20 +43,17 @@ const TripCard = ({ item, t, onDelete, onPress }) => {
             if (error) throw error;
             if (!roomId) throw new Error("Could not find or create chat room.");
 
-            navigation.navigate('MessagesTab', {
-                screen: 'IndividualChat',
-                params: {
-                    roomId: roomId,
-                    recipientId: item.passenger.id,
-                    recipientName: item.passenger.full_name,
-                    recipientAvatar: item.passenger.avatar_url,
-                    recipientLastSeen: item.passenger.last_seen,
-                },
+            navigation.navigate('IndividualChat', {
+                roomId: roomId,
+                recipientId: item.passenger.id,
+                recipientName: item.passenger.full_name,
+                recipientAvatar: item.passenger.avatar_url,
+                recipientLastSeen: item.passenger.last_seen,
             });
         } catch (error) {
             Alert.alert(t('common.error'), error.message);
         }
-    };
+    }, [item.passenger, navigation, t]);
 
     return (
         <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
@@ -105,26 +101,26 @@ const TripCard = ({ item, t, onDelete, onPress }) => {
             {onDelete && (<TouchableOpacity style={styles.deleteButton} onPress={onDelete}><Ionicons name="trash-outline" size={20} color="#D32F2F" /><Text style={styles.deleteButtonText}>{t('myTrips.delete')}</Text></TouchableOpacity>)}
         </TouchableOpacity>
     );
-};
+});
 
 
-export default function MyTripsScreen() {
-    const { colors } = useTheme();
-    // ✨ 3. Отримуємо i18n для доступу до поточної мови
+const MyTripsScreen = () => {
+    const { colors, theme } = useTheme();
     const { t, i18n } = useTranslation();
     const { session } = useAuth();
     const navigation = useNavigation();
     const { clearNewTripsCount } = useNewTrips();
-    const styles = getStyles(colors);
+    const styles = getStyles(colors, theme);
 
     const [allTrips, setAllTrips] = useState([]);
     const [viewMode, setViewMode] = useState('active');
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [tabWidth, setTabWidth] = useState(0);
 
-    // ✨ 4. Цей useEffect тепер встановлює глобальну мову для moment
     useEffect(() => {
-        moment.locale(i18n.language);
+        const locale = i18n.language === 'en' ? 'en-gb' : i18n.language;
+        moment.locale(locale);
     }, [i18n.language]);
 
     useFocusEffect(useCallback(() => { clearNewTripsCount(); }, [clearNewTripsCount]));
@@ -132,13 +128,12 @@ export default function MyTripsScreen() {
     const fetchTrips = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
-            // ✨ 5. КЛЮЧОВА ЗМІНА: ascending: true для сортування від найближчих дат
             const { data, error } = await supabase
                 .from('transfers')
                 .select('*, passenger:passenger_id(id, full_name, phone, avatar_url, last_seen)')
                 .eq('driver_id', session.user.id)
                 .in('status', ['accepted', 'completed'])
-                .order('transfer_datetime', { ascending: true }); // Змінено на true
+                .order('transfer_datetime', { ascending: true });
 
             if (error) throw error;
             setAllTrips(data || []);
@@ -154,10 +149,7 @@ export default function MyTripsScreen() {
                 .channel('public:transfers:driver_trips')
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'transfers', filter: `driver_id=eq.${session.user.id}` },
-                    (payload) => {
-                        console.log('My Trips received an update:', payload);
-                        fetchTrips();
-                    }
+                    () => fetchTrips()
                 )
                 .subscribe();
 
@@ -175,13 +167,10 @@ export default function MyTripsScreen() {
         await fetchTrips();
         setRefreshing(false);
     }, [fetchTrips]);
-    
-    // Логіка розділення на активні та архівні залишається без змін,
-    // вона збереже правильний порядок сортування.
+
     const { activeTrips, archivedTrips } = useMemo(() => {
         const now = moment();
         return allTrips.reduce((acc, trip) => {
-            // Архівуємо поїздки, які завершились більше 24 годин тому
             (moment(trip.transfer_datetime).isBefore(now.clone().subtract(1, 'day')) 
                 ? acc.archivedTrips.push(trip) 
                 : acc.activeTrips.push(trip)
@@ -190,7 +179,7 @@ export default function MyTripsScreen() {
         }, { activeTrips: [], archivedTrips: [] });
     }, [allTrips]);
     
-    const handleDeleteTrip = (tripId) => {
+    const handleDeleteTrip = useCallback((tripId) => {
         Alert.alert(
             t('myTrips.confirmDeleteTitle'),
             t('myTrips.confirmDeleteText'),
@@ -207,21 +196,35 @@ export default function MyTripsScreen() {
                 }}
             ]
         );
-    };
+    }, [allTrips, t]);
 
     const tripsToDisplay = viewMode === 'active' ? activeTrips : archivedTrips;
 
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>{t('myTrips.title')}</Text>
-
-            <View style={styles.viewModeContainer}>
-                <TouchableOpacity style={[styles.viewModeButton, viewMode === 'active' && { backgroundColor: colors.primary }]} onPress={() => setViewMode('active')}>
-                    <Text style={[styles.viewModeText, viewMode === 'active' ? { color: '#fff' } : { color: colors.text }]}>{t('myTrips.active')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.viewModeButton, viewMode === 'archived' && { backgroundColor: colors.primary }]} onPress={() => setViewMode('archived')}>
-                    <Text style={[styles.viewModeText, viewMode === 'archived' ? { color: '#fff' } : { color: colors.text }]}>{t('myTrips.archive')}</Text>
-                </TouchableOpacity>
+            <View style={styles.headerContainer}>
+                <View style={styles.headerTopRow}>
+                    <Text style={styles.title}>{t('myTrips.title')}</Text>
+                    <Logo width={40} height={40} />
+                </View>
+                <View 
+                    style={styles.tabContainer}
+                    onLayout={(event) => setTabWidth(event.nativeEvent.layout.width)}
+                >
+                    {tabWidth > 0 && (
+                        <MotiView
+                            style={[styles.animatedThumb, { width: (tabWidth / 2) - 4 }]}
+                            animate={{ translateX: viewMode === 'active' ? 0 : (tabWidth / 2) }}
+                            transition={{ type: 'timing', duration: 250 }}
+                        />
+                    )}
+                    <TouchableOpacity style={styles.tabButton} onPress={() => setViewMode('active')}>
+                        <Text style={viewMode === 'active' ? styles.activeTabText : styles.inactiveTabText}>{t('myTrips.active')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.tabButton} onPress={() => setViewMode('archived')}>
+                        <Text style={viewMode === 'archived' ? styles.activeTabText : styles.inactiveTabText}>{t('myTrips.archive')}</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {isLoading && !refreshing ? (
@@ -234,10 +237,10 @@ export default function MyTripsScreen() {
                             item={item} 
                             t={t} 
                             onDelete={viewMode === 'archived' ? () => handleDeleteTrip(item.id) : null}
-                            onPress={() => navigation.navigate('DriverRequest', { transferId: item.id })}
+                            onPress={() => navigation.navigate('DriverRequestDetail', { transferId: item.id })}
                         />
                     )}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item) => item.id}
                     contentContainerStyle={{ flexGrow: 1, paddingBottom: 20, paddingHorizontal: 16 }}
                     ListEmptyComponent={
                         <View style={styles.centered}>
@@ -252,12 +255,63 @@ export default function MyTripsScreen() {
     );
 }
 
-const getStyles = (colors) => StyleSheet.create({
+export default memo(MyTripsScreen);
+
+const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
+    headerContainer: {
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    headerTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    title: { 
+        fontSize: 28, 
+        fontWeight: 'bold', 
+        color: colors.text 
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: colors.background,
+        borderRadius: 25,
+        padding: 4,
+        position: 'relative',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    animatedThumb: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        height: '100%',
+        backgroundColor: colors.primary,
+        borderRadius: 21,
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 21,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeTabText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    inactiveTabText: {
+        color: colors.secondaryText,
+        fontWeight: '600',
+        fontSize: 14,
+    },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    title: { fontSize: 28, fontWeight: 'bold', marginHorizontal: 16, marginTop: 16, color: colors.text },
     emptyText: { marginTop: 16, fontSize: 18, textAlign: 'center', color: colors.secondaryText },
-    card: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 12, marginVertical: 8, padding: 16, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3.0, elevation: 3 },
+    card: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 20, marginVertical: 8, padding: 16, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme === 'light' ? 0.05 : 0.1, shadowRadius: 8, elevation: 3 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
     passengerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
     avatarImage: { width: 40, height: 40, borderRadius: 20, marginRight: 12, backgroundColor: colors.border },
@@ -271,12 +325,10 @@ const getStyles = (colors) => StyleSheet.create({
     detailItem: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
     detailIcon: { marginRight: 6 },
     detailText: { fontSize: 14, fontWeight: '500', color: colors.text },
-    actionsContainer: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-around' },
-    actionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, flex: 1, marginHorizontal: 5, backgroundColor: colors.background },
+    actionsContainer: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-around', gap: 12 },
+    actionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, flex: 1, backgroundColor: colors.background },
     actionButtonText: { marginLeft: 8, fontSize: 14, fontWeight: 'bold' },
-    viewModeContainer: { flexDirection: 'row', margin: 16, backgroundColor: colors.card, borderRadius: 10, padding: 4 },
-    viewModeButton: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
-    viewModeText: { fontWeight: 'bold', fontSize: 14 },
     deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10, borderTopWidth: 1, borderColor: colors.border },
     deleteButtonText: { marginLeft: 8, color: '#D32F2F', fontWeight: 'bold' },
 });
+

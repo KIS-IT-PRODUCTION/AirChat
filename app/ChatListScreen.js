@@ -235,8 +235,8 @@ export default function ChatListScreen() {
 
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-    title: { fontSize: 32, fontWeight: 'bold', color: colors.text },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    title: { fontSize: 28, fontWeight: 'bold', color: colors.text },
     chatItemCard: {
         flexDirection: 'row',
         padding: 12,

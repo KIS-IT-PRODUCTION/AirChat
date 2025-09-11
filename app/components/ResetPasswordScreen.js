@@ -7,14 +7,17 @@ import { useTheme } from '../ThemeContext';
 import { supabase } from '../../config/supabase';
 import InputWithIcon from './InputWithIcon';
 
-export default function ResetPasswordScreen({ navigation }) {
+export default function ResetPasswordScreen({ route, navigation }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors, insets);
 
+  // ✨ 1. Отримуємо email з параметрів навігації
+  const { email } = route.params;
+
+  const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
@@ -22,34 +25,49 @@ export default function ResetPasswordScreen({ navigation }) {
     Keyboard.dismiss();
     setErrorText('');
 
+    if (!token || !password) {
+        setErrorText(t('login.fillAllFields'));
+        return;
+    }
     if (password.length < 6) {
       setErrorText(t('registration.passwordTooShort'));
       return;
     }
-    if (password !== confirmPassword) {
-      setErrorText(t('resetPassword.passwordsDoNotMatch'));
-      return;
-    }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    // ✨ 2. Нова логіка: верифікуємо OTP і оновлюємо пароль
+    const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'recovery',
+    });
 
     if (error) {
-      setErrorText(error.message);
+        setErrorText(t('resetPassword.invalidToken', 'Неправильний або застарілий код.'));
+        setLoading(false);
+        return;
+    }
+
+    // Якщо код правильний, оновлюємо пароль
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+
+    if (updateError) {
+      setErrorText(updateError.message);
     } else {
-      // ✨ КЛЮЧОВЕ ВИПРАВЛЕННЯ: Просто показуємо повідомлення.
-      // Навігація відбудеться автоматично, коли AuthProvider побачить нову сесію.
       Alert.alert(
         t('common.success'),
-        t('resetPassword.successMessage', 'Ваш пароль успішно оновлено!')
+        t('resetPassword.successMessage'),
+        [{ text: 'OK', onPress: () => navigation.navigate('LoginScreen') }]
       );
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-       {/* Кнопка "назад" тепер не потрібна, оскільки користувач не може "вийти" з цього стану */}
+      <TouchableOpacity style={styles.closeButton} onPress={() => navigation.navigate('LoginScreen')}>
+        <Ionicons name="arrow-back-outline" size={32} color={colors.text} />
+      </TouchableOpacity>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingContainer}
@@ -57,23 +75,23 @@ export default function ResetPasswordScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
             <View style={styles.header}>
               <Ionicons name="lock-open-outline" size={64} color={colors.primary} />
-              <Text style={styles.title}>{t('resetPassword.title', 'Створити новий пароль')}</Text>
-              <Text style={styles.subtitle}>{t('resetPassword.subtitle', 'Ваш новий пароль має відрізнятись від попереднього.')}</Text>
+              <Text style={styles.title}>{t('resetPassword.titleOtp', 'Введіть код')}</Text>
+              <Text style={styles.subtitle}>{t('resetPassword.subtitleOtp', 'Ми надіслали 6-значний код на вашу пошту.')}</Text>
             </View>
 
             <View style={styles.form}>
               <InputWithIcon
-                  icon="lock-closed-outline"
-                  placeholder={t('resetPassword.newPassword', 'Новий пароль')}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
+                  icon="shield-checkmark-outline"
+                  placeholder={t('resetPassword.tokenPlaceholder', 'Код з пошти')}
+                  value={token}
+                  onChangeText={setToken}
+                  keyboardType="number-pad"
               />
               <InputWithIcon
                   icon="lock-closed-outline"
-                  placeholder={t('resetPassword.confirmPassword', 'Підтвердіть пароль')}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  placeholder={t('resetPassword.newPassword')}
+                  value={password}
+                  onChangeText={setPassword}
                   secureTextEntry
               />
             </View>
@@ -82,11 +100,7 @@ export default function ResetPasswordScreen({ navigation }) {
 
             <View style={styles.footer}>
               <TouchableOpacity style={styles.button} onPress={handleUpdatePassword} disabled={loading}>
-                  {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                  <Text style={styles.buttonText}>{t('resetPassword.updateButton', 'Оновити пароль')}</Text>
-                  )}
+                  {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{t('resetPassword.updateButton')}</Text>}
               </TouchableOpacity>
             </View>
         </ScrollView>
@@ -95,7 +109,6 @@ export default function ResetPasswordScreen({ navigation }) {
   );
 }
 
-// ... (стилі без змін)
 const getStyles = (colors, insets) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     keyboardAvoidingContainer: { flex: 1 },

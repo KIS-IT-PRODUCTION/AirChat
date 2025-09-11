@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
-import { supabase } from '../config/supabase'; // Імпортуємо supabase для прямого запиту
+import { supabase } from '../config/supabase';
 import InputWithIcon from './components/InputWithIcon';
 
 const validateEmail = (email) => {
@@ -41,49 +41,33 @@ export default function RegistrationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
-  // ✨ 1. Нові стани для перевірки пошти в реальному часі
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isEmailAvailable, setIsEmailAvailable] = useState(true);
   const debounceTimeout = useRef(null);
 
-  // ✨ 2. Функція для перевірки пошти з затримкою (debounce)
   useEffect(() => {
-    // Очищуємо попередній таймер при кожній зміні
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-
-    // Не перевіряємо, якщо пошта некоректна або порожня
     if (!email.trim() || !validateEmail(email)) {
-      setIsEmailAvailable(true); // Скидаємо, щоб не показувати помилку
+      setIsEmailAvailable(true);
       setErrorText('');
       return;
     }
-
-    // Встановлюємо новий таймер
     debounceTimeout.current = setTimeout(async () => {
       setIsCheckingEmail(true);
       setErrorText('');
       try {
-        // ✨ ПРАВИЛЬНИЙ СПОСІБ: Викликаємо RPC функцію в Supabase.
-        // Цю функцію потрібно створити у вашому SQL Editor в Supabase.
-        // Дивіться коментар в кінці файлу для SQL коду функції.
         const { data, error } = await supabase.rpc('email_exists', {
           email_to_check: email.trim().toLowerCase()
         });
-        
         if (error) throw error;
-        
-        // data буде true, якщо пошта існує, і false, якщо ні.
-        setIsEmailAvailable(!data); 
-
+        setIsEmailAvailable(!data);
       } catch (error) {
         console.error("Error checking email via RPC:", error.message);
-        // У випадку помилки, не блокуємо реєстрацію, довіряємось валідації на сервері
         setIsEmailAvailable(true);
       } finally {
         setIsCheckingEmail(false);
       }
-    }, 500); // Затримка в 500 мс
-
+    }, 500);
     return () => clearTimeout(debounceTimeout.current);
   }, [email]);
 
@@ -109,10 +93,17 @@ export default function RegistrationScreen({ navigation, route }) {
     }
 
     setLoading(true);
+    // Цей блок коду є правильним. Він надсилає всі необхідні дані в метадані.
     const { error } = await signUp({
       email: email.trim(),
       password: password,
-      options: { data: { full_name: fullName.trim(), phone: phone.trim(), role: role } }
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          role: role
+        }
+      }
     });
     setLoading(false);
 

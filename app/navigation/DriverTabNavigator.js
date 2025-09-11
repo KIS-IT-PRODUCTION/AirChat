@@ -7,6 +7,11 @@ import { getFocusedRouteNameFromRoute, useFocusEffect } from '@react-navigation/
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../provider/AuthContext';
 import { useDebouncedCallback } from 'use-debounce'; // ✨ Імпорт для дебаунсингу
+import Poizdki from '../../assets/poizdki.svg'
+import Poizdki2 from '../../assets/poizdki_out.svg'
+import Chat from '../../assets/chat.svg'
+import Chat2 from '../../assets/chat2.svg'
+
 
 // Імпортуємо екрани та стеки для водія
 import DriverHomeScreen from '../DriverHomeScreen';
@@ -97,8 +102,12 @@ export default function DriverTabNavigator() {
           let iconName;
           if (route.name === 'DriverHomeTab') {
             iconName = focused ? 'list-circle' : 'list-circle-outline';
-          } else if (route.name === 'MessagesTab') {
-    iconName = focused ? 'chatbox' : 'chatbox-outline';
+          } else if (route.name === 'MyTripsTab') {
+            return focused ? <Poizdki2 width={size} height={size} fill={color} /> : <Poizdki width={size} height={size} fill={color} />;
+          }
+          
+          else if (route.name === 'MessagesTab') {
+            return focused ? <Chat2 width={size} height={size} fill={color} /> : <Chat width={size} height={size} fill={color} />;
 } else if (route.name === 'DriverReizeStack') {
             iconName = focused ? 'airplane' : 'airplane-outline';
           } else if (route.name === 'DriverProfileTab') {
@@ -111,14 +120,13 @@ export default function DriverTabNavigator() {
       <Tab.Screen 
         name="DriverHomeTab" 
         component={DriverHomeScreen} 
-        options={{ title: t('tabs.driver.home', 'Трансфери') }}
+        options={{ title: t('tabs.driver.home') }}
       />
         <Tab.Screen
         name="MyTripsTab"
         component={MyTripsScreen}
         options={{
-          tabBarLabel: t('tabs.driver.myTrips', 'Мої поїздки'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="bus" color={color} size={size} />,
+          tabBarLabel: t('tabs.driver.myTrips'),
           tabBarBadge: newTripsCount > 0 ? newTripsCount : null, // ✨ Відображаємо бейдж
           tabBarBadgeStyle: { backgroundColor: colors.primary }
         }}
@@ -126,13 +134,13 @@ export default function DriverTabNavigator() {
       <Tab.Screen
         name="DriverReizeStack" 
         component={DriverReizeStack}
-        options={{ title: t('tabs.flights', 'Рейси') }}
+        options={{ title: t('tabs.flights') }}
       /> 
       <Tab.Screen 
         name="MessagesTab" 
         component={MessagesStack}
         options={{ 
-          title: t('tabs.messages', 'Повідомлення'), 
+          title: t('tabs.messages'), 
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
           tabBarBadgeStyle: { backgroundColor: colors.primary }
         }}
@@ -141,7 +149,7 @@ export default function DriverTabNavigator() {
         name="DriverProfileTab" 
         component={DriverProfileStack}
         options={{ 
-          title: t('tabs.profile', 'Профіль'),
+          title: t('tabs.profile'),
         }}
       />
     </Tab.Navigator>

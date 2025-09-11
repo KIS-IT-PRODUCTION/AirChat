@@ -460,7 +460,7 @@ const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
     backButton: { padding: 4 },
-    headerTitle: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
+    headerTitle: { color: colors.text, fontSize: 28, fontWeight: 'bold' },
     scrollContainer: { paddingHorizontal: 24, paddingBottom: 20 },
     avatarContainer: { alignItems: 'center', marginVertical: 24, position: 'relative' },
     avatar: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.primary },

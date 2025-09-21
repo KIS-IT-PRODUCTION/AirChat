@@ -91,7 +91,7 @@
     "settings": "Setări profil",
     "inApp": "În aplicație",
     "year_one": "an",
-    "year_other": "ani",
+    "year": "ani",
     "month_one": "lună",
     "month_other": "luni",
     "shareMessage": "Verifică profilul șoferului {{driverName}} în aplicația {{appName}}: {{link}}",
@@ -376,7 +376,7 @@
     "people": "Persoane",
     "noNewRequests": "Nu există cereri noi necitite",
     "newRequests_one": "Există {{count}} cerere nouă",
-    "newRequests_few": "Există {{count}} cereri noi",
+    "newRequests": "Există {{count}} cereri noi",
     "newRequests_other": "Există {{count}} de cereri noi",
     "memberSince": "Cu noi din {{date}}",
     "posted": "Postat"

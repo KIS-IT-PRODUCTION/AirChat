@@ -9,6 +9,8 @@ import { supabase } from '../config/supabase';
 import moment from 'moment';
 import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
+// ✨ 1. Імпортуємо MotiView для анімації
+import { MotiView } from 'moti';
 
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
@@ -82,7 +84,6 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
         )}
       </View>
       
-      {/* ✨ ЗМІНИ ТУТ: Умовне відображення іконок */}
       <View style={styles.routeContainer}>
         <View style={styles.locationRow}>
           <View style={styles.routeIconContainer}>
@@ -106,7 +107,6 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
           <Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text>
         </View>
       </View>
-      {/* ✨ КІНЕЦЬ ЗМІН */}
       
       <View style={[styles.statusInfoBox, { backgroundColor: `${displayStatus.color}1A`, borderColor: displayStatus.color }]}>
         <Ionicons name={displayStatus.icon} size={24} color={displayStatus.color} />
@@ -273,19 +273,30 @@ export default function TransfersScreen() {
       ) : (
         <FlatList
           data={viewMode === 'active' ? activeTransfers : archivedTransfers}
-          renderItem={({ item }) => (
-            <TransferCard 
-                item={item} 
-                selectionMode={selectionMode}
-                isSelected={selectedItems.has(item.id)}
-                onSelect={handleToggleSelection}
-                onLongPress={() => {
-                  if (viewMode === 'archived') {
-                    setSelectionMode(true);
-                    handleToggleSelection(item.id);
-                  }
-                }}
-            />
+          // ✨ 2. Додаємо анімацію для кожного елемента списку
+          renderItem={({ item, index }) => (
+            <MotiView
+              from={{ opacity: 0, translateY: 50 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{
+                type: 'timing',
+                duration: 500,
+                delay: index * 150,
+              }}
+            >
+              <TransferCard 
+                  item={item} 
+                  selectionMode={selectionMode}
+                  isSelected={selectedItems.has(item.id)}
+                  onSelect={handleToggleSelection}
+                  onLongPress={() => {
+                    if (viewMode === 'archived') {
+                      setSelectionMode(true);
+                      handleToggleSelection(item.id);
+                    }
+                  }}
+              />
+            </MotiView>
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={{ padding: 16 }}
@@ -310,7 +321,7 @@ export default function TransfersScreen() {
 
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
   card: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
   archivedCard: { opacity: 0.7 },

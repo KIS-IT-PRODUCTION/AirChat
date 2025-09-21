@@ -39,7 +39,8 @@ const CITIES = [
 
 // ✨ 1. КЛЮЧОВЕ ВИПРАВЛЕННЯ: Робимо параметр `theme` необов'язковим, щоб уникнути помилок
 const getStyles = (colors, theme = {}) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background ,         paddingTop: Platform.OS === 'android' ? 25 : 0 
+},
     headerContainer: { paddingHorizontal: 16, paddingTop: Platform.OS === 'android' ? 25 : 16, paddingBottom: 16, borderBottomWidth: 1 },
     title: { fontSize: 28, fontWeight: 'bold', color: colors.text },
     subtitle: { fontSize: 15, marginTop: 4, color: colors.secondaryText },

@@ -457,7 +457,8 @@ export default memo(DriverSettingsScreen);
 
 // ✨ 8. Оновлені та додані стилі для нового перемикача теми
 const getStyles = (colors) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background,        paddingTop: Platform.OS === 'android' ? 25 : 0 
+ },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
     backButton: { padding: 4 },
     headerTitle: { color: colors.text, fontSize: 28, fontWeight: 'bold' },

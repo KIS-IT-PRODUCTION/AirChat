@@ -1,0 +1,147 @@
+// ✨ ПОЧАТОК ЗМІН: Додано плагін для роботи з конфігураціями з gradle.properties
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "com.facebook.react"
+    // Цей плагін може бути корисним для деяких бібліотек, але не є обов'язковим
+    // id 'kotlin-kapt'
+}
+// ✨ КІНЕЦЬ ЗМІН
+
+def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+/**
+ * This is the configuration block to customize your React Native Android app.
+ * By default you don't need to apply any configuration, just uncomment the lines you need.
+ */
+react {
+    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+
+    enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
+    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    bundleCommand = "export:embed"
+    autolinkLibrariesWithApp()
+}
+
+def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInReleaseBuilds') ?: false).toBoolean()
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace 'com.airchat.app'
+    defaultConfig {
+        applicationId 'com.airchat.app'
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+        // ✨ ПОЧАТОК ЗМІН: Додано для підтримки векторної графіки у старих версіях Android
+        vectorDrawables.useSupportLibrary = true
+        // ✨ КІНЕЦЬ ЗМІН
+    }
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        // ✨ ПОЧАТОК ЗМІН: Додано конфігурацію для релізного підпису.
+        // Дані (паролі, шлях до ключа) будуть братися з файлу `android/gradle.properties`.
+        // Це безпечний спосіб, щоб не зберігати паролі у коді.
+        release {
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(MYAPP_RELEASE_STORE_FILE)
+                storePassword MYAPP_RELEASE_STORE_PASSWORD
+                keyAlias MYAPP_RELEASE_KEY_ALIAS
+                keyPassword MYAPP_RELEASE_KEY_PASSWORD
+            }
+        }
+        // ✨ КІНЕЦЬ ЗМІН
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // ✨ ПОЧАТОК ЗМІН: Змінено на `signingConfigs.release`, щоб релізна збірка
+            // підписувалася вашим унікальним ключем, а не ключем для розробки.
+            signingConfig signingConfigs.release
+            // ✨ КІНЕЦЬ ЗМІН
+
+            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+            minifyEnabled enableProguardInReleaseBuilds
+            // УВАГА: Для коректної роботи деяких бібліотек (Firebase, карти) може знадобитися
+            // додати специфічні правила у файл proguard-rules.pro
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+        }
+        // ✨ ПОЧАТОК ЗМІН: Додано виключення, щоб уникнути конфліктів дубльованих файлів
+        // з різних бібліотек, що є частою проблемою.
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            pickFirsts += "**/libc++_shared.so"
+        }
+        // ✨ КІНЕЦЬ ЗМІН
+    }
+    androidResources {
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+}
+
+["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
+    def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
+    for (i in 0..<options.size()) options[i] = options[i].trim();
+    options -= ""
+    if (options.length > 0) {
+        println "android.packagingOptions.$prop += $options ($options.length)"
+        options.each {
+            android.packagingOptions[prop] += it
+        }
+    }
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+
+    def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
+    def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
+    def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
+
+    if (isGifEnabled) {
+        implementation("com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}")
+    }
+    if (isWebpEnabled) {
+        implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
+        if (isWebpAnimatedEnabled) {
+            implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
+        }
+    }
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+
+    // ✨ ПОЧАТОК ЗМІН: Додано залежності, які часто потрібні для сучасних Android-додатків
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+    // ✨ КІНЕЦЬ ЗМІН
+}
+
+// ✨ ПОЧАТОК ЗМІН: Плагін Google Services має бути в самому кінці файлу.
+// Переконайтеся, що у вас є файл `android/google-services.json`, якщо ви використовуєте Firebase.
+apply plugin: 'com.google.gms.google-services'
+// ✨ КІНЕЦЬ ЗМІН

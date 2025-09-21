@@ -213,8 +213,9 @@ const MyTripsScreen = () => {
                 >
                     {tabWidth > 0 && (
                         <MotiView
-                            style={[styles.animatedThumb, { width: (tabWidth / 2) - 4 }]}
-                            animate={{ translateX: viewMode === 'active' ? 0 : (tabWidth / 2) }}
+                            // ✨ 1. ВИПРАВЛЕНО ШИРИНУ ТА ЗМІЩЕННЯ ДЛЯ КОРЕКТНОЇ АНІМАЦІЇ
+                            style={[styles.animatedThumb, { width: (tabWidth - 8) / 2 }]}
+                            animate={{ translateX: viewMode === 'active' ? 0 : tabWidth / 2 }}
                             transition={{ type: 'timing', duration: 250 }}
                         />
                     )}
@@ -232,13 +233,24 @@ const MyTripsScreen = () => {
             ) : (
                 <FlatList
                     data={tripsToDisplay}
-                    renderItem={({ item }) => (
-                        <TripCard 
-                            item={item} 
-                            t={t} 
-                            onDelete={viewMode === 'archived' ? () => handleDeleteTrip(item.id) : null}
-                            onPress={() => navigation.navigate('DriverRequestDetail', { transferId: item.id })}
-                        />
+                    // ✨ 2. ДОДАНО АНІМАЦІЮ ДЛЯ КОЖНОЇ КАРТКИ
+                    renderItem={({ item, index }) => (
+                        <MotiView
+                            from={{ opacity: 0, translateY: 50 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{
+                                type: 'timing',
+                                duration: 500,
+                                delay: index * 150,
+                            }}
+                        >
+                            <TripCard 
+                                item={item} 
+                                t={t} 
+                                onDelete={viewMode === 'archived' ? () => handleDeleteTrip(item.id) : null}
+                                onPress={() => navigation.navigate('DriverRequest', { transferId: item.id })}
+                            />
+                        </MotiView>
                     )}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ flexGrow: 1, paddingBottom: 20, paddingHorizontal: 16 }}
@@ -286,9 +298,10 @@ const getStyles = (colors, theme) => StyleSheet.create({
     },
     animatedThumb: {
         position: 'absolute',
+        // ✨ 3. ВИПРАВЛЕНО ПОЗИЦІОНУВАННЯ ТА ВИСОТУ
         top: 4,
-        left: 4,
-        height: '100%',
+        left: 2, // <-- Враховуємо padding: 4 батьківського елемента
+        bottom: 4, // <-- Замість height: '100%' для точного прилягання
         backgroundColor: colors.primary,
         borderRadius: 21,
     },
@@ -298,6 +311,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
         borderRadius: 21,
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 1, // ✨ Додано, щоб текст завжди був над анімованою плашкою
     },
     activeTabText: {
         color: '#FFFFFF',
@@ -331,4 +345,3 @@ const getStyles = (colors, theme) => StyleSheet.create({
     deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10, borderTopWidth: 1, borderColor: colors.border },
     deleteButtonText: { marginLeft: 8, color: '#D32F2F', fontWeight: 'bold' },
 });
-

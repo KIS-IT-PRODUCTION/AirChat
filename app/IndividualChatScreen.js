@@ -22,6 +22,7 @@ import { MotiView, AnimatePresence } from 'moti';
 import TypingIndicator from '../app/components/TypingIndicator.js';
 import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
@@ -75,11 +76,28 @@ const ImageViewerModal = ({ visible, uri, onClose }) => {
 
 
 const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
-    const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏']; if (!message) return null; const handleAction = (action) => { action(); onClose(); };
+    // 💡 1. Спочатку викликаємо ВСІ хуки
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    const { t } = useTranslation();
+    const insets = useSafeAreaInsets();
+
+    // 💡 2. Тепер можна робити умовний рендер
+    if (!message) {
+        return null;
+    }
+
+    // Решта логіки компонента
+    const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+    const handleAction = (action) => {
+        action();
+        onClose();
+    };
+
     return (
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
             <Pressable style={styles.actionSheetBackdrop} onPress={onClose}>
-                <Pressable style={styles.actionSheetContainer}>
+                <Pressable style={[styles.actionSheetContainer, { marginBottom: insets.bottom > 0 ? insets.bottom : 10 }]}>
                     <View style={styles.reactionPickerContainer}>{reactions.map(emoji => ( <TouchableOpacity key={emoji} onPress={() => handleAction(() => onReact(emoji))} style={styles.reactionEmojiButton}><Text style={styles.reactionEmojiText}>{emoji}</Text></TouchableOpacity> ))}</View>
                     <View style={styles.actionButtonsContainer}>
                         {isMyMessage && ( <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(onSelect)}><Ionicons name="checkmark-circle-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.select', 'Вибрати')}</Text></TouchableOpacity> )}
@@ -158,6 +176,7 @@ export default function IndividualChatScreen() {
     const route = useRoute(); const navigation = useNavigation();
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
+    const insets = useSafeAreaInsets(); 
     
     useEffect(() => { moment.locale(i18n.language); }, [i18n.language]);
 
@@ -421,7 +440,24 @@ export default function IndividualChatScreen() {
                 onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessage.id])); }}
             />
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
-            <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}><Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}><View style={styles.modalContent}><TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity></View></Pressable></Modal>
+            <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}>
+                <Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}>
+                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+                        <TouchableOpacity style={styles.modalButton} onPress={takePhoto}>
+                            <Ionicons name="camera-outline" size={24} color={colors.primary} />
+                            <Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalButton} onPress={pickImage}>
+                            <Ionicons name="image-outline" size={24} color={colors.primary} />
+                            <Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}>
+                            <Ionicons name="location-outline" size={24} color={colors.primary} />
+                            <Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Pressable>
+            </Modal>
             {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
         </SafeAreaView>
     );
@@ -436,8 +472,9 @@ const getStyles = (colors) => StyleSheet.create({
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
-    container: { flex: 1, backgroundColor: colors.background },
-    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 0 },
+    container: { flex: 1, backgroundColor: colors.background,        paddingTop: Platform.OS === 'android' ? 25 : 0 , paddingBottom: Platform.OS === 'android' ? 25 : 0 , 
+ },
+    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 10 : 0 },
     headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10},
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
@@ -472,7 +509,7 @@ const getStyles = (colors) => StyleSheet.create({
     loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
     loadingText: { color: '#fff', marginTop: 10, fontSize: 16 },
     actionSheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)', },
-    actionSheetContainer: { margin: 10, marginBottom: Platform.OS === 'ios' ? 25 : 10, },
+    actionSheetContainer: { marginHorizontal: 10, }, 
     reactionPickerContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 8, justifyContent: 'space-around', alignItems: 'center', marginBottom: 8, elevation: 4, shadowOpacity: 0.1, shadowRadius: 5, },
     reactionEmojiButton: { padding: 4, },
     reactionEmojiText: { fontSize: 28, },
@@ -482,4 +519,3 @@ const getStyles = (colors) => StyleSheet.create({
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
 });
-

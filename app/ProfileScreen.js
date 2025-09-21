@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
-// ✨ 1. Імпортуємо покращений компонент Image з expo-image
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +9,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
+// ✨ 1. Імпортуємо MotiView для анімації
+import { MotiView } from 'moti';
 
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
@@ -87,36 +88,63 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.profileCard}>
-          {/* ✨ 2. Замінюємо стандартний Image на новий з кешуванням */}
-          <Image 
-            source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
-            style={styles.avatar} 
-            contentFit="cover"
-            transition={300}
-            cachePolicy="disk" // Вмикає кешування на диску
-          />
-          <Text style={styles.fullName}>{profile.full_name || t('profile.noName')}</Text>
-          <Text style={styles.phone}>{profile.phone || t('profile.noPhone')}</Text>
-        </View>
-
-        <View style={styles.statsContainer}>
-            <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
-            <StatCard icon="file-tray-full-outline" value={profile.ads_count || 0} label={t('profile.adsCount')} colors={colors} />
-            <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
-        </View>
-
-        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
-          <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.settingsButtonText}>{t('profile.settings')}</Text>
-        </TouchableOpacity>
+        {/* ✨ Анімація картки профілю */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 100 }}
+        >
+          <View style={styles.profileCard}>
+            <Image 
+              source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
+              style={styles.avatar} 
+              contentFit="cover"
+              transition={300}
+              cachePolicy="disk"
+            />
+            <Text style={styles.fullName}>{profile.full_name || t('profile.noName')}</Text>
+            <Text style={styles.phone}>{profile.phone || t('profile.noPhone')}</Text>
+          </View>
+        </MotiView>
         
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{t('footer.question')}</Text>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>{t('footer.link')}</Text>
+        {/* ✨ Анімація блоку статистики */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 200 }}
+        >
+          <View style={styles.statsContainer}>
+              <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
+              <StatCard icon="file-tray-full-outline" value={profile.ads_count || 0} label={t('profile.adsCount')} colors={colors} />
+              <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
+          </View>
+        </MotiView>
+        
+        {/* ✨ Анімація кнопки налаштувань */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 300 }}
+        >
+          <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
+            <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.settingsButtonText}>{t('profile.settings')}</Text>
           </TouchableOpacity>
-        </View>
+        </MotiView>
+        
+        {/* ✨ Анімація футера */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 400 }}
+        >
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{t('footer.question')}</Text>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>{t('footer.link')}</Text>
+            </TouchableOpacity>
+          </View>
+        </MotiView>
       </ScrollView>
     </SafeAreaView>
   );

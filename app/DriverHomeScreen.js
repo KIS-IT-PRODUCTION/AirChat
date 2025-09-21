@@ -14,7 +14,6 @@ import IndividualTransferIcon from '../assets/induvidual.svg';
 import GroupTransferIcon from '../assets/group.svg';
 import { useAuth } from '../provider/AuthContext';
 import { MotiView } from 'moti';
-// ✨ 1. Імпортуємо логотип
 import Logo from '../assets/icon.svg';
 
 const TransferRequestCard = memo(({ item, onPress, isExpiring }) => {
@@ -156,9 +155,12 @@ const DriverHomeScreen = () => {
     }
   }, [switchRole, t]);
   
+  const handleProfilePress = useCallback(() => {
+      navigation.navigate('DriverProfileTab');
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* ✨ 2. НОВИЙ АНІМОВАНИЙ ЗАГОЛОВОК */}
       <MotiView 
         from={{ translateY: -50, opacity: 0 }}
         animate={{ translateY: 0, opacity: 1 }}
@@ -182,7 +184,7 @@ const DriverHomeScreen = () => {
                 </View>
             )}
 
-            <TouchableOpacity onPress={() => navigation.navigate('DriverProfileTab')}>
+            <TouchableOpacity onPress={handleProfilePress}>
                 {profile?.avatar_url ? (
                     <Image
                         source={{ uri: profile.avatar_url }}
@@ -210,17 +212,29 @@ const DriverHomeScreen = () => {
             )
         }
         data={requests}
-        renderItem={({ item }) => {
-            const isExpiring = moment(item.transfer_datetime).isBefore(moment());
+        renderItem={({ item, index }) => { // ✨ Додаємо index для анімації
+            // ✨ ВИПРАВЛЕНО ЛОГІКУ: Перевіряємо, чи час заявки знаходиться в проміжку "останні 24 години".
+            const now = moment();
+            const oneDayAgo = now.clone().subtract(1, 'day');
+            const transferTime = moment(item.transfer_datetime);
+            const isExpiring = transferTime.isBetween(oneDayAgo, now);
+
             return (
-                <View style={styles.itemContainer}>
-                    <Text style={styles.postedTimeText}>{t('driverHome.posted')} {moment(item.created_at).fromNow()}</Text>
-                    <TransferRequestCard 
-                        item={item} 
-                        onPress={() => handleCardPress(item)}
-                        isExpiring={isExpiring}
-                    />
-                </View>
+                // ✨ ДОДАНО АНІМАЦІЮ: Кожна картка тепер плавно з'являється.
+                <MotiView
+                    from={{ opacity: 0, translateY: 50 }}
+                    animate={{ opacity: 1, translateY: 0 }}
+                    transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+                >
+                    <View style={styles.itemContainer}>
+                        <Text style={styles.postedTimeText}>{t('driverHome.posted')} {moment(item.created_at).fromNow()}</Text>
+                        <TransferRequestCard 
+                            item={item} 
+                            onPress={() => handleCardPress(item)}
+                            isExpiring={isExpiring}
+                        />
+                    </View>
+                </MotiView>
             );
         }}
         keyExtractor={(item) => item.id}
@@ -234,15 +248,18 @@ const DriverHomeScreen = () => {
 
 export default memo(DriverHomeScreen);
 
-// ✨ 3. ОНОВЛЕНІ СТИЛІ
 const getStyles = (colors, theme) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { 
+        flex: 1, 
+        backgroundColor: colors.background, 
+        paddingTop: Platform.OS === 'android' ? 25 : 0 
+    },
     header: { 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         paddingHorizontal: 16, 
-        paddingTop: Platform.OS === 'android' ? 25 : 16,
+        paddingTop: 16,
         paddingBottom: 12,
         borderBottomWidth: 1,
         borderBottomColor: colors.border
@@ -314,4 +331,3 @@ const getStyles = (colors, theme) => StyleSheet.create({
     commentIcon: { marginRight: 8 },
     commentText: { color: colors.secondaryText, fontSize: 14, fontStyle: 'italic', flex: 1 },
 });
-

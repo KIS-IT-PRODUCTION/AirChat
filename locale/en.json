@@ -91,7 +91,7 @@
     "settings": "Profile settings",
     "inApp": "In app",
     "year_one": "year",
-    "year_other": "years",
+    "year": "years",
     "month_one": "month",
     "month_other": "months",
     "shareMessage": "Check out driver {{driverName}}'s profile on the {{appName}} app: {{link}}",
@@ -373,7 +373,7 @@
     "people": "People",
     "noNewRequests": "No new unread requests",
     "newRequests_one": "There is {{count}} new request",
-    "newRequests_other": "There are {{count}} new requests",
+    "newRequests": "There are {{count}} new requests",
     "memberSince": "With us since {{date}}",
     "posted": "Posted"
   },

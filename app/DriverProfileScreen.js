@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+// ✨ 1. Імпортуємо Image з 'expo-image' для кращої продуктивності, як на інших екранах
+import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
@@ -8,6 +10,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
+// ✨ 2. Імпортуємо MotiView для анімації
+import { MotiView } from 'moti';
 
 // Компонент для статистики
 const StatCard = ({ icon, value, label, colors }) => {
@@ -20,8 +24,6 @@ const StatCard = ({ icon, value, label, colors }) => {
         </View>
     );
 };
-
-// ✨ Компонент для зіркового рейтингу більше не потрібен, його можна видалити
 
 export default function DriverProfileScreen() {
   const { colors } = useTheme();
@@ -80,50 +82,87 @@ export default function DriverProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.profileCard}>
-          <Image 
-            source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
-            style={styles.avatar} 
-          />
-          <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний водій')}</Text>
-          <Text style={styles.phone}>{profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
-        </View>
-
-        <View style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
-            <View style={styles.carInfoRow}>
-                <Ionicons name="car-sport-outline" size={24} color={colors.secondaryText} />
-                <Text style={styles.carInfoText}>{profile.car_make || t('settings.notSet')} {profile.car_model || ''}</Text>
-            </View>
-            <View style={styles.carInfoRow}>
-                <Ionicons name="reader-outline" size={24} color={colors.secondaryText} />
-                <Text style={styles.carInfoText}>{profile.car_plate || t('settings.notSet')}</Text>
-            </View>
-        </View>
-
-        {/* ✨ ОНОВЛЕНИЙ БЛОК СТАТИСТИКИ */}
-        <View style={styles.statsContainer}>
-            <StatCard 
-                icon="id-card-outline" 
-                value={profile.experience_years ? `${profile.experience_years} ${t('profile.year', { count: profile.experience_years })}` : `0 ${t('profile.years')}`}
-                label={t('profile.experience', 'Досвід водіння')} 
-                colors={colors} 
+        {/* ✨ Анімація картки профілю */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 100 }}
+        >
+          <View style={styles.profileCard}>
+            <Image 
+              source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
+              style={styles.avatar}
+              contentFit="cover"
+              transition={300}
+              cachePolicy="disk"
             />
-            <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
-            <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
-        </View>
+            <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний водій')}</Text>
+            <Text style={styles.phone}>{profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
+          </View>
+        </MotiView>
 
-        <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('DriverSettings')}>
-          <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.settingsButtonText}>{t('profile.settings', 'Налаштування')}</Text>
-        </TouchableOpacity>
+        {/* ✨ Анімація картки автомобіля */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 200 }}
+        >
+          <View style={styles.infoCard}>
+              <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
+              <View style={styles.carInfoRow}>
+                  <Ionicons name="car-sport-outline" size={24} color={colors.secondaryText} />
+                  <Text style={styles.carInfoText}>{profile.car_make || t('settings.notSet')} {profile.car_model || ''}</Text>
+              </View>
+              <View style={styles.carInfoRow}>
+                  <Ionicons name="reader-outline" size={24} color={colors.secondaryText} />
+                  <Text style={styles.carInfoText}>{profile.car_plate || t('settings.notSet')}</Text>
+              </View>
+          </View>
+        </MotiView>
         
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{t('footer.question', 'Не знаєте як працює додаток?')}</Text>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>{t('footer.link', 'Інструкція та знайомство з функціями')}</Text>
+        {/* ✨ Анімація блоку статистики */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 300 }}
+        >
+          <View style={styles.statsContainer}>
+              <StatCard 
+                  icon="id-card-outline" 
+                  value={profile.experience_years ? `${profile.experience_years} ${t('profile.year', { count: profile.experience_years })}` : `0 ${t('profile.years')}`}
+                  label={t('profile.experience', 'Досвід водіння')} 
+                  colors={colors} 
+              />
+              <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips || 0} label={t('profile.completedTrips')} colors={colors} />
+              <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
+          </View>
+        </MotiView>
+
+        {/* ✨ Анімація кнопки налаштувань */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 400 }}
+        >
+          <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('DriverSettings')}>
+            <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.settingsButtonText}>{t('profile.settings', 'Налаштування')}</Text>
           </TouchableOpacity>
-        </View>
+        </MotiView>
+        
+        {/* ✨ Анімація футера */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 500 }}
+        >
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{t('footer.question', 'Не знаєте як працює додаток?')}</Text>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>{t('footer.link', 'Інструкція та знайомство з функціями')}</Text>
+            </TouchableOpacity>
+          </View>
+        </MotiView>
       </ScrollView>
     </SafeAreaView>
   );

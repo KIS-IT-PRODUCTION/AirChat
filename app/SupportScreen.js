@@ -120,6 +120,7 @@ const getStyles = (colors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+       paddingTop: Platform.OS === 'android' ? 25 : 0 
     },
     header: {
       flexDirection: 'row',

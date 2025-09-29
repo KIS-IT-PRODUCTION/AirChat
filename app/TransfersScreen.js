@@ -9,7 +9,6 @@ import { supabase } from '../config/supabase';
 import moment from 'moment';
 import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
-// ✨ 1. Імпортуємо MotiView для анімації
 import { MotiView } from 'moti';
 
 const getDisplayStatus = (item, t) => {
@@ -39,6 +38,7 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   const displayStatus = getDisplayStatus(item, t);
+  const hasCarInfo = item.car_make && item.car_model && item.car_plate;
 
   const handlePress = () => {
     if (selectionMode) { onSelect(item.id); } 
@@ -71,50 +71,40 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
     >
       <View style={styles.cardHeader}>
         <Text style={styles.dateText}>{moment(item.transfer_datetime).format('D MMMM, HH:mm')}</Text>
-        
-        {item.status === 'pending' && item.offers_count > 0 && (
-          <View style={[
-            styles.badgeBase,
-            item.unread_offers_count > 0 
-              ? styles.badgeUnread
-              : styles.badgeTotal
-          ]}>
-            <Text style={styles.badgeText}>{item.offers_count}</Text>
-          </View>
-        )}
       </View>
       
       <View style={styles.routeContainer}>
         <View style={styles.locationRow}>
-          <View style={styles.routeIconContainer}>
-            <Ionicons 
-              name={item.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} 
-              size={20} 
-              color={colors.secondaryText} 
-            />
-          </View>
+          <View style={styles.routeIconContainer}><Ionicons name={item.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} size={20} color={colors.secondaryText} /></View>
           <Text style={styles.locationText} numberOfLines={1}>{item.from_location}</Text>
         </View>
         <View style={styles.dottedLine} />
         <View style={styles.locationRow}>
-          <View style={styles.routeIconContainer}>
-            <Ionicons 
-              name={item.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} 
-              size={20} 
-              color={colors.secondaryText} 
-            />
-          </View>
+          <View style={styles.routeIconContainer}><Ionicons name={item.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} size={20} color={colors.secondaryText} /></View>
           <Text style={styles.locationText} numberOfLines={1}>{item.to_location}</Text>
         </View>
       </View>
       
-      <View style={[styles.statusInfoBox, { backgroundColor: `${displayStatus.color}1A`, borderColor: displayStatus.color }]}>
-        <Ionicons name={displayStatus.icon} size={24} color={displayStatus.color} />
-        <View style={styles.statusInfoTextBox}>
-            <Text style={[styles.statusInfoTitle, { color: displayStatus.color }]}>{displayStatus.title}</Text>
-            <Text style={[styles.statusInfoText, { color: colors.secondaryText }]}>{displayStatus.text}</Text>
+      {item.status === 'pending' && item.offers_count > 0 ? (
+        <TouchableOpacity style={styles.viewOffersButton} onPress={handlePress}>
+          <View style={styles.viewOffersContent}>
+            <Ionicons name="sparkles-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.viewOffersText}>{t('transferStatus.offersAvailable.buttonText')}</Text>
+          </View>
+          {/* --- ЗМІНА: Індикатор тепер показує загальну кількість і змінює колір --- */}
+          <View style={[styles.badgeBase, item.unread_offers_count > 0 ? styles.badgeUnread : styles.badgeViewed]}>
+            <Text style={styles.badgeText}>{item.offers_count}</Text>
+          </View>
+        </TouchableOpacity>
+      ) : (
+        <View style={[styles.statusInfoBox, { backgroundColor: `${displayStatus.color}1A`, borderColor: displayStatus.color }]}>
+          <Ionicons name={displayStatus.icon} size={24} color={displayStatus.color} />
+          <View style={styles.statusInfoTextBox}>
+              <Text style={[styles.statusInfoTitle, { color: displayStatus.color }]}>{displayStatus.title}</Text>
+              <Text style={[styles.statusInfoText, { color: colors.secondaryText }]}>{displayStatus.text}</Text>
+          </View>
         </View>
-      </View>
+      )}
       
       {(item.status === 'accepted' || item.status === 'completed') && item.driver_name && (
         <View style={styles.driverFooter}>
@@ -125,16 +115,20 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
             </View>
           )}
 
-          <View style={styles.driverInfo}>
+          <View style={[styles.driverInfo, !hasCarInfo && styles.driverInfoCentered]}>
             <Image 
                 source={item.driver_avatar_url ? { uri: item.driver_avatar_url } : require('../assets/default-avatar.png')} 
-                style={styles.driverAvatar}
-                contentFit="cover"
-                transition={300}
-                cachePolicy="disk"
+                style={[styles.driverAvatar, !hasCarInfo && styles.driverAvatarCentered]}
+                contentFit="cover" transition={300} cachePolicy="disk"
             />
-            <View><Text style={styles.driverName}>{item.driver_name}</Text><Text style={styles.driverCar}>{item.car_make} {item.car_model} · <Text style={styles.carPlate}>{item.car_plate}</Text></Text></View>
+            <View style={!hasCarInfo && styles.driverTextCentered}>
+              <Text style={styles.driverName}>{item.driver_name}</Text>
+              {hasCarInfo && (
+                <Text style={styles.driverCar}>{item.car_make} {item.car_model} · <Text style={styles.carPlate}>{item.car_plate}</Text></Text>
+              )}
+            </View>
           </View>
+
           {item.status === 'accepted' && (
             <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.callButton} onPress={() => handleCall(item.driver_phone)}><Ionicons name="call" size={20} color="#FFFFFF" /></TouchableOpacity>
@@ -195,37 +189,34 @@ export default function TransfersScreen() {
         return;
     }
 
-    const transfersSubscription = supabase
-        .channel('passenger-transfers-channel')
-        .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
-            (payload) => {
-                console.log('Зміна в таблиці TRANSFERS! Оновлюємо список...');
-                fetchTransfers(); 
-            }
-        )
-        .subscribe();
+    const channel = supabase.channel(`passenger-updates-${session.user.id}`);
 
-    const offersSubscription = supabase
-        .channel('passenger-offers-channel')
-        .on('postgres_changes',
+    const transfersSubscription = channel.on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
+            () => fetchTransfers()
+        );
+
+    const offersSubscription = channel.on('postgres_changes',
             { event: '*', schema: 'public', table: 'transfer_offers' },
-            (payload) => {
-                console.log('Зміна в таблиці TRANSFER_OFFERS! Оновлюємо список...');
-                fetchTransfers();
-            }
-        )
-        .subscribe();
+            () => fetchTransfers()
+        );
+        
+    channel.subscribe();
 
     return () => {
-        supabase.removeChannel(transfersSubscription);
-        supabase.removeChannel(offersSubscription);
+        supabase.removeChannel(channel);
     };
   }, [session, fetchTransfers]);
 
   const { activeTransfers, archivedTransfers } = useMemo(() => {
     const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
     const archived = transfers.filter(t => t.status === 'completed' || t.status === 'cancelled');
+    
+    // --- ЗМІНА: Активні сортуються так само як архівні (від найновіших до найстаріших) ---
+    active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
+    // Архівні - від найновішої завершеної до найстарішої
+    archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
+    
     return { activeTransfers: active, archivedTransfers: archived };
   }, [transfers]);
 
@@ -273,16 +264,11 @@ export default function TransfersScreen() {
       ) : (
         <FlatList
           data={viewMode === 'active' ? activeTransfers : archivedTransfers}
-          // ✨ 2. Додаємо анімацію для кожного елемента списку
           renderItem={({ item, index }) => (
             <MotiView
               from={{ opacity: 0, translateY: 50 }}
               animate={{ opacity: 1, translateY: 0 }}
-              transition={{
-                type: 'timing',
-                duration: 500,
-                delay: index * 150,
-              }}
+              transition={{ type: 'timing', duration: 500, delay: index * 100 }}
             >
               <TransferCard 
                   item={item} 
@@ -299,7 +285,7 @@ export default function TransfersScreen() {
             </MotiView>
           )}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
                 <Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} />
@@ -335,26 +321,17 @@ const getStyles = (colors) => StyleSheet.create({
   locationText: { color: colors.text, fontSize: 16, marginLeft: 12, fontWeight: '500' },
   dottedLine: { height: 24, width: 2, backgroundColor: colors.border, marginLeft: 14, marginVertical: 4 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  badgeBase: {
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    marginLeft: 'auto'
-  },
-  badgeUnread: {
-    backgroundColor: '#D32F2F',
-  },
-  badgeTotal: {
-    backgroundColor: '#0288D1',
-  },
+  badgeBase: { borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  badgeUnread: { backgroundColor: '#D32F2F' }, // Червоний
+  badgeViewed: { backgroundColor: '#FFA000' }, // Жовтий
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100, paddingHorizontal: 20 },
   emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
   driverFooter: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
   driverInfo: { flexDirection: 'row', alignItems: 'center' },
+  driverInfoCentered: { flexDirection: 'column' },
   driverAvatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+  driverAvatarCentered: { marginRight: 0, marginBottom: 8 },
+  driverTextCentered: { alignItems: 'center' },
   driverName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
   driverCar: { color: colors.secondaryText, fontSize: 14, marginTop: 2 },
   carPlate: { color: colors.text, fontWeight: '600' },
@@ -378,4 +355,24 @@ const getStyles = (colors) => StyleSheet.create({
   priceFooter: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   priceLabel: { fontSize: 14, color: colors.secondaryText },
   priceValue: { fontSize: 18, fontWeight: 'bold', color: colors.text },
+  viewOffersButton: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  viewOffersContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  viewOffersText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });

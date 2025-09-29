@@ -1,19 +1,44 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
-import InputWithIcon from './components/InputWithIcon';
 
 const validateEmail = (email) => {
   const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(email).toLowerCase());
 };
 
-// ✨ 1. Огортаємо компонент в React.memo
-// Це запобігає зайвим пере-рендерам екрану, якщо пропси не змінилися.
+// --- ЗМІНА: Оновлений компонент InputWithIcon з підтримкою перемикача видимості пароля ---
+const InputWithIcon = ({ icon, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry, onToggleVisibility, isPassword }) => {
+    const { colors, theme } = useTheme();
+    const styles = getStyles(colors, {}, theme); // Передаємо порожній insets, бо він не потрібен тут
+
+    return (
+        <View style={styles.inputContainer}>
+            <Ionicons name={icon} size={22} color={colors.secondaryText} style={styles.inputIcon} />
+            <TextInput
+                style={styles.textInput}
+                placeholder={placeholder}
+                placeholderTextColor={colors.secondaryText}
+                value={value}
+                onChangeText={onChangeText}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+                secureTextEntry={secureTextEntry}
+            />
+            {isPassword && (
+                <TouchableOpacity onPress={onToggleVisibility} style={styles.eyeIcon}>
+                    <Ionicons name={secureTextEntry ? 'eye-outline' : 'eye-off-outline'} size={24} color={colors.secondaryText} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+};
+
+
 const LoginScreen = ({ navigation }) => {
   const { colors, theme } = useTheme();
   const { t } = useTranslation();
@@ -23,11 +48,11 @@ const LoginScreen = ({ navigation }) => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // --- ЗМІНА: Додано стан для видимості пароля ---
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
-  // ✨ 2. Огортаємо функції-обробники в useCallback
-  // Це оптимізація, яка не дозволяє створювати нову функцію при кожному рендері.
   const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
     setErrorText('');
@@ -54,16 +79,16 @@ const LoginScreen = ({ navigation }) => {
         setErrorText(error.message);
       }
     }
-    // ✨ ВАЖЛИВО: Навігація тут НЕ потрібна.
-    // AuthProvider оновить стан, а RootNavigator в App.js автоматично
-    // перемкне користувача на потрібний екран (UserAppFlow або DriverAppFlow).
-    // Це правильна архітектура, яка усуває "смикання".
-
   }, [email, password, signIn, t]);
 
   const handleForgotPassword = useCallback(() => {
     navigation.navigate('ForgotPasswordScreen');
   }, [navigation]);
+
+  // --- ЗМІНА: Функція для перемикання видимості пароля ---
+  const togglePasswordVisibility = useCallback(() => {
+    setIsPasswordVisible(prev => !prev);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -74,7 +99,6 @@ const LoginScreen = ({ navigation }) => {
         <Ionicons name="close-outline" size={32} color={colors.text} />
       </TouchableOpacity>
       
-      {/* Ця комбінація KeyboardAvoidingView та ScrollView є найкращою практикою для форм */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingContainer}
@@ -97,12 +121,15 @@ const LoginScreen = ({ navigation }) => {
                 keyboardType="email-address" 
                 autoCapitalize="none"
             />
+            {/* --- ЗМІНА: Оновлений компонент пароля --- */}
             <InputWithIcon
                 icon="lock-closed-outline"
                 placeholder={t('registration.passwordPlaceholder', 'Пароль')}
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!isPasswordVisible}
+                isPassword={true}
+                onToggleVisibility={togglePasswordVisibility}
             />
             <TouchableOpacity onPress={handleForgotPassword}>
                 <Text style={styles.forgotPasswordText}>{t('login.forgotPassword', 'Забули пароль?')}</Text>
@@ -132,7 +159,6 @@ const LoginScreen = ({ navigation }) => {
   );
 }
 
-// ✨ Експортуємо мемоізовану версію компонента
 export default React.memo(LoginScreen);
 
 const getStyles = (colors, insets, theme) => StyleSheet.create({
@@ -156,11 +182,35 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
   title: { color: colors.text, fontSize: 32, fontWeight: 'bold' },
   subtitle: { color: colors.secondaryText, fontSize: 16, marginTop: 8 },
   form: { width: '100%', marginBottom: 10 },
+  // --- ЗМІНА: Стилі для нового компонента InputWithIcon ---
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    paddingHorizontal: 15,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    height: 50,
+    color: colors.text,
+    fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 5,
+  },
+  // --- Кінець нових стилів ---
   forgotPasswordText: {
     color: colors.primary,
-    textAlign: 'right',
+    textAlign: 'center',
     fontWeight: '600',
-    marginTop: 8,
+    margin: 10,
   },
   errorText: {
     color: '#D32F2F',

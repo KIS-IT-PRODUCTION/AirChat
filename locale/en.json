@@ -32,7 +32,23 @@
     "subtitle": "Write important information for the driver: child seat, large luggage, or other details.",
     "commentPlaceholder": "For example, a child seat...",
     "skipButton": "Skip",
-    "sendButton": "Send"
+    "sendButton": "Send",
+    "cancelTransfer": "Cancel transfer",
+        "cancelConfirmTitle": "Confirm Cancellation",
+    "cancelConfirmMessage": "Are you sure you want to permanently cancel this transfer?",
+    "cancelSuccessTitle": "Transfer Canceled"
+  },
+  "resetPassword": {
+    "title": "Reset Password",
+    "newPassword":"New Password",
+    "subtitle": "Enter your email to receive a password reset link.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Enter your email",
+    "sendButton": "Send",
+    "backToLogin": "Back to login",
+    "emailRequired": "Email is required",
+    "invalidEmail": "Please enter a valid email address.",
+    "successMessage": "If an account with that email exists, a password reset link has been sent."
   },
   "transferSuccess": {
     "title": "Request sent!",
@@ -259,7 +275,9 @@
     },
     "offersAvailable": {
       "title": "Offers available",
-      "text": "Choose the most convenient option for you."
+      "text": "Choose the most convenient option for you.",
+            "buttonText": "View Offers"
+
     }
   },
   "transferCard": {
@@ -398,6 +416,10 @@
     "childrenAge": "2-12 years",
     "infants": "Infants",
     "infantsAge": "under 2 years"
+  },
+   "passengerSummary": {
+    "total_one": "passenger",
+    "total_other": "passengers"
   },
   "authPrompt": {
     "title": "Authorization required",

@@ -32,7 +32,24 @@
     "subtitle": "Scrieți informații importante pentru șofer: scaun pentru copii, bagaje mari sau alte detalii.",
     "commentPlaceholder": "De exemplu, un scaun pentru copii...",
     "skipButton": "Omite",
-    "sendButton": "Trimite"
+    "sendButton": "Trimite",
+    "cancelTransfer": "Anulați transferul",
+     "cancelConfirmTitle": "Confirmă anularea",
+    "cancelConfirmMessage": "Sunteți sigur că doriți să anulați definitiv acest transfer?",
+    "cancelSuccessTitle": "Transfer anulat"
+  },
+
+  "resetPassword": {
+    "title": "Resetați parola",
+    "newPassword":"Parolă nouă",
+    "subtitle": "Vă vom trimite un email cu instrucțiuni pentru a reseta parola.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Introduceți adresa dvs. de email",
+    "sendButton": "Trimite",
+    "backToLogin": "Înapoi la autentificare",
+    "emailRequired": "Emailul este obligatoriu.",
+    "invalidEmail": "Adresa de email nu este validă.",
+    "emailSent": "Verificați emailul pentru a reseta parola."
   },
   "transferSuccess": {
     "title": "Cerere trimisă!",
@@ -260,7 +277,9 @@
     },
     "offersAvailable": {
       "title": "Oferte disponibile",
-      "text": "Alegeți opțiunea cea mai convenabilă pentru dvs."
+      "text": "Alegeți opțiunea cea mai convenabilă pentru dvs.",
+            "buttonText": "Vezi ofertele"
+
     }
   },
   "transferCard": {
@@ -380,6 +399,12 @@
     "newRequests_other": "Există {{count}} de cereri noi",
     "memberSince": "Cu noi din {{date}}",
     "posted": "Postat"
+  },
+
+  "passengerSummary": {
+    "total_one": "pasager",
+    "total_few": "pasageri",
+    "total_other": "pasageri"
   },
   "driverOffer": {
     "requestDetails": "Detalii cerere",

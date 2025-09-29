@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, Switch, Alert, Linking } from 'react-native';
+import { View, Text, SafeAreaView, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, Switch, Alert, Linking, shadowStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
@@ -15,6 +15,7 @@ import GroupTransferIcon from '../assets/group.svg';
 import { useAuth } from '../provider/AuthContext';
 import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, interpolateColor } from 'react-native-reanimated';
 
 const TransferRequestCard = memo(({ item, onPress, isExpiring }) => {
     const { colors, theme } = useTheme();
@@ -94,6 +95,14 @@ const DriverHomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [newRequestsCount, setNewRequestsCount] = useState(0);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+  
+  const [isScreenVisible, setIsScreenVisible] = useState(false);
+  useFocusEffect(
+      useCallback(() => {
+          setIsScreenVisible(true);
+          return () => setIsScreenVisible(false);
+      }, [])
+  );
 
   useEffect(() => {
     const locale = i18n.language === 'en' ? 'en-gb' : i18n.language;
@@ -147,41 +156,66 @@ const DriverHomeScreen = () => {
   
   const handleRoleSwitch = useCallback(async (isDriver) => {
     const newRole = isDriver ? 'driver' : 'client';
+    if (newRole === profile?.role) return;
+
     setIsSwitchingRole(true);
     const { success, error } = await switchRole(newRole);
     if (!success) {
       Alert.alert(t('common.error'), error);
       setIsSwitchingRole(false);
     }
-  }, [switchRole, t]);
+  }, [switchRole, profile, t]);
   
   const handleProfilePress = useCallback(() => {
       navigation.navigate('DriverProfileTab');
   }, [navigation]);
 
+  const roleAnimation = useSharedValue(profile?.role === 'driver' ? 1 : 0);
+  useEffect(() => {
+      roleAnimation.value = withTiming(profile?.role === 'driver' ? 1 : 0, { duration: 300 });
+  }, [profile?.role]);
+
+  const passengerIconStyle = useAnimatedStyle(() => ({
+      color: interpolateColor(roleAnimation.value, [0, 1], [colors.primary, colors.secondaryText])
+  }));
+  const driverIconStyle = useAnimatedStyle(() => ({
+      color: interpolateColor(roleAnimation.value, [0, 1], [colors.secondaryText, colors.primary])
+  }));
+
   return (
     <SafeAreaView style={styles.container}>
       <MotiView 
-        from={{ translateY: -50, opacity: 0 }}
-        animate={{ translateY: 0, opacity: 1 }}
-        transition={{ type: 'timing', duration: 400 }}
+        animate={{ opacity: isScreenVisible && !isSwitchingRole ? 1 : 0 }}
+        transition={{ type: 'timing', duration: 300 }}
+        style={{flex: 1}}
       >
         <View style={styles.header}>
             <Logo width={40} height={40} />
             
             {profile?.is_driver && (
-                <View style={styles.switchRow}>
-                    <Ionicons name="person-outline" size={18} color={profile.role === 'client' ? colors.primary : colors.secondaryText} />
-                    <Switch
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : colors.card}
-                        ios_backgroundColor={colors.border}
-                        onValueChange={handleRoleSwitch}
-                        value={profile.role === 'driver'}
+                <MotiView from={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'timing' }}>
+                    <TouchableOpacity 
+                        style={styles.switchRow}
+                        onPress={() => handleRoleSwitch(profile?.role !== 'driver')}
                         disabled={isSwitchingRole}
-                    />
-                    <Ionicons name="car-sport-outline" size={18} color={profile.role === 'driver' ? colors.primary : colors.secondaryText} />
-                </View>
+                        activeOpacity={0.8}
+                    >
+                        <Animated.View><Ionicons name="person-outline" size={18} style={passengerIconStyle} /></Animated.View>
+                        {isSwitchingRole ? (
+                            <ActivityIndicator size="small" color={colors.primary} style={{ marginHorizontal: 6 }}/>
+                        ) : (
+                            <View pointerEvents="none">
+                                <Switch
+                                    trackColor={{ false: colors.border, true: colors.primary }}
+                                    thumbColor={Platform.OS === 'ios' ? '#FFFFFF' : colors.card}
+                                    ios_backgroundColor={colors.border}
+                                    value={profile.role === 'driver'}
+                                />
+                            </View>
+                        )}
+                        <Animated.View><Ionicons name="car-sport-outline" size={18} style={driverIconStyle} /></Animated.View>
+                    </TouchableOpacity>
+                </MotiView>
             )}
 
             <TouchableOpacity onPress={handleProfilePress}>
@@ -200,48 +234,46 @@ const DriverHomeScreen = () => {
                 )}
             </TouchableOpacity>
         </View>
+
+        <FlatList
+          ListHeaderComponent={
+              !loading && (
+                  <View style={[styles.statusBanner, newRequestsCount > 0 ? styles.newRequestBanner : styles.noNewRequestBanner]}>
+                      <Ionicons name={newRequestsCount > 0 ? "notifications-circle" : "checkmark-done-circle-outline"} size={24} color={newRequestsCount > 0 ? colors.primary : '#28a745'} />
+                      <Text style={styles.statusText}>{newRequestsCount > 0 ? t('driverHome.newRequests', { count: newRequestsCount }) : t('driverHome.noNewRequests')}</Text>
+                  </View>
+              )
+          }
+          data={requests}
+          renderItem={({ item, index }) => {
+              const now = moment();
+              const oneDayAgo = now.clone().subtract(1, 'day');
+              const transferTime = moment(item.transfer_datetime);
+              const isExpiring = transferTime.isBetween(oneDayAgo, now);
+
+              return (
+                  <MotiView
+                      from={{ opacity: 0, translateY: 50 }}
+                      animate={{ opacity: 1, translateY: 0 }}
+                      transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+                  >
+                      <View style={styles.itemContainer}>
+                          <Text style={styles.postedTimeText}>{t('driverHome.posted')} {moment(item.created_at).fromNow()}</Text>
+                          <TransferRequestCard 
+                              item={item} 
+                              onPress={() => handleCardPress(item)}
+                              isExpiring={isExpiring}
+                          />
+                      </View>
+                  </MotiView>
+              );
+          }}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
+          ListEmptyComponent={!loading ? <View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View> : null}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        />
       </MotiView>
-
-      <FlatList
-        ListHeaderComponent={
-            !loading && (
-                <View style={[styles.statusBanner, newRequestsCount > 0 ? styles.newRequestBanner : styles.noNewRequestBanner]}>
-                    <Ionicons name={newRequestsCount > 0 ? "notifications-circle" : "checkmark-done-circle-outline"} size={24} color={newRequestsCount > 0 ? colors.primary : '#28a745'} />
-                    <Text style={styles.statusText}>{newRequestsCount > 0 ? t('driverHome.newRequests', { count: newRequestsCount }) : t('driverHome.noNewRequests')}</Text>
-                </View>
-            )
-        }
-        data={requests}
-        renderItem={({ item, index }) => { // ✨ Додаємо index для анімації
-            // ✨ ВИПРАВЛЕНО ЛОГІКУ: Перевіряємо, чи час заявки знаходиться в проміжку "останні 24 години".
-            const now = moment();
-            const oneDayAgo = now.clone().subtract(1, 'day');
-            const transferTime = moment(item.transfer_datetime);
-            const isExpiring = transferTime.isBetween(oneDayAgo, now);
-
-            return (
-                // ✨ ДОДАНО АНІМАЦІЮ: Кожна картка тепер плавно з'являється.
-                <MotiView
-                    from={{ opacity: 0, translateY: 50 }}
-                    animate={{ opacity: 1, translateY: 0 }}
-                    transition={{ type: 'timing', duration: 500, delay: index * 100 }}
-                >
-                    <View style={styles.itemContainer}>
-                        <Text style={styles.postedTimeText}>{t('driverHome.posted')} {moment(item.created_at).fromNow()}</Text>
-                        <TransferRequestCard 
-                            item={item} 
-                            onPress={() => handleCardPress(item)}
-                            isExpiring={isExpiring}
-                        />
-                    </View>
-                </MotiView>
-            );
-        }}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}
-        ListEmptyComponent={!loading ? <View style={styles.content}><Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} /><Text style={styles.text}>{t('driverHome.noRequests')}</Text></View> : null}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      />
     </SafeAreaView>
   );
 }
@@ -285,7 +317,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
         paddingVertical: Platform.OS === 'ios' ? 6 : 2,
         paddingHorizontal: 10,
         borderRadius: 20,
-        ...theme.shadow,
+        ...shadowStyle,
     },
     content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, marginTop: 50 },
     text: { fontSize: 18, color: colors.secondaryText, textAlign: 'center', marginTop: 16 },

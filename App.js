@@ -19,11 +19,11 @@ import { AuthProvider, useAuth } from './provider/AuthContext';
 import { UnreadCountProvider, useUnreadCount } from './provider/Unread Count Context';
 import { NewOffersProvider, useNewOffers } from './provider/NewOffersContext';
 import { NewTripsProvider, useNewTrips } from './provider/NewTripsContext';
+// --- ЗМІНА: Імпортуємо FormProvider з HomeScreen ---
+import HomeScreen, { FormProvider } from './app/HomeScreen';
 import { usePushNotifications } from './usePushNotifications.js';
 import { supabase } from './config/supabase';
-
-// --- Screens ---
-import HomeScreen from './app/HomeScreen';
+ 
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
@@ -39,12 +39,10 @@ import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js
 import Support from './app/SupportScreen.js';
 import IndividualChatScreen from './app/IndividualChatScreen.js';
 
-// Тримаємо сплеш-скрін видимим, поки додаток не буде готовий
 SplashScreen.preventAutoHideAsync();
 
 const Stack = createStackNavigator();
 
-// --- Вкладені навігатори ---
 function AuthNavigator({ isFirstLaunch }) {
     return (
         <Stack.Navigator
@@ -87,28 +85,15 @@ function DriverAppStack() {
     );
 }
 
-// Конфігурація для обробки "глибинних посилань" (deep links)
+// --- ЗМІНА: Спрощена та виправлена конфігурація для "глибинних посилань" ---
 const linkingConfig = {
-  prefixes: ['airchat://'],
+  prefixes: [Linking.createURL('/'), 'airchat://'],
   config: { 
     screens: { 
-        AuthFlow: {
-            screens: {
-                ResetPasswordScreen: 'reset-password'
-            }
-        },
-        UserAppFlow: {
-            screens: {
-                 IndividualChat: 'chat/:roomId', // Спрощений шлях
-                  ResetPasswordScreen: 'reset-password'
-            }
-        },
-        DriverAppFlow: {
-            screens: {
-                IndividualChat: 'chat/:roomId', // однаковий шлях для обох ролей
-                 ResetPasswordScreen: 'reset-password'
-            }
-        }
+        // Екрани, доступні коли користувач не залогінений
+        ResetPasswordScreen: 'reset-password',
+        // Екрани, доступні коли користувач залогінений
+        IndividualChat: 'chat/:roomId',
     } 
   },
 };
@@ -140,19 +125,19 @@ function RootNavigator() {
         }
     }, [isAuthLoading, isFirstLaunch]);
     
-    // Обробка deep links (відновлення пароля), коли додаток вже відкритий
+    // --- ЗМІНА: Покращена обробка deep links, коли додаток вже відкритий ---
     useEffect(() => {
         const handleDeepLink = (event) => {
             const url = event.url;
-            if (!url) return;
+            if (!url || !navigationRef.current?.isReady()) return;
 
             const { path } = Linking.parse(url);
             
-            if (path === 'reset-password' && navigationRef.current?.isReady()) {
-                console.log("Password reset link opened while app is running. Navigating...");
-                navigationRef.current.navigate('AuthFlow', {
-                    screen: 'ResetPasswordScreen'
-                });
+            // Якщо прийшло посилання на скидання пароля, а користувач не залогінений,
+            // перенаправляємо його на потрібний екран.
+            if (path.includes('reset-password') && !session) {
+                console.log("Password reset link opened. Navigating...");
+                navigationRef.current.navigate('ResetPasswordScreen');
             }
         };
 
@@ -160,7 +145,7 @@ function RootNavigator() {
         return () => {
             subscription.remove();
         };
-    }, []);
+    }, [session]); // Залежність від сесії, щоб знати поточний стан авторизації
 
     // Оновлення лічильника на іконці додатку
     useEffect(() => {
@@ -236,7 +221,10 @@ export default function App() {
         <UnreadCountProvider>
           <NewOffersProvider>
             <NewTripsProvider>
-                <RootNavigator />
+                {/* --- ЗМІНА: Додано FormProvider для збереження даних форм --- */}
+                <FormProvider>
+                    <RootNavigator />
+                </FormProvider>
             </NewTripsProvider>
           </NewOffersProvider>
         </UnreadCountProvider>
@@ -290,4 +278,3 @@ const getStyles = (colors) => StyleSheet.create({
         marginTop: 8 
     },
 });
-

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
 import 'moment/locale/uk';
 import 'moment/locale/ro';
+import 'moment/locale/en-gb';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../provider/AuthContext';
@@ -23,9 +24,11 @@ import TypingIndicator from '../app/components/TypingIndicator.js';
 import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
-const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
+const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
     return (
@@ -39,7 +42,7 @@ const SelectionHeader = ({ selectionCount, onCancel, onDelete, colors }) => {
             </TouchableOpacity>
         </View>
     );
-};
+});
 
 const SelectionCircle = memo(({ isSelected }) => {
     const { colors } = useTheme();
@@ -62,38 +65,25 @@ const SelectionCircle = memo(({ isSelected }) => {
     );
 });
 
-
 const DateSeparator = memo(({ date }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation();
     const formattedDate = useMemo(() => moment(date).calendar(null, { sameDay: `[${t('dates.today', 'Сьогодні')}]`, lastDay: `[${t('dates.yesterday', 'Вчора')}]`, lastWeek: 'dddd', sameElse: 'D MMMM YYYY' }), [date, t]);
     return (<View style={styles.dateSeparator}><Text style={styles.dateSeparatorText}>{formattedDate}</Text></View>);
 });
 
-const ImageViewerModal = ({ visible, uri, onClose }) => {
+const ImageViewerModal = memo(({ visible, uri, onClose }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); if (!uri) return null;
     return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.imageViewerBackdrop} onPress={onClose}><Image source={{ uri }} style={styles.fullScreenImage} contentFit="contain" /><TouchableOpacity style={styles.closeButton} onPress={onClose}><Ionicons name="close-circle" size={32} color="white" /></TouchableOpacity></Pressable></Modal>);
-};
+});
 
-
-const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
-    // 💡 1. Спочатку викликаємо ВСІ хуки
+const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
-
-    // 💡 2. Тепер можна робити умовний рендер
-    if (!message) {
-        return null;
-    }
-
-    // Решта логіки компонента
+    if (!message) return null;
     const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
-    const handleAction = (action) => {
-        action();
-        onClose();
-    };
-
+    const handleAction = (action) => { action(); onClose(); };
     return (
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
             <Pressable style={styles.actionSheetBackdrop} onPress={onClose}>
@@ -110,54 +100,23 @@ const MessageActionSheet = ({ visible, onClose, message, isMyMessage, onCopy, on
             </Pressable>
         </Modal>
     );
-};
-
+});
 
 const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const isMyMessage = message.sender_id === currentUserId; const lastTap = useRef(0);
     const [isPressed, setIsPressed] = useState(false);
-
-    const handlePress = () => {
-        if (selectionMode) { if (isMyMessage) onSelect(message.id); return; }
-        const now = Date.now(); const DOUBLE_PRESS_DELAY = 300;
-        if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); }
-        lastTap.current = now;
-    };
+    const handlePress = () => { if (selectionMode) { if (isMyMessage) onSelect(message.id); return; } const now = Date.now(); const DOUBLE_PRESS_DELAY = 300; if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); } lastTap.current = now; };
     const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
-    
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
-
     return (
-        <Pressable
-            onPressIn={() => setIsPressed(true)}
-            onPressOut={() => setIsPressed(false)}
-            onLongPress={() => onLongPress(message)}
-            onPress={handlePress}
-            style={styles.messageContainer}
-        >
-            <MotiView
-                from={{ opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40, }}
-                animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0, }}
-                transition={{ type: 'timing', duration: 250, }}
-            >
+        <Pressable onPressIn={() => setIsPressed(true)} onPressOut={() => setIsPressed(false)} onLongPress={() => onLongPress(message)} onPress={handlePress} style={styles.messageContainer}>
+            <MotiView from={{ opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 }} animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0 }} transition={{ type: 'timing', duration: 250 }}>
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
                     <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
                         <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
                             {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
-                            {message.image_url && (
-                                <TouchableOpacity onPress={() => onImagePress(message.image_url)}>
-                                    <Image 
-                                        source={{ uri: message.image_url }} 
-                                        style={styles.messageImage} 
-                                        contentFit="cover" 
-                                        transition={300} 
-                                        cachePolicy="disk"
-                                        placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}
-                                    />
-                                    {message.status === 'uploading' && <UploadingIndicator />}
-                                </TouchableOpacity>
-                            )}
+                            {message.image_url && (<TouchableOpacity onPress={() => onImagePress(message.image_url)}><Image source={{ uri: message.image_url }} style={styles.messageImage} contentFit="cover" transition={300} cachePolicy="disk" placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}/>{message.status === 'uploading' && <UploadingIndicator />}</TouchableOpacity>)}
                             {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
                             <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
                         </View>
@@ -172,186 +131,192 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function IndividualChatScreen() {
-    const { colors } = useTheme(); const { t, i18n } = useTranslation(); const styles = getStyles(colors);
-    const route = useRoute(); const navigation = useNavigation();
+    const { colors } = useTheme(); 
+    const { t, i18n } = useTranslation(); 
+    const styles = getStyles(colors);
+    const route = useRoute(); 
+    const navigation = useNavigation();
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
     const insets = useSafeAreaInsets(); 
+    const { roomId: initialRoomId, recipientId, recipientName, recipientAvatar, recipientLastSeen: initialLastSeen } = route.params;
     
-    useEffect(() => { moment.locale(i18n.language); }, [i18n.language]);
-
-    const { roomId: initialRoomId, recipientId, recipientLastSeen: initialLastSeen } = route.params;
-    
-    const [recipientInfo, setRecipientInfo] = useState({ name: route.params.recipientName, avatar: route.params.recipientAvatar });
-    const [isLoadingRecipient, setIsLoadingRecipient] = useState(false);
-    
+    const [recipientInfo, setRecipientInfo] = useState({ name: recipientName, avatar: recipientAvatar });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [currentRoomId, setCurrentRoomId] = useState(initialRoomId);
     const [userStatus, setUserStatus] = useState('');
-    const [realtimeLastSeen, setRealtimeLastSeen] = useState(initialLastSeen);
-    const [isAttachmentModalVisible, setAttachmentModalVisible] = useState(false);
-    const [viewingImageUri, setViewingImageUri] = useState(null);
-    const [editingMessage, setEditingMessage] = useState(null);
-    const [selectedMessage, setSelectedMessage] = useState(null);
-    const [isRecipientOnline, setIsRecipientOnline] = useState(false);
     const [isRecipientTyping, setIsRecipientTyping] = useState(false);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isActionSheetVisible, setActionSheetVisible] = useState(false);
+    const [editingMessage, setEditingMessage] = useState(null);
+    const [selectedMessageForAction, setSelectedMessageForAction] = useState(null);
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedMessages, setSelectedMessages] = useState(new Set());
+    const [isAttachmentModalVisible, setAttachmentModalVisible] = useState(false);
+    const [viewingImageUri, setViewingImageUri] = useState(null);
+    const [isActionSheetVisible, setActionSheetVisible] = useState(false);
     const [isSendingLocation, setIsSendingLocation] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const channel = useRef(null);
-    const typingTimeout = useRef(null);
-    const sentSound = useRef(new Audio.Sound());
-    const receivedSound = useRef(new Audio.Sound());
+    const flatListRef = useRef(null);
+    const channelRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
+    const sentSoundRef = useRef(new Audio.Sound());
+    const receivedSoundRef = useRef(new Audio.Sound());
     const textInputRef = useRef(null);
+    const isInitialLoad = useRef(true);
 
     useEffect(() => {
+        moment.locale(i18n.language);
         const loadSounds = async () => {
-            try {
-                await sentSound.current.loadAsync(require('../assets/sound/send_massege.mp3'));
-                await receivedSound.current.loadAsync(require('../assets/sound/get_massege.mp3'));
-            } catch (error) { console.error("Failed to load sounds", error); }
+            await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3'));
+            await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3'));
         };
         loadSounds();
-        return () => {
-            sentSound.current.unloadAsync();
-            receivedSound.current.unloadAsync();
-        };
+        return () => { sentSoundRef.current.unloadAsync(); receivedSoundRef.current.unloadAsync(); };
+    }, [i18n.language]);
+    
+    const playSound = useCallback(async (soundRef) => {
+        try { await soundRef.current.replayAsync(); } catch (e) { console.error('Failed to play sound', e); }
     }, []);
 
-    const playSound = useCallback(async (soundObject) => {
-        try {
-            const status = await soundObject.current.getStatusAsync();
-            if (status.isLoaded && !status.isPlaying) {
-                await soundObject.current.setPositionAsync(0);
-                await soundObject.current.playAsync();
+    const processedData = useMemo(() => { 
+        const itemsWithSeparators = []; let lastDate = null;
+        messages.forEach(msg => { 
+            const msgDate = moment(msg.created_at).startOf('day');
+            if (!lastDate || !msgDate.isSame(lastDate)) {
+                itemsWithSeparators.push({ id: `date-${msg.created_at}`, type: 'date_separator', date: msg.created_at });
+                lastDate = msgDate;
             }
-        } catch (e) {
-            console.error('Failed to play sound', e);
-        }
-    }, []);
+            itemsWithSeparators.push({ ...msg, type: 'message' }); 
+        }); 
+        return itemsWithSeparators;
+    }, [messages]);
+
+    const markAsRead = useCallback(async (roomId) => { 
+        if (!roomId) return; 
+        try { 
+            await supabase.rpc('mark_messages_as_read', { p_room_id: roomId }); 
+            fetchUnreadCount();
+        } catch (e) { console.error("Error marking as read:", e.message); } 
+    }, [fetchUnreadCount]);
 
     useEffect(() => {
-        const fetchRecipientInfo = async () => {
-            if (!recipientId || (recipientInfo.name && recipientInfo.avatar)) return;
-            setIsLoadingRecipient(true);
-            try {
-                const { data, error } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', recipientId).single();
-                if (error) throw error;
-                if (data) setRecipientInfo({ name: data.full_name, avatar: data.avatar_url });
-            } catch (error) {
-                console.error("Error fetching recipient info:", error.message);
-                setRecipientInfo({ name: t('common.user', 'Користувач'), avatar: null });
-            } finally { setIsLoadingRecipient(false); }
-        };
-        fetchRecipientInfo();
-    }, [recipientId, t]);
+        let isMounted = true;
+        let profileSub;
 
-    const markAsRead = useCallback(async (roomId) => { if (!roomId) return; try { await supabase.rpc('mark_messages_as_read', { p_room_id: roomId }); } catch (e) { console.error("Error marking as read:", e.message); } }, []);
-    
-    const fetchMessages = useCallback(async (roomId) => { 
-        if (!roomId) return; 
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*, reactions(*)')
-            .eq('room_id', roomId)
-            .order('created_at', { ascending: false }); 
-        
-        if (error) { console.error("Fetch Error:", error); } 
-        else { setMessages(data || []); } 
-    }, []);
-    
-    useEffect(() => { const setup = async () => { if (!session || !recipientId) return; let roomId = currentRoomId; if (!roomId) { try { const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId }); roomId = data; setCurrentRoomId(roomId); } catch (e) { console.error("Error getting room ID:", e); return; } } if (roomId) await fetchMessages(roomId); }; setup(); }, [session, recipientId, currentRoomId, fetchMessages]);
-    
-    useEffect(() => { 
-        if (!currentRoomId || !session) return; 
-        
-        channel.current = supabase.channel(`room-${currentRoomId}`, { config: { presence: { key: session.user.id } } }); 
+        const setupRoomAndSubscriptions = async () => {
+            if (!session || !recipientId) { if(isMounted) setIsLoading(false); return; }
+            let roomId = currentRoomId;
+            if (!roomId) {
+                try {
+                    const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId });
+                    if (!isMounted) return;
+                    roomId = data;
+                    setCurrentRoomId(roomId);
+                } catch (e) { console.error("Error finding/creating room:", e); if(isMounted) setIsLoading(false); return; }
+            }
+            
+            if (!roomId) { if(isMounted) setIsLoading(false); return; }
 
-        const handleNew = (payload) => { 
-            fetchMessages(currentRoomId);
-            if (payload.new.sender_id !== session.user.id) { 
-                markAsRead(currentRoomId);
-                playSound(receivedSound);
-            } 
-        }; 
-        const handleUpdate = p => setMessages(prev => prev.map(m => m.id === p.new.id ? p.new : m)); 
-        const handleDelete = p => setMessages(prev => prev.filter(m => m.id !== p.old.id)); 
-        
-        channel.current
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleNew)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleUpdate)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, handleDelete)
-            .on('presence', { event: 'sync' }, () => setIsRecipientOnline(Object.keys(channel.current.presenceState()).some(k => k === recipientId)))
-            .on('broadcast', { event: 'typing' }, ({ payload }) => { if (payload.user_id === recipientId) { setIsRecipientTyping(true); if (typingTimeout.current) clearTimeout(typingTimeout.current); typingTimeout.current = setTimeout(() => setIsRecipientTyping(false), 2000); } })
-            .subscribe(); 
+            const { data, error } = await supabase.from('messages').select('*, reactions(*)').eq('room_id', roomId).order('created_at', { ascending: true });
+            if (isMounted) {
+                if (error) console.error("Fetch Error:", error);
+                else setMessages(data || []);
+                setIsLoading(false);
+                markAsRead(roomId);
+            }
+            
+            if (channelRef.current) supabase.removeChannel(channelRef.current);
+            const roomChannel = supabase.channel(`room-${roomId}`, { config: { presence: { key: session.user.id } } });
+            channelRef.current = roomChannel;
 
-        const profileSub = supabase
-            .channel(`profiles-listener:${recipientId}`)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
-                setRealtimeLastSeen(payload.new.last_seen);
+            roomChannel
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+                    setMessages(currentMessages => {
+                        const messageExists = currentMessages.some(m => m.id === payload.new.id);
+                        if (messageExists) return currentMessages;
+                        if (payload.new.sender_id !== session.user.id) { playSound(receivedSoundRef); markAsRead(roomId); return [...currentMessages, payload.new]; }
+                        const optimisticMessageIndex = currentMessages.findIndex(m => m.client_id && m.client_id === payload.new.client_id);
+                        if (optimisticMessageIndex > -1) { const newMessages = [...currentMessages]; newMessages[optimisticMessageIndex] = payload.new; return newMessages; }
+                        return [...currentMessages, payload.new];
+                    });
+                })
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => setMessages(currentMessages => currentMessages.map(m => m.id === payload.new.id ? payload.new : m)))
+                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+                    setMessages(currentMessages => currentMessages.filter(m => m.id !== payload.old.id));
+                })
+                .on('presence', { event: 'sync' }, () => {
+                    const presenceState = roomChannel.presenceState();
+                    const isOnline = Object.keys(presenceState).some(key => key === recipientId);
+                    setUserStatus(formatUserStatus(isOnline, initialLastSeen));
+                })
+                .on('broadcast', { event: 'typing' }, ({ payload }) => { 
+                    if (payload.user_id === recipientId) { 
+                        setIsRecipientTyping(true); 
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                        typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000); 
+                    } 
+                })
+                .subscribe();
+
+            profileSub = supabase.channel(`profile-listener-${recipientId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
+                setUserStatus(formatUserStatus(false, payload.new.last_seen));
                 setRecipientInfo({ name: payload.new.full_name, avatar: payload.new.avatar_url });
-            })
-            .subscribe();
-
-        return () => { 
-            supabase.removeChannel(channel.current); 
-            supabase.removeChannel(profileSub); 
-        }; 
-    }, [currentRoomId, session, recipientId, markAsRead, playSound, fetchMessages]);
-    
-    useFocusEffect(useCallback(() => { if (currentRoomId) { markAsRead(currentRoomId); fetchUnreadCount(); } }, [currentRoomId, markAsRead, fetchUnreadCount]));
-    
-    const processedData = useMemo(() => { const rev = [...messages].reverse(); const items = []; rev.forEach((msg, i) => { const prev = rev[i-1]; if (!prev || !moment(msg.created_at).isSame(moment(prev.created_at), 'day')) { items.push({ id: `date-${msg.created_at}`, type: 'date_separator', date: msg.created_at }); } items.push({ ...msg, type: 'message' }); }); return items.reverse(); }, [messages]);
-    const formatUserStatus = useCallback((isOnline, lastSeen) => { if (isOnline) return t('chat.onlineStatus'); if (!lastSeen) return t('chat.offlineStatus'); const lsMoment = moment(lastSeen); if (!lsMoment.isValid()) return t('chat.offlineStatus'); if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); }, [t]);
-    
-    useEffect(() => { setUserStatus(formatUserStatus(isRecipientOnline, realtimeLastSeen)); }, [isRecipientOnline, realtimeLastSeen, formatUserStatus]);
-    
-    const onRefresh = useCallback(async () => { setIsRefreshing(true); await fetchMessages(currentRoomId); setIsRefreshing(false); }, [currentRoomId, fetchMessages]);
-    
-    const sendMessage = useCallback(async (messageData) => {
-        const fullMessageData = {
-            room_id: currentRoomId,
-            sender_id: session.user.id,
-            ...messageData,
+            }).subscribe();
         };
-        
-        playSound(sentSound);
-        setInputText('');
 
-        const { error } = await supabase.from('messages').insert([fullMessageData]);
-        if (error) {
-            Alert.alert(t('common.error'), error.message);
-        } else {
-            const pushPayload = {
-                recipient_id: recipientId,
-                sender_id: session.user.id,
-                message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')),
-                room_id: currentRoomId,
-                sender_name: profile?.full_name,
-                sender_avatar: profile?.avatar_url,
-                sender_last_seen: new Date().toISOString()
-            };
-            supabase.functions.invoke('send-push-notification', { body: pushPayload }).catch(e => console.error("Push notification error:", e));
+        setupRoomAndSubscriptions();
+        return () => { isMounted = false; const channel = channelRef.current; if (channel) supabase.removeChannel(channel); if (profileSub) supabase.removeChannel(profileSub); };
+    }, [session, recipientId, currentRoomId]);
+
+    useEffect(() => {
+        if (messages.length > 0 && !isLoading) {
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
         }
-    }, [currentRoomId, session, playSound, t, recipientId, profile]);
+    }, [messages, isLoading]);
+
+    useFocusEffect(useCallback(() => {
+        const updatePresence = async (roomId) => {
+            if (!session || !roomId) return;
+            await supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: roomId, updated_at: new Date().toISOString() });
+            markAsRead(roomId);
+        };
+        if (currentRoomId) updatePresence(currentRoomId);
+        return () => { if (session) supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then(); };
+    }, [currentRoomId, session, markAsRead]));
+    
+    const formatUserStatus = useCallback((isOnline, lastSeen) => { if (isOnline) return t('chat.onlineStatus'); if (!lastSeen) return t('chat.offlineStatus'); const lsMoment = moment(lastSeen); if (!lsMoment.isValid()) return t('chat.offlineStatus'); if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); }, [t]);
+    useEffect(() => { setUserStatus(formatUserStatus(false, initialLastSeen)); }, [initialLastSeen, formatUserStatus]);
+
+    const sendMessage = useCallback(async (messageData) => {
+        if (!currentRoomId || !session) return;
+        const { error } = await supabase.from('messages').insert([{ ...messageData, room_id: currentRoomId, sender_id: session.user.id }]);
+        if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.filter(m => m.client_id !== messageData.client_id)); } 
+        else {
+            supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, room_id: currentRoomId, sender_id: session.user.id, message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')), sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}).catch(e => console.error("Push notification function error:", e));
+        }
+    }, [currentRoomId, session, t, recipientId, profile]);
 
     const handleSendText = useCallback(async () => {
         if (editingMessage) { handleEditMessage(); return; } 
         const textToSend = inputText.trim(); 
         if (textToSend.length === 0) return;
-        sendMessage({ content: textToSend });
-    }, [editingMessage, inputText, sendMessage]);
-
+        const clientId = uuidv4();
+        const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, content: textToSend, status: 'sending', reactions: [] };
+        setMessages(prev => [...prev, optimisticMessage]);
+        setInputText('');
+        playSound(sentSoundRef);
+        await sendMessage({ content: textToSend, client_id: clientId });
+    }, [editingMessage, inputText, sendMessage, session, currentRoomId]);
+    
     const uploadAndSendImage = useCallback(async (asset) => { 
-        const tempId = `temp-${Date.now()}`;
-        const optimisticMessage = { id: tempId, client_id: tempId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
-        
-        setMessages(prev => [optimisticMessage, ...prev]);
-        
+        const clientId = uuidv4();
+        const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
+        setMessages(prev => [...prev, optimisticMessage]);
+        playSound(sentSoundRef);
         try { 
             const fileExt = asset.uri.split('.').pop().toLowerCase(); 
             const filePath = `${session.user.id}/${Date.now()}.${fileExt}`; 
@@ -360,40 +325,69 @@ export default function IndividualChatScreen() {
             const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData); 
             if (uploadError) throw uploadError; 
             const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath); 
-            
-            await sendMessage({ image_url: urlData.publicUrl, client_id: tempId, blurhash: asset.blurhash });
-
-        } catch (e) { 
-            Alert.alert(t('common.error'), e.message); 
-            setMessages(prev => prev.filter(m => m.client_id !== tempId)); 
-        } 
-    }, [session, sendMessage, t]);
+            await sendMessage({ image_url: urlData.publicUrl, client_id: clientId, blurhash: asset.blurhash });
+        } catch (e) { Alert.alert(t('common.error'), e.message); setMessages(prev => prev.filter(m => m.client_id !== clientId)); } 
+    }, [session, sendMessage, t, currentRoomId]);
 
     const handleSendLocation = useCallback(async () => { 
         setAttachmentModalVisible(false);
         let { status } = await Location.requestForegroundPermissionsAsync(); 
-        if (status !== 'granted') return;
+        if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.locationPermissionDenied')); return; }
         setIsSendingLocation(true); 
         try { 
-            let { coords } = await Location.getCurrentPositionAsync(); 
-            await sendMessage({ location: { latitude: coords.latitude, longitude: coords.longitude } });
+            let { coords } = await Location.getCurrentPositionAsync({}); 
+            const locationData = { latitude: coords.latitude, longitude: coords.longitude };
+            const clientId = uuidv4();
+            const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, location: locationData, status: 'sending', reactions: [] };
+            setMessages(prev => [...prev, optimisticMessage]);
+            playSound(sentSoundRef);
+            await sendMessage({ location: locationData, client_id: clientId });
         } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); } 
         finally { setIsSendingLocation(false); } 
-    }, [sendMessage, t]);
-    
-    const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); }, [editingMessage, inputText]);
-    const handleReaction = useCallback(async (emoji, message) => { const target = message || selectedMessage; if (!target) return; setMessages(prev => prev.map(msg => { if (msg.id !== target.id) return msg; let reactions = [...(msg.reactions || [])]; const rIdx = reactions.findIndex(r => r.emoji === emoji); if (rIdx > -1) { const uIdx = reactions[rIdx].users.indexOf(session.user.id); if (uIdx > -1) { reactions[rIdx].count--; if (reactions[rIdx].count === 0) reactions.splice(rIdx, 1); } else { reactions[rIdx].count++; reactions[rIdx].users.push(session.user.id); } } else { reactions.push({ emoji, count: 1, users: [session.user.id] }); } return { ...msg, reactions }; })); await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); }, [selectedMessage, session]);
-    const handleDeleteMessage = useCallback(() => { if (!selectedMessage) return; Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const messageId = selectedMessage.id; setMessages(prev => prev.filter(msg => msg.id !== messageId)); await supabase.from('messages').delete().eq('id', messageId); } } ]); }, [selectedMessage, t]);
-    const handleLongPress = useCallback((message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) { handleToggleSelection(message.id); } } else { setSelectedMessage(message); setActionSheetVisible(true); } }, [selectionMode, session]);
-    const handleToggleSelection = useCallback((messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) { newSelection.delete(messageId); } else { newSelection.add(messageId); } if (newSelection.size === 0) { setSelectionMode(false); } setSelectedMessages(newSelection); }, [selectedMessages]);
-    const handleCancelSelection = useCallback(() => { setSelectionMode(false); setSelectedMessages(new Set()); }, []);
-    const handleDeleteSelected = useCallback(() => { Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => { const idsToDelete = Array.from(selectedMessages); setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); handleCancelSelection(); await supabase.from('messages').delete().in('id', idsToDelete); } } ]); }, [selectedMessages, t, handleCancelSelection]);
-    const pickImage = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, base64: true, exif: true }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage]);
-    const takePhoto = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') return; const result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: true, exif: true }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage]);
-    const handleTyping = useCallback((text) => { setInputText(text); if (channel.current && channel.current.state === 'joined') { try { channel.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id }, }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
+    }, [sendMessage, t, session, currentRoomId]);
 
-    const lastMessage = useMemo(() => processedData.find(item => item.type === 'message'), [processedData]);
-    const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id;
+    const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); const originalContent = editingMessage.content; setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); } }, [editingMessage, inputText, t]);
+    const handleReaction = useCallback(async (emoji, message) => { const target = message || selectedMessageForAction; if (!target) return; await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); }, [selectedMessageForAction]);
+    
+    const handleDeleteMessage = useCallback(() => { 
+        if (!selectedMessageForAction) return; 
+        Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ 
+            { text: t('common.cancel'), style: 'cancel' }, 
+            { text: t('common.delete'), style: 'destructive', onPress: async () => { 
+                const messageIdToDelete = selectedMessageForAction.id;
+                setMessages(prev => prev.filter(msg => msg.id !== messageIdToDelete));
+                const { error } = await supabase.from('messages').delete().eq('id', messageIdToDelete); 
+                if (error) { Alert.alert(t('common.error'), error.message); }
+            }} 
+        ]); 
+    }, [selectedMessageForAction, t]);
+    
+    const handleLongPress = useCallback((message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) handleToggleSelection(message.id); } else { setSelectedMessageForAction(message); setActionSheetVisible(true); } }, [selectionMode, session]);
+    const handleToggleSelection = useCallback((messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) newSelection.delete(messageId); else newSelection.add(messageId); if (newSelection.size === 0) setSelectionMode(false); setSelectedMessages(newSelection); }, [selectedMessages]);
+    const handleCancelSelection = useCallback(() => { setSelectionMode(false); setSelectedMessages(new Set()); }, []);
+    
+    const handleDeleteSelected = useCallback(() => { 
+        Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ 
+            { text: t('common.cancel'), style: 'cancel' }, 
+            { text: t('common.delete'), style: 'destructive', onPress: async () => { 
+                const idsToDelete = Array.from(selectedMessages); 
+                setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); 
+                handleCancelSelection(); 
+                await supabase.from('messages').delete().in('id', idsToDelete); 
+            }} 
+        ]); 
+    }, [selectedMessages, t, handleCancelSelection]);
+    
+    const pickImage = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.galleryPermissionDenied')); return; } const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
+    const takePhoto = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.cameraPermissionDenied')); return; } const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
+    const handleTyping = useCallback((text) => { setInputText(text); if (channelRef.current && channelRef.current.state === 'joined') { try { channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
+    
+    const lastMessage = useMemo(() => messages[messages.length - 1], [messages]);
+    const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
+
+    if (isLoading) {
+        return (<SafeAreaView style={styles.container}><View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><View style={styles.headerUserInfo}><Text style={styles.headerUserName}>{recipientInfo.name || t('common.loading')}</Text></View><Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} /></View><ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} /></SafeAreaView>);
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -401,60 +395,43 @@ export default function IndividualChatScreen() {
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
                     <View style={styles.headerUserInfo}>
-                        <Text style={styles.headerUserName}>{isLoadingRecipient ? t('common.loading', 'Завантаження...') : recipientInfo.name}</Text>
+                        <Text style={styles.headerUserName}>{recipientInfo.name}</Text>
                         {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
                     </View>
                     <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
                 </View>
             )}
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}>
                 <FlatList
+                    ref={flatListRef}
                     data={processedData}
                     renderItem={({ item }) => {
                         if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
                         return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
                     }}
-                    keyExtractor={item => item.client_id || item.id}
-                    inverted
-                    contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 10, flexGrow: 1 }}
+                    keyExtractor={item => item.id.toString()}
+                    onLayout={() => { if (messages.length > 0) flatListRef.current?.scrollToEnd({ animated: false }); }}
+                    onContentSizeChange={() => { if (messages.length > 0) { const shouldAnimate = !isInitialLoad.current; flatListRef.current?.scrollToEnd({ animated: shouldAnimate }); isInitialLoad.current = false; } }}
+                    contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
                     style={{ flex: 1 }}
-                    refreshControl={ <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.primary} /> }
+                    refreshControl={ <RefreshControl refreshing={isRefreshing} onRefresh={() => {}} tintColor={colors.primary} /> }
                 />
 
                 <View style={styles.inputContainer}>
                     <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
-                    {canLikeLastMessage && !inputText && ( <TouchableOpacity style={styles.likeButton} onPress={() => handleReaction('👍', lastMessage)}><Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} /></TouchableOpacity> )}
+                    {canLikeLastMessage && <TouchableOpacity style={styles.likeButton} onPress={() => handleReaction('👍', lastMessage)}><Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} /></TouchableOpacity> }
                     <TextInput ref={textInputRef} style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
                     <TouchableOpacity style={styles.sendButton} onPress={handleSendText}><Ionicons name={editingMessage ? "checkmark" : "paper-plane"} size={24} color="#fff" /></TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-            <MessageActionSheet 
-                visible={isActionSheetVisible && !selectionMode} 
-                onClose={() => setActionSheetVisible(false)} 
-                message={selectedMessage} 
-                isMyMessage={selectedMessage?.sender_id === session?.user?.id} 
-                onCopy={() => Clipboard.setString(selectedMessage?.content || '')} 
-                onEdit={() => { setEditingMessage(selectedMessage); setInputText(selectedMessage?.content || ''); textInputRef.current?.focus(); }} 
-                onDelete={handleDeleteMessage} 
-                onReact={(emoji) => handleReaction(emoji, selectedMessage)} 
-                onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessage.id])); }}
-            />
+            <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessageForAction} isMyMessage={selectedMessageForAction?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessageForAction?.content || '')} onEdit={() => { setEditingMessage(selectedMessageForAction); setInputText(selectedMessageForAction?.content || ''); textInputRef.current?.focus(); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }} />
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}>
                 <Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}>
                     <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
-                        <TouchableOpacity style={styles.modalButton} onPress={takePhoto}>
-                            <Ionicons name="camera-outline" size={24} color={colors.primary} />
-                            <Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.modalButton} onPress={pickImage}>
-                            <Ionicons name="image-outline" size={24} color={colors.primary} />
-                            <Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}>
-                            <Ionicons name="location-outline" size={24} color={colors.primary} />
-                            <Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity>
                     </View>
                 </Pressable>
             </Modal>
@@ -463,7 +440,7 @@ export default function IndividualChatScreen() {
     );
 }
 
-// Стилі залишаються без змін
+// Повні стилі
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
@@ -472,13 +449,12 @@ const getStyles = (colors) => StyleSheet.create({
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
-    container: { flex: 1, backgroundColor: colors.background,        paddingTop: Platform.OS === 'android' ? 25 : 0 , paddingBottom: Platform.OS === 'android' ? 25 : 0 , 
- },
+    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 10 : 0 },
     headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10},
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
-    headerAvatar: { width: 40, height: 40, borderRadius: 20 },
+    headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
     messageContainer: { marginVertical: 1, paddingHorizontal: 0 },
     messageRow: { flexDirection: 'row', alignItems: 'center' },
     messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
@@ -519,3 +495,4 @@ const getStyles = (colors) => StyleSheet.create({
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
 });
+

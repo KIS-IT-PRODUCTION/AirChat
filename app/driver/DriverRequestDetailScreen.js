@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Act
 import { Image } from 'expo-image';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
 import { useTranslation } from 'react-i18next';
 import moment from 'moment';
@@ -89,7 +89,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [comment, setComment] = useState('');
   const [currency, setCurrency] = useState('UAH');
 
-  const MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
 
   useEffect(() => {
     const markAsViewed = async () => {
@@ -356,11 +356,11 @@ const getStyles = (colors) => StyleSheet.create({
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 },
     detailsGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' },
     detailItem: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
-    detailValue: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    detailValue: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 4, textAlign: 'center' },
     detailLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 2, textAlign: 'center' },
     passengerDetailsContainer: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
     passengerDetailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    passengerDetailText: { color: colors.text, fontSize: 16, fontWeight: '500' },
+    passengerDetailText: { color: colors.text, fontSize: 14, fontWeight: '500' },
     commentText: { color: colors.secondaryText, fontStyle: 'italic', fontSize: 15 },
     mapContainer: { height: 220, borderRadius: 12, overflow: 'hidden' },
     routeInfoContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border },

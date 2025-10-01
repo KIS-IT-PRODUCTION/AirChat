@@ -10,7 +10,7 @@ import moment from 'moment';
 import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
 import { MotiView } from 'moti';
-
+import Logo from '../assets/icon.svg';
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
     case 'pending':
@@ -242,6 +242,7 @@ export default function TransfersScreen() {
   
   const Header = () => (
     <View style={styles.header}>
+      <Logo width={40} height={40} />
         <Text style={styles.title}>{viewMode === 'active' ? t('transfersScreen.title') : t('transfersScreen.archiveTitle')}</Text>
         <TouchableOpacity onPress={() => { setViewMode(prev => prev === 'active' ? 'archived' : 'active'); setSelectionMode(false); setSelectedItems(new Set()); }}>
             <Ionicons name={viewMode === 'active' ? "archive-outline" : "file-tray-full-outline"} size={26} color={colors.text} />
@@ -308,7 +309,7 @@ export default function TransfersScreen() {
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+  title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
   card: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
   archivedCard: { opacity: 0.7 },
   selectedCard: { borderColor: colors.primary, borderWidth: 2, transform: [{ scale: 0.98 }] },

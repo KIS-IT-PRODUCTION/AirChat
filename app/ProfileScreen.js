@@ -155,7 +155,7 @@ const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContainer: { padding: 16, paddingBottom: 40 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { color: colors.text, fontSize: 22, fontWeight: 'bold' },
+    headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },

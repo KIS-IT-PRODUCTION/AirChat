@@ -203,9 +203,9 @@ const MyTripsScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerContainer}>
-                <View style={styles.headerTopRow}>
+                <View style={styles.headerTopRow}><Logo width={40} height={40} />
                     <Text style={styles.title}>{t('myTrips.title')}</Text>
-                    <Logo width={40} height={40} />
+                    
                 </View>
                 <View 
                     style={styles.tabContainer}
@@ -283,9 +283,15 @@ const getStyles = (colors, theme) => StyleSheet.create({
         marginBottom: 16,
     },
     title: { 
-        fontSize: 28, 
+        fontSize: 24, 
         fontWeight: 'bold', 
-        color: colors.text 
+        color: colors.text, 
+        textAlign: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        position: 'absolute',
+        left: 0,
+        right: 0,
     },
     tabContainer: {
         flexDirection: 'row',

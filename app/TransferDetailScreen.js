@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, Act
 import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import polyline from '@mapbox/polyline';
 import { useTranslation } from 'react-i18next';
 import moment from 'moment';
@@ -332,7 +332,7 @@ const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,  borderBottomWidth: 1, borderBottomColor: colors.border },
-    title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
     statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, marginHorizontal: 16, marginTop: 16, borderRadius: 12, borderWidth: 1, gap: 8 },
     completedBanner: { backgroundColor: '#E8F5E9', borderColor: '#A5D6A7' },
     cancelledBanner: { backgroundColor: '#FFEBEE', borderColor: '#EF9A9A' },
@@ -353,11 +353,11 @@ const getStyles = (colors) => StyleSheet.create({
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 },
     detailsGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' },
     detailItem: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
-    detailValue: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    detailValue: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 4, textAlign: 'center' },
     detailLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 2, textAlign: 'center' },
     passengerDetailsContainer: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
     passengerDetailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    passengerDetailText: { color: colors.text, fontSize: 16, fontWeight: '500' },
+    passengerDetailText: { color: colors.text, fontSize: 14, fontWeight: '500' },
     commentText: { color: colors.secondaryText, fontStyle: 'italic', fontSize: 15 },
     mapContainer: { height: 220, borderRadius: 12, overflow: 'hidden' },
     routeInfoContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border },

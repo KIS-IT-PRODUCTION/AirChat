@@ -1,3 +1,4 @@
+import 'react-native-google-places-autocomplete'
 import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import './i18n';
@@ -19,7 +20,6 @@ import { AuthProvider, useAuth } from './provider/AuthContext';
 import { UnreadCountProvider, useUnreadCount } from './provider/Unread Count Context';
 import { NewOffersProvider, useNewOffers } from './provider/NewOffersContext';
 import { NewTripsProvider, useNewTrips } from './provider/NewTripsContext';
-// --- ЗМІНА: Імпортуємо FormProvider з HomeScreen ---
 import HomeScreen, { FormProvider } from './app/HomeScreen';
 import { usePushNotifications } from './usePushNotifications.js';
 import { supabase } from './config/supabase';
@@ -85,20 +85,16 @@ function DriverAppStack() {
     );
 }
 
-// --- ЗМІНА: Спрощена та виправлена конфігурація для "глибинних посилань" ---
 const linkingConfig = {
   prefixes: [Linking.createURL('/'), 'airchat://'],
   config: { 
     screens: { 
-        // Екрани, доступні коли користувач не залогінений
         ResetPasswordScreen: 'reset-password',
-        // Екрани, доступні коли користувач залогінений
         IndividualChat: 'chat/:roomId',
     } 
   },
 };
 
-// --- Головний навігатор-перемикач ---
 function RootNavigator() {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
@@ -106,7 +102,8 @@ function RootNavigator() {
     
     const { isInternetReachable } = useNetInfo();
     usePushNotifications(navigationRef);
-    const { unreadCount } = useUnreadCount();
+    // ✨ FIX: Отримуємо функцію fetchUnreadCount
+    const { unreadCount, fetchUnreadCount } = useUnreadCount();
     const { newOffersCount } = useNewOffers();
     const { newTripsCount } = useNewTrips();
 
@@ -119,35 +116,31 @@ function RootNavigator() {
     }, []);
 
     useEffect(() => {
-        const isAppReady = !isAuthLoading && isFirstLaunch !== null;
-        if (isAppReady) {
+        if (!isAuthLoading && isFirstLaunch !== null) {
             SplashScreen.hideAsync();
         }
     }, [isAuthLoading, isFirstLaunch]);
     
-    // --- ЗМІНА: Покращена обробка deep links, коли додаток вже відкритий ---
     useEffect(() => {
-        const handleDeepLink = (event) => {
-            const url = event.url;
-            if (!url || !navigationRef.current?.isReady()) return;
-
-            const { path } = Linking.parse(url);
-            
-            // Якщо прийшло посилання на скидання пароля, а користувач не залогінений,
-            // перенаправляємо його на потрібний екран.
-            if (path.includes('reset-password') && !session) {
-                console.log("Password reset link opened. Navigating...");
-                navigationRef.current.navigate('ResetPasswordScreen');
+        const handleAppStateChange = (nextAppState) => {
+            if (session?.user) {
+                if (nextAppState === 'active') {
+                    supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
+                    // ✨ FIX: При поверненні в додаток, примусово оновлюємо лічильник
+                    fetchUnreadCount();
+                } else {
+                    supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then();
+                }
             }
         };
 
-        const subscription = Linking.addEventListener('url', handleDeepLink);
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+        handleAppStateChange(AppState.currentState);
         return () => {
-            subscription.remove();
+            appStateSubscription.remove();
         };
-    }, [session]); // Залежність від сесії, щоб знати поточний стан авторизації
+    }, [session, fetchUnreadCount]); // ✨ FIX: Додаємо fetchUnreadCount в залежності
 
-    // Оновлення лічильника на іконці додатку
     useEffect(() => {
         const updateTotalBadgeCount = async () => {
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -157,43 +150,21 @@ function RootNavigator() {
         };
         updateTotalBadgeCount();
     }, [unreadCount, newOffersCount, newTripsCount]);
-
-    // Оновлення статусу "last_seen"
+    
     useEffect(() => {
-        let heartbeatTimeout = null;
-        if (isAuthLoading || !session || !profile) {
-            if (heartbeatTimeout) {
-                clearInterval(heartbeatTimeout);
-            }
-            return;
-        }
-
-        const updateLastSeen = async () => {
-            await supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id);
-        };
-
-        const handleAppStateChange = (nextAppState) => {
-            if (nextAppState === 'active') {
-                updateLastSeen();
-                if (heartbeatTimeout) clearInterval(heartbeatTimeout);
-                heartbeatTimeout = setInterval(updateLastSeen, 60000); // Оновлюємо кожну хвилину
-            } else {
-                if (heartbeatTimeout) clearInterval(heartbeatTimeout);
+        const handleDeepLink = (event) => {
+            const url = event.url;
+            if (!url || !navigationRef.current?.isReady()) return;
+            const { path } = Linking.parse(url);
+            if (path.includes('reset-password') && !session) {
+                navigationRef.current.navigate('ResetPasswordScreen');
             }
         };
 
-        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
-        handleAppStateChange('active');
+        const subscription = Linking.addEventListener('url', handleDeepLink);
+        return () => { subscription.remove(); };
+    }, [session]);
 
-        return () => {
-            appStateSubscription.remove();
-            if (heartbeatTimeout) {
-                clearInterval(heartbeatTimeout);
-            }
-        };
-    }, [isAuthLoading, session, profile]);
-
-    // Показуємо нативний сплеш-скрін, поки йде завантаження
     if (isAuthLoading || isFirstLaunch === null) {
         return null; 
     }
@@ -202,10 +173,8 @@ function RootNavigator() {
         <View style={{ flex: 1 }}>
             <NavigationContainer ref={navigationRef} linking={linkingConfig}>
                 {session && profile ? (
-                    // Користувач увійшов: показуємо відповідний інтерфейс
                     profile.role === 'driver' ? <DriverAppStack /> : <UserAppStack />
                 ) : (
-                    // Користувач не увійшов: показуємо потік автентифікації
                     <AuthNavigator isFirstLaunch={isFirstLaunch} />
                 )}
             </NavigationContainer>
@@ -221,7 +190,6 @@ export default function App() {
         <UnreadCountProvider>
           <NewOffersProvider>
             <NewTripsProvider>
-                {/* --- ЗМІНА: Додано FormProvider для збереження даних форм --- */}
                 <FormProvider>
                     <RootNavigator />
                 </FormProvider>

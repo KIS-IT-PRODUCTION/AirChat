@@ -49,7 +49,7 @@ const ContextMenuModal = ({ visible, onClose, user, onAction }) => {
 };
 
 
-// Горизонтальний список обраних чатів
+// ✅ ОНОВЛЕНИЙ КОМПОНЕНТ: Горизонтальний список обраних чатів
 const FavoriteBar = React.memo(({ chats, onlineUsers, onLongPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -71,6 +71,14 @@ const FavoriteBar = React.memo(({ chats, onlineUsers, onLongPress }) => {
                 <View>
                     <Image source={item.other_participant_avatar ? { uri: item.other_participant_avatar } : require('../assets/default-avatar.png')} style={styles.favoriteAvatar} />
                     {isOnline && <View style={styles.onlineIndicator} />}
+                    {/* Додаємо індикатор непрочитаних повідомлень */}
+                    {item.unread_count > 0 && (
+                        <View style={styles.favoriteBadge}>
+                            <Text style={styles.favoriteBadgeText}>
+                                {item.unread_count > 9 ? '9+' : item.unread_count}
+                            </Text>
+                        </View>
+                    )}
                 </View>
                 <Text style={styles.favoriteName} numberOfLines={1}>{item.other_participant_name.split(' ')[0]}</Text>
             </TouchableOpacity>
@@ -156,7 +164,7 @@ export default function ChatListScreen() {
     const { t } = useTranslation();
     const { session } = useAuth();
     const styles = getStyles(colors);
-const navigation = useNavigation();
+    const navigation = useNavigation();
     const [favoriteChats, setFavoriteChats] = useState([]);
     const [regularChats, setRegularChats] = useState([]);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -269,22 +277,34 @@ const navigation = useNavigation();
 
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-    title: {    fontSize: 24, 
-        fontWeight: 'bold', 
-        color: colors.text, 
-        textAlign: 'center',
-        justifyContent: 'center',
-        flex: 1,
-        position: 'absolute',
-        left: 0,
-        right: 0,},
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16 },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', justifyContent: 'center', flex: 1, position: 'absolute', left: 0, right: 0, },
     // Стилі для Обраних
     favoritesContainer: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 10 },
     favoriteItem: { alignItems: 'center', width: 80 },
     favoriteAvatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, borderColor: colors.primary },
     favoriteName: { color: colors.text, fontSize: 13, marginTop: 6, fontWeight: '500' },
     onlineIndicator: { position: 'absolute', bottom: 1, right: 1, width: 18, height: 18, borderRadius: 9, backgroundColor: '#4CAF50', borderWidth: 2.5, borderColor: colors.card, zIndex: 1 },
+    // ✅ Нові стилі для індикатора непрочитаних
+    favoriteBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: colors.primary,
+        borderRadius: 12,
+        minWidth: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.background,
+        zIndex: 2,
+    },
+    favoriteBadgeText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
     // Стилі для списку
     sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginVertical: 10, marginLeft: 4 },
     chatItemCard: { flexDirection: 'row', padding: 12, alignItems: 'center', backgroundColor: colors.card, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 5 },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from '
 import {
     StyleSheet, Text, View, SafeAreaView, FlatList, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal,
-    Pressable, Linking, RefreshControl, Clipboard
+    Pressable, Linking, RefreshControl, Clipboard, AppState
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Audio } from 'expo-av';
@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
+// --- ДОПОМІЖНІ КОМПОНЕНТИ (без змін) ---
 const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -128,24 +128,22 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
     );
 });
 
-
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function IndividualChatScreen() {
-    const { colors } = useTheme(); 
-    const { t, i18n } = useTranslation(); 
+    const { colors } = useTheme();
+    const { t, i18n } = useTranslation();
     const styles = getStyles(colors);
-    const route = useRoute(); 
+    const route = useRoute();
     const navigation = useNavigation();
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
-    const insets = useSafeAreaInsets(); 
+    const insets = useSafeAreaInsets();
     const { roomId: initialRoomId, recipientId, recipientName, recipientAvatar, recipientLastSeen: initialLastSeen } = route.params;
-    
+
     const [recipientInfo, setRecipientInfo] = useState({ name: recipientName, avatar: recipientAvatar });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [currentRoomId, setCurrentRoomId] = useState(initialRoomId);
-    const [userStatus, setUserStatus] = useState('');
     const [isRecipientTyping, setIsRecipientTyping] = useState(false);
     const [editingMessage, setEditingMessage] = useState(null);
     const [selectedMessageForAction, setSelectedMessageForAction] = useState(null);
@@ -164,49 +162,113 @@ export default function IndividualChatScreen() {
     const sentSoundRef = useRef(new Audio.Sound());
     const receivedSoundRef = useRef(new Audio.Sound());
     const textInputRef = useRef(null);
-    const isInitialLoad = useRef(true);
+    const lastSeenRef = useRef(initialLastSeen);
+    const appState = useRef(AppState.currentState);
 
+    const formatUserStatus = useCallback((isOnline, lastSeen) => { 
+        if (isOnline) return t('chat.onlineStatus'); 
+        if (!lastSeen) return t('chat.offlineStatus'); 
+        const lsMoment = moment(lastSeen); 
+        if (!lsMoment.isValid()) return t('chat.offlineStatus'); 
+        if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); 
+        if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); 
+        if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); 
+        return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); 
+    }, [t]);
+    
+    const [userStatus, setUserStatus] = useState(() => formatUserStatus(false, initialLastSeen));
+    
     useEffect(() => {
         moment.locale(i18n.language);
         const loadSounds = async () => {
-            await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3'));
-            await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3'));
+            try {
+                await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3'));
+                await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3'));
+            } catch (error) {
+                console.error("Failed to load sounds", error);
+            }
         };
         loadSounds();
-        return () => { sentSoundRef.current.unloadAsync(); receivedSoundRef.current.unloadAsync(); };
+        return () => {
+            sentSoundRef.current.unloadAsync();
+            receivedSoundRef.current.unloadAsync();
+        };
     }, [i18n.language]);
-    
+
     const playSound = useCallback(async (soundRef) => {
         try { await soundRef.current.replayAsync(); } catch (e) { console.error('Failed to play sound', e); }
     }, []);
 
-    const processedData = useMemo(() => { 
-        const itemsWithSeparators = []; let lastDate = null;
-        messages.forEach(msg => { 
-            const msgDate = moment(msg.created_at).startOf('day');
-            if (!lastDate || !msgDate.isSame(lastDate)) {
-                itemsWithSeparators.push({ id: `date-${msg.created_at}`, type: 'date_separator', date: msg.created_at });
-                lastDate = msgDate;
+    const processedData = useMemo(() => {
+        const itemsWithSeparators = [];
+        for (let i = 0; i < messages.length; i++) {
+            const currentMessage = messages[i];
+            const nextMessage = messages[i + 1];
+
+            itemsWithSeparators.push({ ...currentMessage, type: 'message' });
+
+            const isLastMessage = !nextMessage;
+            const isDifferentDay = nextMessage && !moment(currentMessage.created_at).isSame(nextMessage.created_at, 'day');
+
+            if (isLastMessage || isDifferentDay) {
+                itemsWithSeparators.push({
+                    id: `date-${currentMessage.created_at}`,
+                    type: 'date_separator',
+                    date: currentMessage.created_at
+                });
             }
-            itemsWithSeparators.push({ ...msg, type: 'message' }); 
-        }); 
+        }
         return itemsWithSeparators;
     }, [messages]);
 
-    const markAsRead = useCallback(async (roomId) => { 
-        if (!roomId) return; 
-        try { 
-            await supabase.rpc('mark_messages_as_read', { p_room_id: roomId }); 
+    const markAsRead = useCallback(async (roomId) => {
+        if (!roomId) return;
+        try {
+            await supabase.rpc('mark_messages_as_read', { p_room_id: roomId });
             fetchUnreadCount();
-        } catch (e) { console.error("Error marking as read:", e.message); } 
+        } catch (e) { console.error("Error marking as read:", e.message); }
     }, [fetchUnreadCount]);
+    
+    const fetchMessages = useCallback(async (roomId) => {
+        if (!roomId) return;
+        setIsRefreshing(true);
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*, reactions(*)')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: false });
 
+        if (error) {
+            console.error("Fetch Error on focus:", error);
+        } else {
+            setMessages(data || []);
+        }
+        await markAsRead(roomId);
+        setIsRefreshing(false);
+    }, [markAsRead]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            if (
+                appState.current.match(/inactive|background/) &&
+                nextAppState === 'active'
+            ) {
+                if (currentRoomId) {
+                    fetchMessages(currentRoomId);
+                }
+            }
+            appState.current = nextAppState;
+        });
+        return () => {
+            subscription.remove();
+        };
+    }, [currentRoomId, fetchMessages]);
+    
     useEffect(() => {
         let isMounted = true;
         let profileSub;
-
         const setupRoomAndSubscriptions = async () => {
-            if (!session || !recipientId) { if(isMounted) setIsLoading(false); return; }
+            if (!session || !recipientId) { if (isMounted) setIsLoading(false); return; }
             let roomId = currentRoomId;
             if (!roomId) {
                 try {
@@ -214,32 +276,35 @@ export default function IndividualChatScreen() {
                     if (!isMounted) return;
                     roomId = data;
                     setCurrentRoomId(roomId);
-                } catch (e) { console.error("Error finding/creating room:", e); if(isMounted) setIsLoading(false); return; }
+                } catch (e) { console.error("Error finding/creating room:", e); if (isMounted) setIsLoading(false); return; }
             }
-            
-            if (!roomId) { if(isMounted) setIsLoading(false); return; }
-
-            const { data, error } = await supabase.from('messages').select('*, reactions(*)').eq('room_id', roomId).order('created_at', { ascending: true });
+            if (!roomId) { if (isMounted) setIsLoading(false); return; }
             if (isMounted) {
-                if (error) console.error("Fetch Error:", error);
-                else setMessages(data || []);
+                setIsLoading(true);
+                await fetchMessages(roomId);
                 setIsLoading(false);
-                markAsRead(roomId);
             }
-            
             if (channelRef.current) supabase.removeChannel(channelRef.current);
             const roomChannel = supabase.channel(`room-${roomId}`, { config: { presence: { key: session.user.id } } });
             channelRef.current = roomChannel;
-
             roomChannel
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
                     setMessages(currentMessages => {
-                        const messageExists = currentMessages.some(m => m.id === payload.new.id);
-                        if (messageExists) return currentMessages;
-                        if (payload.new.sender_id !== session.user.id) { playSound(receivedSoundRef); markAsRead(roomId); return [...currentMessages, payload.new]; }
+                        if (payload.new.sender_id !== session.user.id) {
+                            if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
+                            playSound(receivedSoundRef);
+                            markAsRead(roomId);
+                            return [payload.new, ...currentMessages];
+                        }
                         const optimisticMessageIndex = currentMessages.findIndex(m => m.client_id && m.client_id === payload.new.client_id);
-                        if (optimisticMessageIndex > -1) { const newMessages = [...currentMessages]; newMessages[optimisticMessageIndex] = payload.new; return newMessages; }
-                        return [...currentMessages, payload.new];
+                        if (optimisticMessageIndex > -1) {
+                            const newMessages = [...currentMessages];
+                            newMessages[optimisticMessageIndex] = payload.new;
+                            return newMessages;
+                        } else {
+                             if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
+                            return [payload.new, ...currentMessages];
+                        }
                     });
                 })
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => setMessages(currentMessages => currentMessages.map(m => m.id === payload.new.id ? payload.new : m)))
@@ -249,140 +314,164 @@ export default function IndividualChatScreen() {
                 .on('presence', { event: 'sync' }, () => {
                     const presenceState = roomChannel.presenceState();
                     const isOnline = Object.keys(presenceState).some(key => key === recipientId);
-                    setUserStatus(formatUserStatus(isOnline, initialLastSeen));
+                    setUserStatus(formatUserStatus(isOnline, lastSeenRef.current));
                 })
-                .on('broadcast', { event: 'typing' }, ({ payload }) => { 
-                    if (payload.user_id === recipientId) { 
-                        setIsRecipientTyping(true); 
+                .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                    if (payload.user_id === recipientId) {
+                        setIsRecipientTyping(true);
                         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                        typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000); 
-                    } 
+                        typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000);
+                    }
                 })
                 .subscribe();
-
             profileSub = supabase.channel(`profile-listener-${recipientId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
-                setUserStatus(formatUserStatus(false, payload.new.last_seen));
+                lastSeenRef.current = payload.new.last_seen;
+                const presenceState = channelRef.current?.presenceState() || {};
+                const isOnline = Object.keys(presenceState).some(key => key === recipientId);
+                setUserStatus(formatUserStatus(isOnline, payload.new.last_seen));
                 setRecipientInfo({ name: payload.new.full_name, avatar: payload.new.avatar_url });
             }).subscribe();
         };
-
         setupRoomAndSubscriptions();
         return () => { isMounted = false; const channel = channelRef.current; if (channel) supabase.removeChannel(channel); if (profileSub) supabase.removeChannel(profileSub); };
-    }, [session, recipientId, currentRoomId]);
-
-    useEffect(() => {
-        if (messages.length > 0 && !isLoading) {
-            setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-        }
-    }, [messages, isLoading]);
+    }, [session, recipientId, currentRoomId, fetchMessages]);
 
     useFocusEffect(useCallback(() => {
         const updatePresence = async (roomId) => {
             if (!session || !roomId) return;
             await supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: roomId, updated_at: new Date().toISOString() });
-            markAsRead(roomId);
+            await fetchMessages(roomId);
         };
-        if (currentRoomId) updatePresence(currentRoomId);
-        return () => { if (session) supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then(); };
-    }, [currentRoomId, session, markAsRead]));
+        if (currentRoomId) {
+            updatePresence(currentRoomId);
+        }
+        return () => {
+            if (session) {
+                supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then();
+            }
+        };
+    }, [currentRoomId, session, fetchMessages]));
     
-    const formatUserStatus = useCallback((isOnline, lastSeen) => { if (isOnline) return t('chat.onlineStatus'); if (!lastSeen) return t('chat.offlineStatus'); const lsMoment = moment(lastSeen); if (!lsMoment.isValid()) return t('chat.offlineStatus'); if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); }, [t]);
-    useEffect(() => { setUserStatus(formatUserStatus(false, initialLastSeen)); }, [initialLastSeen, formatUserStatus]);
-
     const sendMessage = useCallback(async (messageData) => {
         if (!currentRoomId || !session) return;
         const { error } = await supabase.from('messages').insert([{ ...messageData, room_id: currentRoomId, sender_id: session.user.id }]);
-        if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.filter(m => m.client_id !== messageData.client_id)); } 
-        else {
+        if (error) { 
+            Alert.alert(t('common.error'), error.message); 
+            setMessages(prev => prev.filter(m => m.client_id !== messageData.client_id)); 
+        } else {
             supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, room_id: currentRoomId, sender_id: session.user.id, message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')), sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}).catch(e => console.error("Push notification function error:", e));
         }
     }, [currentRoomId, session, t, recipientId, profile]);
 
     const handleSendText = useCallback(async () => {
-        if (editingMessage) { handleEditMessage(); return; } 
-        const textToSend = inputText.trim(); 
+        if (editingMessage) { handleEditMessage(); return; }
+        const textToSend = inputText.trim();
         if (textToSend.length === 0) return;
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, content: textToSend, status: 'sending', reactions: [] };
-        setMessages(prev => [...prev, optimisticMessage]);
+        setMessages(prev => [optimisticMessage, ...prev]);
         setInputText('');
         playSound(sentSoundRef);
         await sendMessage({ content: textToSend, client_id: clientId });
-    }, [editingMessage, inputText, sendMessage, session, currentRoomId]);
-    
-    const uploadAndSendImage = useCallback(async (asset) => { 
+    }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound]);
+
+    const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
-        setMessages(prev => [...prev, optimisticMessage]);
+        setMessages(prev => [optimisticMessage, ...prev]);
         playSound(sentSoundRef);
-        try { 
-            const fileExt = asset.uri.split('.').pop().toLowerCase(); 
-            const filePath = `${session.user.id}/${Date.now()}.${fileExt}`; 
-            const formData = new FormData(); 
-            formData.append('file', { uri: asset.uri, name: filePath, type: `image/${fileExt}` }); 
-            const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData); 
-            if (uploadError) throw uploadError; 
-            const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath); 
+        try {
+            const fileExt = asset.uri.split('.').pop().toLowerCase();
+            const filePath = `${session.user.id}/${Date.now()}.${fileExt}`;
+            const formData = new FormData();
+            formData.append('file', { uri: asset.uri, name: filePath, type: `image/${fileExt}` });
+            const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData);
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath);
             await sendMessage({ image_url: urlData.publicUrl, client_id: clientId, blurhash: asset.blurhash });
-        } catch (e) { Alert.alert(t('common.error'), e.message); setMessages(prev => prev.filter(m => m.client_id !== clientId)); } 
-    }, [session, sendMessage, t, currentRoomId]);
+        } catch (e) { Alert.alert(t('common.error'), e.message); setMessages(prev => prev.filter(m => m.client_id !== clientId)); }
+    }, [session, sendMessage, t, currentRoomId, playSound]);
 
-    const handleSendLocation = useCallback(async () => { 
+    const handleSendLocation = useCallback(async () => {
         setAttachmentModalVisible(false);
-        let { status } = await Location.requestForegroundPermissionsAsync(); 
+        let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.locationPermissionDenied')); return; }
-        setIsSendingLocation(true); 
-        try { 
-            let { coords } = await Location.getCurrentPositionAsync({}); 
+        setIsSendingLocation(true);
+        try {
+            let { coords } = await Location.getCurrentPositionAsync({});
             const locationData = { latitude: coords.latitude, longitude: coords.longitude };
             const clientId = uuidv4();
             const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, location: locationData, status: 'sending', reactions: [] };
-            setMessages(prev => [...prev, optimisticMessage]);
+            setMessages(prev => [optimisticMessage, ...prev]);
             playSound(sentSoundRef);
             await sendMessage({ location: locationData, client_id: clientId });
-        } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); } 
-        finally { setIsSendingLocation(false); } 
-    }, [sendMessage, t, session, currentRoomId]);
+        } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); }
+        finally { setIsSendingLocation(false); }
+    }, [sendMessage, t, session, currentRoomId, playSound]);
 
     const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); const originalContent = editingMessage.content; setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); } }, [editingMessage, inputText, t]);
-    const handleReaction = useCallback(async (emoji, message) => { const target = message || selectedMessageForAction; if (!target) return; await supabase.rpc('toggle_reaction', { p_message_id: target.id, p_emoji: emoji }); }, [selectedMessageForAction]);
     
-    const handleDeleteMessage = useCallback(() => { 
-        if (!selectedMessageForAction) return; 
-        Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [ 
-            { text: t('common.cancel'), style: 'cancel' }, 
-            { text: t('common.delete'), style: 'destructive', onPress: async () => { 
+    const handleReaction = useCallback(async (emoji, message) => {
+        const target = message || selectedMessageForAction;
+        if (!target) return;
+        const { error: rpcError } = await supabase.rpc('toggle_reaction', { 
+            p_message_id: target.id, 
+            p_emoji: emoji 
+        });
+        if (rpcError) {
+            Alert.alert(t('common.error'), rpcError.message);
+            return;
+        }
+        const { data: updatedMessage, error: fetchError } = await supabase
+            .from('messages')
+            .select('*, reactions(*)')
+            .eq('id', target.id)
+            .single();
+        if (fetchError) {
+            console.error("Failed to fetch updated message after reaction:", fetchError);
+            return;
+        }
+        if (updatedMessage) {
+            setMessages(currentMessages =>
+                currentMessages.map(m => (m.id === updatedMessage.id ? updatedMessage : m))
+            );
+        }
+    }, [selectedMessageForAction, t]);
+
+    const handleDeleteMessage = useCallback(() => {
+        if (!selectedMessageForAction) return;
+        Alert.alert(t('chat.deleteConfirmTitle'), t('chat.deleteConfirmBody'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('common.delete'), style: 'destructive', onPress: async () => {
                 const messageIdToDelete = selectedMessageForAction.id;
                 setMessages(prev => prev.filter(msg => msg.id !== messageIdToDelete));
-                const { error } = await supabase.from('messages').delete().eq('id', messageIdToDelete); 
+                const { error } = await supabase.from('messages').delete().eq('id', messageIdToDelete);
                 if (error) { Alert.alert(t('common.error'), error.message); }
-            }} 
-        ]); 
+            }}
+        ]);
     }, [selectedMessageForAction, t]);
-    
+
     const handleLongPress = useCallback((message) => { if (selectionMode) { if (message.sender_id === session?.user?.id) handleToggleSelection(message.id); } else { setSelectedMessageForAction(message); setActionSheetVisible(true); } }, [selectionMode, session]);
     const handleToggleSelection = useCallback((messageId) => { const newSelection = new Set(selectedMessages); if (newSelection.has(messageId)) newSelection.delete(messageId); else newSelection.add(messageId); if (newSelection.size === 0) setSelectionMode(false); setSelectedMessages(newSelection); }, [selectedMessages]);
     const handleCancelSelection = useCallback(() => { setSelectionMode(false); setSelectedMessages(new Set()); }, []);
-    
-    const handleDeleteSelected = useCallback(() => { 
-        Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [ 
-            { text: t('common.cancel'), style: 'cancel' }, 
-            { text: t('common.delete'), style: 'destructive', onPress: async () => { 
-                const idsToDelete = Array.from(selectedMessages); 
-                setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id))); 
-                handleCancelSelection(); 
-                await supabase.from('messages').delete().in('id', idsToDelete); 
-            }} 
-        ]); 
+
+    const handleDeleteSelected = useCallback(() => {
+        Alert.alert( t('chat.deleteMultipleConfirmTitle'), t('chat.deleteMultipleConfirmBody', { count: selectedMessages.size }), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('common.delete'), style: 'destructive', onPress: async () => {
+                const idsToDelete = Array.from(selectedMessages);
+                setMessages(prev => prev.filter(msg => !idsToDelete.includes(msg.id)));
+                handleCancelSelection();
+                await supabase.from('messages').delete().in('id', idsToDelete);
+            }}
+        ]);
     }, [selectedMessages, t, handleCancelSelection]);
-    
+
     const pickImage = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.galleryPermissionDenied')); return; } const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
     const takePhoto = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.cameraPermissionDenied')); return; } const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
     const handleTyping = useCallback((text) => { setInputText(text); if (channelRef.current && channelRef.current.state === 'joined') { try { channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
-    
-    const lastMessage = useMemo(() => messages[messages.length - 1], [messages]);
+
+    const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
     if (isLoading) {
@@ -398,23 +487,37 @@ export default function IndividualChatScreen() {
                         <Text style={styles.headerUserName}>{recipientInfo.name}</Text>
                         {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
                     </View>
-                    <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
-                </View>
+                        <TouchableOpacity 
+                             onPress={() => {
+                            if (recipientId) {
+                                navigation.navigate('PublicDriverProfile', {
+                                    driverId: recipientId,
+                                    driverName: recipientInfo.name
+                                });
+                            }
+                        }}
+                    >
+                       
+                        <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
+                    </TouchableOpacity>                </View>
+                  
+
             )}
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}>
                 <FlatList
                     ref={flatListRef}
                     data={processedData}
+                    inverted
                     renderItem={({ item }) => {
                         if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
                         return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
                     }}
                     keyExtractor={item => item.id.toString()}
-                    onLayout={() => { if (messages.length > 0) flatListRef.current?.scrollToEnd({ animated: false }); }}
-                    onContentSizeChange={() => { if (messages.length > 0) { const shouldAnimate = !isInitialLoad.current; flatListRef.current?.scrollToEnd({ animated: shouldAnimate }); isInitialLoad.current = false; } }}
                     contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
                     style={{ flex: 1 }}
-                    refreshControl={ <RefreshControl refreshing={isRefreshing} onRefresh={() => {}} tintColor={colors.primary} /> }
+                    refreshControl={
+                        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchMessages(currentRoomId)} tintColor={colors.primary} />
+                    }
                 />
 
                 <View style={styles.inputContainer}>
@@ -440,7 +543,7 @@ export default function IndividualChatScreen() {
     );
 }
 
-// Повні стилі
+// --- СТИЛІ ---
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
@@ -450,12 +553,30 @@ const getStyles = (colors) => StyleSheet.create({
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', alignItems: 'center',  paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 10 : 0 },
-    headerUserInfo: { flex: 1, alignItems: 'center', paddingHorizontal: 10},
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center',  
+        justifyContent: 'space-between',
+        paddingHorizontal: 12, 
+        paddingVertical: 5, 
+        borderBottomWidth: 1, 
+        borderBottomColor: colors.border, 
+        paddingTop: Platform.OS === 'android' ? 10 : 0 
+    },
+    headerUserInfoContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerUserInfo: { 
+        alignItems: 'center',
+        paddingHorizontal: 10,
+    },
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
     headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
-    messageContainer: { marginVertical: 1, paddingHorizontal: 0 },
+    messageContainer: { marginVertical: 1, paddingHorizontal: 0},
     messageRow: { flexDirection: 'row', alignItems: 'center' },
     messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
     myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
@@ -485,7 +606,7 @@ const getStyles = (colors) => StyleSheet.create({
     loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
     loadingText: { color: '#fff', marginTop: 10, fontSize: 16 },
     actionSheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)', },
-    actionSheetContainer: { marginHorizontal: 10, }, 
+    actionSheetContainer: { marginHorizontal: 10, },
     reactionPickerContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 8, justifyContent: 'space-around', alignItems: 'center', marginBottom: 8, elevation: 4, shadowOpacity: 0.1, shadowRadius: 5, },
     reactionEmojiButton: { padding: 4, },
     reactionEmojiText: { fontSize: 28, },
@@ -495,4 +616,3 @@ const getStyles = (colors) => StyleSheet.create({
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
 });
-

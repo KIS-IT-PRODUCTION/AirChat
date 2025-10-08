@@ -493,7 +493,8 @@
     "unexpectedData": "Received unexpected data structure",
     "networkTitle": "Network Error",
     "networkSubtitle": "Could not connect to the server. Please check your internet connection.",
-    "retryButton": "Reload"
+    "retryButton": "Reload",
+    "fieldRequired": "This field is required"
   },
   "status": {
     "scheduled": "Scheduled",

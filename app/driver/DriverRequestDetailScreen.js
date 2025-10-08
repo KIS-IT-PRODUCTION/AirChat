@@ -89,7 +89,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [comment, setComment] = useState('');
   const [currency, setCurrency] = useState('UAH');
 
-  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
   useEffect(() => {
     const markAsViewed = async () => {
@@ -191,13 +191,14 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
   const isRequestClosed = transferData?.status === 'accepted' || transferData?.status === 'completed' || transferData?.status === 'cancelled';
   
+  // ✅ ПОЧАТОК ЗМІНЕНОГО БЛОКУ 1: Скорочення для пасажирів
   const passengerDetails = (
     <View style={styles.passengerDetailsContainer}>
       {transferData.adults_count > 0 && (
         <View style={styles.passengerDetailItem}>
           <Ionicons name="people-outline" size={18} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {transferData.adults_count} {t('passengerSummary.adults', { count: transferData.adults_count })}
+            {`${transferData.adults_count} дор.`}
           </Text>
         </View>
       )}
@@ -205,7 +206,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         <View style={styles.passengerDetailItem}>
           <Ionicons name="person-outline" size={18} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {transferData.children_count} {t('passengerSummary.children', { count: transferData.children_count })}
+            {`${transferData.children_count} дит.`}
           </Text>
         </View>
       )}
@@ -213,12 +214,13 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         <View style={styles.passengerDetailItem}>
           <Ionicons name="happy-outline" size={18} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {transferData.infants_count} {t('passengerSummary.infants', { count: transferData.infants_count })}
+            {`${transferData.infants_count} нем.`}
           </Text>
         </View>
       )}
     </View>
   );
+  // ✅ КІНЕЦЬ ЗМІНЕНОГО БЛОКУ 1
 
   return (
     <SafeAreaView style={styles.container}>
@@ -282,7 +284,14 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                         <DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} />
                         <DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} />
                         <DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} />
-                        <DetailItem icon="car-sport-outline" value={t(`transferTypes.${transferData?.transfer_type}`)} label={t('transferDetail.transferType')} colors={colors}/>
+                        {/* ✅ ПОЧАТОК ЗМІНЕНОГО БЛОКУ 2: Скорочення для типу трансферу */}
+                        <DetailItem 
+                            icon="car-sport-outline" 
+                            value={transferData?.transfer_type === 'individual' ? 'індив.' : t(`transferTypes.${transferData?.transfer_type}`)} 
+                            label={t('transferDetail.transferType')} 
+                            colors={colors}
+                        />
+                        {/* ✅ КІНЕЦЬ ЗМІНЕНОГО БЛОКУ 2 */}
                     </View>
                 </View>
 

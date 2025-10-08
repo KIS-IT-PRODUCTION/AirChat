@@ -11,6 +11,7 @@ import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
 import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
+
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
     case 'pending':
@@ -91,7 +92,6 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
             <Ionicons name="sparkles-outline" size={24} color="#FFFFFF" />
             <Text style={styles.viewOffersText}>{t('transferStatus.offersAvailable.buttonText')}</Text>
           </View>
-          {/* --- ЗМІНА: Індикатор тепер показує загальну кількість і змінює колір --- */}
           <View style={[styles.badgeBase, item.unread_offers_count > 0 ? styles.badgeUnread : styles.badgeViewed]}>
             <Text style={styles.badgeText}>{item.offers_count}</Text>
           </View>
@@ -176,6 +176,10 @@ export default function TransfersScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // ✅ ПОЧАТОК ЗМІН: Скидаємо вкладку на "активні" при кожному поверненні на екран
+      setViewMode('active');
+      // ✅ КІНЕЦЬ ЗМІН
+
       if(session?.user){
         setLoading(true);
         fetchTransfers();
@@ -212,9 +216,7 @@ export default function TransfersScreen() {
     const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
     const archived = transfers.filter(t => t.status === 'completed' || t.status === 'cancelled');
     
-    // --- ЗМІНА: Активні сортуються так само як архівні (від найновіших до найстаріших) ---
     active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
-    // Архівні - від найновішої завершеної до найстарішої
     archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
     
     return { activeTransfers: active, archivedTransfers: archived };
@@ -323,8 +325,8 @@ const getStyles = (colors) => StyleSheet.create({
   dottedLine: { height: 24, width: 2, backgroundColor: colors.border, marginLeft: 14, marginVertical: 4 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   badgeBase: { borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
-  badgeUnread: { backgroundColor: '#D32F2F' }, // Червоний
-  badgeViewed: { backgroundColor: '#FFA000' }, // Жовтий
+  badgeUnread: { backgroundColor: '#D32F2F' },
+  badgeViewed: { backgroundColor: '#FFA000' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100, paddingHorizontal: 20 },
   emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
   driverFooter: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
@@ -353,7 +355,7 @@ const getStyles = (colors) => StyleSheet.create({
   errorText: { color: colors.secondaryText, fontSize: 16, marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
   retryButton: { marginTop: 20, backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 30, borderRadius: 10 },
   retryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  priceFooter: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  priceFooter: { marginBottom: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   priceLabel: { fontSize: 14, color: colors.secondaryText },
   priceValue: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   viewOffersButton: {

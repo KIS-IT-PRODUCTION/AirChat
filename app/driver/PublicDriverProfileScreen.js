@@ -9,7 +9,8 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../config/supabase';
 import moment from 'moment';
 
-// ✨ 1. Оптимізація: Компонент обгорнуто в React.memo для уникнення зайвих рендерів
+// ✅ ПОЧАТОК ЗМІН: Додаємо новий компонент InfoRow для стилізації
+
 const StatCard = memo(({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
@@ -20,6 +21,23 @@ const StatCard = memo(({ icon, value, label, colors }) => {
         </View>
     );
 });
+
+// Новий компонент для рядка з інформацією
+const InfoRow = memo(({ icon, label, value }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    if (!value) return null;
+    return (
+        <View style={styles.infoRow}>
+            <Ionicons name={icon} size={22} color={colors.secondaryText} style={styles.infoRowIcon} />
+            <View>
+                <Text style={styles.infoRowLabel}>{label}</Text>
+                <Text style={styles.infoRowValue}>{value}</Text>
+            </View>
+        </View>
+    );
+});
+// ✅ КІНЕЦЬ ЗМІН
 
 export default function PublicDriverProfileScreen() {
   const { colors } = useTheme();
@@ -33,7 +51,6 @@ export default function PublicDriverProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
 
-  // ✨ 2. Ключова логіка: визначаємо, чи це профіль поточного користувача
   const isMyProfile = useMemo(() => session?.user?.id === driverId, [session, driverId]);
 
   const calculateTimeInApp = (joinDate) => {
@@ -82,7 +99,6 @@ export default function PublicDriverProfileScreen() {
     );
   };
 
-  // ✨ 3. Оптимізація: функція тепер створює чат і переходить прямо в нього
   const handleMessage = async () => {
     if (!session?.user) {
         Alert.alert(t('common.error'), t('profile.loginToWrite'));
@@ -142,7 +158,6 @@ export default function PublicDriverProfileScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
         </TouchableOpacity>
-        {/* ✨ 4. Динамічний заголовок: різний текст для свого та чужого профілю */}
         <Text style={styles.headerTitle}>
             {isMyProfile ? t('profile.yourPublicProfile', 'Ваш публічний профіль') : profile.full_name}
         </Text>
@@ -160,7 +175,6 @@ export default function PublicDriverProfileScreen() {
           />
           <Text style={styles.fullName}>{profile.full_name}</Text>
           
-          {/* ✨ 5. Умовний рендер: кнопки видно тільки на чужому профілі */}
           {!isMyProfile && (
             <View style={styles.actionsContainer}>
                 <TouchableOpacity style={styles.actionButton} onPress={handleMessage}>
@@ -175,11 +189,16 @@ export default function PublicDriverProfileScreen() {
           )}
         </View>
 
+        {/* ✅ ПОЧАТОК ЗМІН: Новий вигляд блоку "Автомобіль" */}
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
-            <View style={styles.carInfoRow}><Ionicons name="car-sport-outline" size={24} color={colors.secondaryText} /><Text style={styles.carInfoText}>{profile.car_make || t('settings.notSet')} {profile.car_model || ''}</Text></View>
-            <View style={styles.carInfoRow}><Ionicons name="reader-outline" size={24} color={colors.secondaryText} /><Text style={styles.carInfoText}>{profile.car_plate || t('settings.notSet')}</Text></View>
+            <InfoRow label={t('profile.carMake', 'Марка')} value={profile.car_make || t('settings.notSet')} icon="car-sport-outline" />
+            <View style={styles.divider} />
+            <InfoRow label={t('profile.carModel', 'Модель')} value={profile.car_model || t('settings.notSet')} icon="car-outline" />
+            <View style={styles.divider} />
+            <InfoRow label={t('profile.carPlate', 'Номерний знак')} value={profile.car_plate || t('settings.notSet')} icon="reader-outline" />
         </View>
+        {/* ✅ КІНЕЦЬ ЗМІН */}
 
         <View style={styles.statsContainer}>
             <StatCard 
@@ -220,16 +239,32 @@ const getStyles = (colors) => StyleSheet.create({
         color: colors.text,
         marginBottom: 12,
     },
-    carInfoRow: {
+    // ✅ ПОЧАТОК ЗМІН: Нові стилі для блоку "Автомобіль" та видалення старих
+    divider: {
+        height: 1,
+        backgroundColor: colors.border,
+        marginVertical: 4,
+    },
+    infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: 10,
     },
-    carInfoText: {
-        color: colors.text,
+    infoRowIcon: {
+        marginRight: 16,
+    },
+    infoRowLabel: {
+        fontSize: 12,
+        color: colors.secondaryText,
+        marginBottom: 2,
+    },
+    infoRowValue: {
         fontSize: 16,
-        marginLeft: 16,
+        color: colors.text,
+        fontWeight: '500',
     },
+    // Старі стилі `carInfoRow` та `carInfoText` більше не потрібні
+    // ✅ КІНЕЦЬ ЗМІН
     statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',

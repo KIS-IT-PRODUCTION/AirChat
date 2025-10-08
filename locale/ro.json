@@ -493,7 +493,8 @@
     "unexpectedData": "S-a primit o structură de date neașteptată",
     "networkTitle": "Eroare de rețea",
     "networkSubtitle": "Nu s-a putut conecta la server. Vă rugăm să verificați conexiunea la internet.",
-    "retryButton": "Reîncărcați"
+    "retryButton": "Reîncărcați",
+    "fieldRequired": "Acest câmp este obligatoriu"
   },
   "status": {
     "scheduled": "Programat",

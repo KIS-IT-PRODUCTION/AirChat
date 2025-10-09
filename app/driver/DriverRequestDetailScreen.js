@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, KeyboardAvoidingView, Modal, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,6 +68,70 @@ const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
 const CURRENCIES = ['UAH', 'USD', 'EUR'];
 const HEADER_HEIGHT = Platform.select({ ios: 85, android: 100 });
 
+// Новий компонент модального вікна для подання пропозиції
+const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors);
+    const { t } = useTranslation();
+    
+    const [price, setPrice] = useState('');
+    const [comment, setComment] = useState('');
+    const [currency, setCurrency] = useState('UAH');
+
+    useEffect(() => {
+        if (visible) {
+            setPrice('');
+            setComment('');
+            setCurrency('UAH');
+        }
+    }, [visible]);
+
+    const handlePressSubmit = () => {
+        if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+            Alert.alert(t('common.error'), t('driverOffer.priceRequired'));
+            return;
+        }
+        onSubmit({ price: parseFloat(price), comment, currency });
+    };
+
+    return (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={visible}
+            onRequestClose={onClose}
+        >
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1 }}
+            >
+                <Pressable style={styles.modalBackdrop} onPress={onClose}>
+                    <Pressable style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{t('driverOffer.yourOffer')}</Text>
+                            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                                <Ionicons name="close-circle" size={28} color={colors.secondaryText} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.priceInputContainer}>
+                            <TextInput style={styles.priceInput} placeholder="0" placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} />
+                        </View>
+                        <View style={styles.currencySelector}>
+                            {CURRENCIES.map((curr) => (<TouchableOpacity key={curr} style={[ styles.currencyButton, { backgroundColor: currency === curr ? colors.primary : colors.card, borderColor: colors.border }]} onPress={() => setCurrency(curr)}><Text style={[styles.currencyButtonText, { color: currency === curr ? '#fff' : colors.text }]}>{curr}</Text></TouchableOpacity>))}
+                        </View>
+                        <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
+                        
+                        <TouchableOpacity style={styles.submitButton} onPress={handlePressSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton')}</Text>}
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </KeyboardAvoidingView>
+        </Modal>
+    );
+};
+
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function DriverRequestDetailScreen({ navigation, route }) {
   const { transferId } = route.params;
@@ -84,10 +148,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
-
-  const [price, setPrice] = useState('');
-  const [comment, setComment] = useState('');
-  const [currency, setCurrency] = useState('UAH');
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
@@ -153,15 +214,14 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } catch (error) { console.error("Error fetching route:", error); }
   };
 
-   const handleSubmitOffer = async () => {
-    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
-        Alert.alert(t('common.error'), t('driverOffer.priceRequired'));
-        return;
-    }
+   const handleSubmitOffer = async ({ price, comment, currency }) => {
     setIsSubmitting(true);
     try {
-        const { error } = await supabase.functions.invoke('submit-offer-and-notify', { body: { transfer_id: transferId, driver_id: session.user.id, price: parseFloat(price), driver_comment: comment, currency: currency }});
+        const { error } = await supabase.functions.invoke('submit-offer-and-notify', { body: { transfer_id: transferId, driver_id: session.user.id, price, driver_comment: comment, currency }});
         if (error) throw error;
+        
+        setIsModalVisible(false);
+        
         Alert.alert(t('common.success'), t('driverOffer.offerSent'));
         fetchData();
     } catch (error) {
@@ -191,39 +251,15 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
   const isRequestClosed = transferData?.status === 'accepted' || transferData?.status === 'completed' || transferData?.status === 'cancelled';
   
-  // ✅ ПОЧАТОК ЗМІНЕНОГО БЛОКУ 1: Скорочення для пасажирів
-  const passengerDetails = (
-    <View style={styles.passengerDetailsContainer}>
-      {transferData.adults_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="people-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.adults_count} дор.`}
-          </Text>
-        </View>
-      )}
-      {transferData.children_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="person-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.children_count} дит.`}
-          </Text>
-        </View>
-      )}
-      {transferData.infants_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="happy-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.infants_count} нем.`}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-  // ✅ КІНЕЦЬ ЗМІНЕНОГО БЛОКУ 1
-
   return (
     <SafeAreaView style={styles.container}>
+      <SubmitOfferModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        onSubmit={handleSubmitOffer}
+        isSubmitting={isSubmitting}
+      />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
         <Text style={styles.title}>{t('driverOffer.requestDetails')}</Text>
@@ -277,21 +313,43 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                     </View>
                     <View style={styles.divider} />
                     
-                    <InfoRow icon="people-outline" label={t('transferDetail.passengers')} value={passengerDetails} colors={colors} />
-                    
+                    <View style={styles.passengerDetailsContainer}>
+                        {transferData.adults_count > 0 && (
+                            <View style={styles.passengerDetailItem}>
+                            <Ionicons name="people-outline" size={20} color={colors.text} />
+                            <Text style={styles.passengerDetailText}>
+                                {`${transferData.adults_count} дор.`}
+                            </Text>
+                            </View>
+                        )}
+                        {transferData.children_count > 0 && (
+                            <View style={styles.passengerDetailItem}>
+                            <Ionicons name="person-outline" size={20} color={colors.text} />
+                            <Text style={styles.passengerDetailText}>
+                                {`${transferData.children_count} дит.`}
+                            </Text>
+                            </View>
+                        )}
+                        {transferData.infants_count > 0 && (
+                            <View style={styles.passengerDetailItem}>
+                            <Ionicons name="happy-outline" size={20} color={colors.text} />
+                            <Text style={styles.passengerDetailText}>
+                                {`${transferData.infants_count} нем.`}
+                            </Text>
+                            </View>
+                        )}
+                    </View>
                     <View style={styles.divider} />
                     <View style={styles.detailsGrid}>
                         <DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} />
                         <DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} />
                         <DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} />
-                        {/* ✅ ПОЧАТОК ЗМІНЕНОГО БЛОКУ 2: Скорочення для типу трансферу */}
                         <DetailItem 
                             icon="car-sport-outline" 
                             value={transferData?.transfer_type === 'individual' ? 'індив.' : t(`transferTypes.${transferData?.transfer_type}`)} 
                             label={t('transferDetail.transferType')} 
                             colors={colors}
                         />
-                        {/* ✅ КІНЕЦЬ ЗМІНЕНОГО БЛОКУ 2 */}
                     </View>
                 </View>
 
@@ -327,14 +385,9 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                         {hasAlreadyOffered ? (
                             <View style={styles.alreadyOfferedContainer}><Ionicons name="checkmark-circle" size={24} color={colors.primary} /><Text style={styles.alreadyOfferedText}>{t('driverOffer.passengerNotified')}</Text></View>
                         ) : (
-                            <>
-                                <View style={styles.priceInputContainer}><TextInput style={styles.priceInput} placeholder={t('driverOffer.pricePlaceholder', '0')} placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} /></View>
-                                <View style={styles.currencySelector}>
-                                    {CURRENCIES.map((curr) => (<TouchableOpacity key={curr} style={[ styles.currencyButton, { backgroundColor: currency === curr ? colors.primary : colors.card, borderColor: colors.border }]} onPress={() => setCurrency(curr)}><Text style={[styles.currencyButtonText, { color: currency === curr ? '#fff' : colors.text }]}>{curr}</Text></TouchableOpacity>))}
-                                </View>
-                                <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
-                                <TouchableOpacity style={styles.submitButton} onPress={handleSubmitOffer} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton')}</Text>}</TouchableOpacity>
-                            </>
+                            <TouchableOpacity style={styles.submitButton} onPress={() => setIsModalVisible(true)}>
+                                <Text style={styles.submitButtonText}>{t('driverOffer.makeOfferButton', 'Подати пропозицію')}</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 )}
@@ -367,7 +420,7 @@ const getStyles = (colors) => StyleSheet.create({
     detailItem: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
     detailValue: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 4, textAlign: 'center' },
     detailLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 2, textAlign: 'center' },
-    passengerDetailsContainer: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
+    passengerDetailsContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-around', marginVertical: 8 , },
     passengerDetailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     passengerDetailText: { color: colors.text, fontSize: 14, fontWeight: '500' },
     commentText: { color: colors.secondaryText, fontStyle: 'italic', fontSize: 15 },
@@ -392,4 +445,29 @@ const getStyles = (colors) => StyleSheet.create({
     otherOfferPrice: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     chosenOffer: { backgroundColor: `${colors.primary}20` },
     chosenOfferText: { color: colors.primary, fontWeight: 'bold' },
+    modalBackdrop: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: colors.background,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: colors.text,
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
 });

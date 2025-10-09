@@ -9,8 +9,6 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../config/supabase';
 import moment from 'moment';
 
-// ✅ ПОЧАТОК ЗМІН: Додаємо новий компонент InfoRow для стилізації
-
 const StatCard = memo(({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
@@ -22,7 +20,6 @@ const StatCard = memo(({ icon, value, label, colors }) => {
     );
 });
 
-// Новий компонент для рядка з інформацією
 const InfoRow = memo(({ icon, label, value }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -37,7 +34,32 @@ const InfoRow = memo(({ icon, label, value }) => {
         </View>
     );
 });
-// ✅ КІНЕЦЬ ЗМІН
+
+const PassengerProfileInfo = ({ onGoBack }) => {
+    const { colors } = useTheme();
+    const { t } = useTranslation();
+    const styles = getStyles(colors);
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={onGoBack}>
+                    <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>{t('profile.passengerProfileTitle', 'Профіль Пасажира')}</Text>
+                <View style={{ width: 40 }} />
+            </View>
+            <View style={styles.content}>
+                <Ionicons name="people-outline" size={80} color={colors.secondaryText} style={{ marginBottom: 20 }} />
+                <Text style={styles.infoTitle}>{t('profile.passengerInfoTitle', 'Профіль недоступний')}</Text>
+                <Text style={styles.infoText}>{t('profile.passengerInfoBody', 'Публічні профілі доступні лише для водіїв. Пасажири не мають публічних сторінок.')}</Text>
+                <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
+                    <Text style={styles.backButtonText}>{t('common.back', 'Назад')}</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+};
 
 export default function PublicDriverProfileScreen() {
   const { colors } = useTheme();
@@ -50,6 +72,7 @@ export default function PublicDriverProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [isPassenger, setIsPassenger] = useState(false);
 
   const isMyProfile = useMemo(() => session?.user?.id === driverId, [session, driverId]);
 
@@ -62,25 +85,57 @@ export default function PublicDriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
+  // ✅ ПОЧАТОК ЗМІН: Оновлена логіка завантаження даних
   const fetchProfileData = useCallback(async () => {
     if (!driverId) {
       setLoading(false);
       return;
     }
+    
+    setLoading(true);
+    setIsPassenger(false);
+    setProfile(null);
+    
+    let driverProfile = null;
+
+    // Крок 1: Спробувати отримати профіль водія
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .rpc('get_public_driver_profile', { p_driver_id: driverId })
         .single();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      Alert.alert(t('common.error'), error.message);
-    } finally {
-      setLoading(false);
+      
+      if (error) throw error; // Якщо є помилка, перейдемо в catch
+      driverProfile = data; // Якщо даних немає, driverProfile буде null
+    } catch (rpcError) {
+      // Ігноруємо помилку від RPC (напр. "0 rows found"), бо це може означати, що користувач не водій
+      console.log('Driver profile not found via RPC, checking if passenger...');
     }
+    
+    // Крок 2: Якщо профіль водія не знайдено, перевіряємо, чи це пасажир
+    if (!driverProfile) {
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', driverId)
+          .maybeSingle();
+
+        if (userError) throw userError;
+
+        if (userData && userData.role === 'client') {
+          setIsPassenger(true);
+        }
+      } catch (profileError) {
+        Alert.alert(t('common.error'), profileError.message);
+      }
+    } else {
+      setProfile(driverProfile);
+    }
+    
+    setLoading(false);
+
   }, [driverId, t]);
+  // ✅ КІНЕЦЬ ЗМІН
 
   useFocusEffect(useCallback(() => { fetchProfileData(); }, [fetchProfileData]));
 
@@ -133,6 +188,10 @@ export default function PublicDriverProfileScreen() {
             <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
         </SafeAreaView>
     );
+  }
+  
+  if (isPassenger) {
+    return <PassengerProfileInfo onGoBack={() => navigation.goBack()} />;
   }
 
   if (!profile) {
@@ -189,7 +248,6 @@ export default function PublicDriverProfileScreen() {
           )}
         </View>
 
-        {/* ✅ ПОЧАТОК ЗМІН: Новий вигляд блоку "Автомобіль" */}
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
             <InfoRow label={t('profile.carMake', 'Марка')} value={profile.car_make || t('settings.notSet')} icon="car-sport-outline" />
@@ -198,7 +256,6 @@ export default function PublicDriverProfileScreen() {
             <View style={styles.divider} />
             <InfoRow label={t('profile.carPlate', 'Номерний знак')} value={profile.car_plate || t('settings.notSet')} icon="reader-outline" />
         </View>
-        {/* ✅ КІНЕЦЬ ЗМІН */}
 
         <View style={styles.statsContainer}>
             <StatCard 
@@ -219,94 +276,49 @@ const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
     headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
-    content: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     text: { fontSize: 18, color: colors.secondaryText },
     scrollContainer: { padding: 16, paddingBottom: 40 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     avatar: { width: 120, height: 120, borderRadius: 60, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },
     fullName: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-    infoCard: {
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 20,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    sectionTitle: {
-        fontSize: 16,
+    infoCard: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginTop: 16, borderWidth: 1, borderColor: colors.border },
+    sectionTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 12 },
+    divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+    infoRowIcon: { marginRight: 16 },
+    infoRowLabel: { fontSize: 12, color: colors.secondaryText, marginBottom: 2 },
+    infoRowValue: { fontSize: 16, color: colors.text, fontWeight: '500' },
+    statsContainer: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 16, borderWidth: 1, borderColor: colors.border },
+    statItem: { alignItems: 'center', flex: 1 },
+    statValue: { color: colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 8 },
+    statLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 4, textAlign: 'center' },
+    actionsContainer: { flexDirection: 'row', justifyContent: 'space-around', width: 'Yflfq dycm rjl100%', paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border },
+    actionButton: { alignItems: 'center', flex: 1 },
+    actionButtonText: { color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 6 },
+    infoTitle: {
+        fontSize: 22,
         fontWeight: 'bold',
         color: colors.text,
-        marginBottom: 12,
-    },
-    // ✅ ПОЧАТОК ЗМІН: Нові стилі для блоку "Автомобіль" та видалення старих
-    divider: {
-        height: 1,
-        backgroundColor: colors.border,
-        marginVertical: 4,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-    },
-    infoRowIcon: {
-        marginRight: 16,
-    },
-    infoRowLabel: {
-        fontSize: 12,
-        color: colors.secondaryText,
-        marginBottom: 2,
-    },
-    infoRowValue: {
-        fontSize: 16,
-        color: colors.text,
-        fontWeight: '500',
-    },
-    // Старі стилі `carInfoRow` та `carInfoText` більше не потрібні
-    // ✅ КІНЕЦЬ ЗМІН
-    statsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 16,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    statItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    statValue: {
-        color: colors.text,
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginTop: 8,
-    },
-    statLabel: {
-        color: colors.secondaryText,
-        fontSize: 12,
-        marginTop: 4,
         textAlign: 'center',
+        marginBottom: 8,
     },
-    actionsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
+    infoText: {
+        fontSize: 16,
+        color: colors.secondaryText,
+        textAlign: 'center',
+        lineHeight: 24,
     },
-    actionButton: {
-        alignItems: 'center',
-        flex: 1,
+    backButton: {
+        marginTop: 24,
+        backgroundColor: colors.primary,
+        paddingHorizontal: 32,
+        paddingVertical: 12,
+        borderRadius: 12,
     },
-    actionButtonText: {
-        color: colors.primary,
-        fontSize: 12,
-        fontWeight: '600',
-        marginTop: 6,
+    backButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

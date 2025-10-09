@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'; // Додано useMemo
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from './ThemeContext';
@@ -120,23 +120,39 @@ export default function TransferDetailScreen({ navigation, route }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
-  const [hiddenDriverId, setHiddenDriverId] = useState(null); // ✅ Новий стан для приховування водія
+  const [hiddenDriverId, setHiddenDriverId] = useState(null);
 
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
+  // ✅ ПОЧАТОК ЗМІН: Виправлення помилки при швидкому виході з екрана
   useEffect(() => {
+    let timerId = null; // Зберігаємо ID таймера
+
     if (routeCoordinates.length > 1 && mapViewRef.current) {
-        setTimeout(() => {
-            mapViewRef.current.fitToCoordinates(routeCoordinates, {
-                edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                animated: true,
-            });
+        // Запускаємо таймер і зберігаємо його ID
+        timerId = setTimeout(() => {
+            // Додаткова перевірка, що посилання на карту все ще існує
+            if (mapViewRef.current) {
+                mapViewRef.current.fitToCoordinates(routeCoordinates, {
+                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                    animated: true,
+                });
+            }
         }, 500);
     }
+
+    // Функція очищення, яка спрацює, коли компонент демонтується
+    return () => {
+        // Якщо таймер було запущено, скасовуємо його
+        if (timerId) {
+            clearTimeout(timerId);
+        }
+    };
   }, [routeCoordinates]);
+  // ✅ КІНЕЦЬ ЗМІН
 
   const fetchData = useCallback(async () => {
-    setHiddenDriverId(null); // ✅ Скидаємо фільтр при кожному оновленні даних
+    setHiddenDriverId(null);
     try {
       const { data, error } = await supabase.rpc('get_transfer_details', { p_transfer_id: transferId }).single();
       if (error) throw error;
@@ -184,15 +200,11 @@ export default function TransferDetailScreen({ navigation, route }) {
             style: 'destructive',
             onPress: async () => {
               try {
-                // ✅ Зберігаємо ID водія, якого треба приховати
                 const driverToHideId = transferData?.accepted_driver_details?.driver_id;
                 if (driverToHideId) {
                     setHiddenDriverId(driverToHideId);
                 }
-
-                const { error } = await supabase.rpc('reset_transfer_to_pending', {
-                  p_transfer_id: transferId
-                });
+                const { error } = await supabase.rpc('reset_transfer_to_pending', { p_transfer_id: transferId });
                 if (error) throw error;
                 fetchData();
               } catch (error) {
@@ -222,16 +234,12 @@ export default function TransferDetailScreen({ navigation, route }) {
 
   const handleCancelTransfer = async () => { Alert.alert(t('transferDetail.cancelConfirmTitle'), t('transferDetail.cancelConfirmText'), [{ text: t('common.no'), style: 'cancel' }, { text: t('common.yes'), style: 'destructive', onPress: async () => { try { const { error } = await supabase.from('transfers').update({ status: 'cancelled' }).eq('id', transferId); if (error) throw error; Alert.alert(t('common.success'), t('transferDetail.cancelledSuccess')); navigation.goBack(); } catch (error) { Alert.alert(t('common.error'), error.message); } } }]); };
 
-  // ✅ Новий мемоізований список пропозицій для відображення
   const visibleOffers = useMemo(() => {
     if (!offers) return [];
-
     return offers.filter(offer => {
-        // Завжди приховуємо водія, якого щойно "звільнили"
         if (offer.driver_id === hiddenDriverId) {
             return false;
         }
-        // Якщо вже є прийнятий водій, приховуємо його з "інших пропозицій"
         if (transferData?.status === 'accepted' && offer.driver_id === transferData.accepted_driver_details?.driver_id) {
             return false;
         }
@@ -260,35 +268,7 @@ export default function TransferDetailScreen({ navigation, route }) {
   const finalPrice = transferData.accepted_driver_details?.price;
   const finalCurrency = transferData.accepted_driver_details?.currency;
 
-  // ✅ Оновлений блок з скороченнями
-  const passengerDetails = (
-    <View style={styles.passengerDetailsContainer}>
-      {transferData.adults_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="people-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.adults_count} дор.`}
-          </Text>
-        </View>
-      )}
-      {transferData.children_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="person-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.children_count} дит.`}
-          </Text>
-        </View>
-      )}
-      {transferData.infants_count > 0 && (
-        <View style={styles.passengerDetailItem}>
-          <Ionicons name="happy-outline" size={18} color={colors.text} />
-          <Text style={styles.passengerDetailText}>
-            {`${transferData.infants_count} нем.`}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -309,9 +289,19 @@ export default function TransferDetailScreen({ navigation, route }) {
             </View>
 
             <View style={styles.infoCard}>
-                <InfoRow icon="airplane-outline" label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} />
+                <InfoRow 
+                  icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} 
+                  label={t('transferDetail.from')} 
+                  value={transferData?.from_location} 
+                  colors={colors} 
+                />
                 <View style={styles.dottedLine} />
-                <InfoRow icon="location-outline" label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} />
+                <InfoRow 
+                  icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} 
+                  label={t('transferDetail.to')} 
+                  value={transferData?.to_location} 
+                  colors={colors} 
+                />
             </View>
 
             <View style={styles.infoCard}>
@@ -323,14 +313,40 @@ export default function TransferDetailScreen({ navigation, route }) {
                 </View>
                 <View style={styles.divider} />
                 
-                <InfoRow icon="people-outline" label={t('transferDetail.passengers')} value={passengerDetails} colors={colors} />
+                {/* <InfoRow value={passengerDetails} colors={colors} /> */}
                 
+    <View style={styles.passengerDetailsContainer}>
+      {transferData.adults_count > 0 && (
+        <View style={styles.passengerDetailItem}>
+          <Ionicons name="people-outline" size={20} color={colors.text} />
+          <Text style={styles.passengerDetailText}>
+            {`${transferData.adults_count} дор.`}
+          </Text>
+        </View>
+      )}
+      {transferData.children_count > 0 && (
+        <View style={styles.passengerDetailItem}>
+          <Ionicons name="person-outline" size={20} color={colors.text} />
+          <Text style={styles.passengerDetailText}>
+            {`${transferData.children_count} дит.`}
+          </Text>
+        </View>
+      )}
+      {transferData.infants_count > 0 && (
+        <View style={styles.passengerDetailItem}>
+          <Ionicons name="happy-outline" size={20} color={colors.text} />
+          <Text style={styles.passengerDetailText}>
+            {`${transferData.infants_count} нем.`}
+          </Text>
+        </View>
+      )}
+    </View>
+  
                 <View style={styles.divider} />
                 <View style={styles.detailsGrid}>
                     <DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} />
                     <DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} />
                     <DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} />
-                    {/* ✅ Оновлений блок з скороченням типу трансферу */}
                     <DetailItem 
                         icon="car-sport-outline" 
                         value={transferData?.transfer_type === 'individual' ? 'індив.' : t(`transferTypes.${transferData?.transfer_type}`)} 
@@ -358,7 +374,6 @@ export default function TransferDetailScreen({ navigation, route }) {
 
             {transferData?.status === 'accepted' && transferData?.accepted_driver_details && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{t('transferDetail.chosenDriver')}</Text><ConfirmedDriverCard driver={transferData.accepted_driver_details} onChangeDriver={handleChangeDriver} /></View>)}
             
-            {/* ✅ Використовуємо відфільтрований список visibleOffers */}
             {visibleOffers.length > 0 && (
                 <View style={styles.offersSection}>
                     <Text style={styles.sectionTitle}>
@@ -401,11 +416,11 @@ const getStyles = (colors) => StyleSheet.create({
     dottedLine: { height: 16, width: 1, backgroundColor: colors.border, marginVertical: 4, marginLeft: 12 },
     divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 12 },
-    detailsGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start' },
+    detailsGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-start',  },
     detailItem: { alignItems: 'center', flex: 1, paddingHorizontal: 4 },
     detailValue: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 4, textAlign: 'center' },
     detailLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 2, textAlign: 'center' },
-    passengerDetailsContainer: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 },
+    passengerDetailsContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-around', marginVertical: 8 , },
     passengerDetailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     passengerDetailText: { color: colors.text, fontSize: 14, fontWeight: '500' },
     commentText: { color: colors.secondaryText, fontStyle: 'italic', fontSize: 15 },

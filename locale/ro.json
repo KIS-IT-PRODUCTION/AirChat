@@ -116,7 +116,8 @@
     "call": "Apel",
     "confirmCallTitle": "Sunați șoferul?",
     "loginToWrite": "Vă rugăm să vă conectați la cont pentru a scrie șoferului.",
-    "carInfo": "Automobil"
+    "carInfo": "Automobil",
+    "years": "ani"
   },
   "settings": {
     "title": "Setări",
@@ -257,7 +258,7 @@
   },
   "transfersScreen": {
     "title": "Transferurile mele",
-    "emptyState": "Nu aveți încă nicio cerere creată.",
+    "emptyState": "Adaugă primul tău transfer și pornește la drum!",
     "writeButton": "Scrie",
     "archiveTitle": "Arhiva transferurilor",
     "finalPrice": "Preț final",
@@ -308,8 +309,8 @@
     "cardDate": "D MMMM, HH:mm"
   },
   "onboarding": {
-    "welcomeTitle": "Bun venit!",
-    "welcomeText": "Aplicația noastră vă va ajuta să comandați cu ușurință un transfer.",
+    "welcomeTitle": "AirChat vă urează bun venit!",
+    "welcomeText": "Planificați călătorii, rezervați transferuri la aeroport, comunicați cu șoferii — totul într-un singur loc.",
     "configureTitle": "Configurați călătoria",
     "configureText": "Alegeți data, ora, numărul de pasageri și bagaje.",
     "readyTitle": "Totul este gata!",
@@ -331,7 +332,7 @@
   },
   "chatList": {
     "title": "Mesaje",
-    "noChats": "Nu aveți încă niciun chat.",
+    "noChats": "Nu aveți încă chat-uri active.",
     "deleteTitle": "Ștergeți chatul?",
     "deleteBody": "Sunteți sigur că doriți să ștergeți chatul cu {{name}}? Întregul istoric al corespondenței va fi pierdut.",
     "favorites": "Favorite",

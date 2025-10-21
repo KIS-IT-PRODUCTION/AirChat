@@ -3,17 +3,21 @@ import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import './i18n';
 
-import React, { useState, useEffect, useRef } from 'react';
+// 💡 ВИПРАВЛЕНО: Додано memo та useCallback до імпорту з React
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, StyleSheet, Modal, Text, AppState, Platform } from 'react-native';
+import { View, StyleSheet, Text, AppState, Platform, Animated, TouchableOpacity, Easing } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
+import { LogBox } from 'react-native';
+// 💡 ВИПРАВЛЕНО: Додано useSafeAreaInsets
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 
 import { ThemeProvider, useTheme } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
@@ -23,7 +27,8 @@ import { NewTripsProvider, useNewTrips } from './provider/NewTripsContext';
 import HomeScreen, { FormProvider } from './app/HomeScreen';
 import { usePushNotifications } from './usePushNotifications.js';
 import { supabase } from './config/supabase';
- 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
@@ -40,9 +45,12 @@ import Support from './app/SupportScreen.js';
 import IndividualChatScreen from './app/IndividualChatScreen.js';
 
 SplashScreen.preventAutoHideAsync();
-
+LogBox.ignoreLogs([
+  'Warning: Text strings must be rendered within a <Text> component.'
+]);
 const Stack = createStackNavigator();
 
+// [AuthNavigator, UserAppStack, DriverAppStack, linkingConfig - без змін]
 function AuthNavigator({ isFirstLaunch }) {
     return (
         <Stack.Navigator
@@ -94,18 +102,48 @@ const linkingConfig = {
     } 
   },
 };
+// [Кінець: AuthNavigator, UserAppStack, DriverAppStack, linkingConfig]
 
 function RootNavigator() {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
     const navigationRef = useRef(null);
     
-    const { isInternetReachable } = useNetInfo();
+    // --- ЛОГІКА ІНТЕРНЕТ-З'ЄДНАННЯ ---
+    const netInfo = useNetInfo();
+    const [isNetworkDown, setIsNetworkDown] = useState(false);
+    const networkTimerRef = useRef(null);
+    const DEBOUNCE_DELAY = 1500; 
+    
     usePushNotifications(navigationRef);
-    // ✨ FIX: Отримуємо функцію fetchUnreadCount
     const { unreadCount, fetchUnreadCount } = useUnreadCount();
     const { newOffersCount } = useNewOffers();
     const { newTripsCount } = useNewTrips();
+
+    useEffect(() => {
+        const isConnected = netInfo.isConnected && netInfo.isInternetReachable;
+
+        if (networkTimerRef.current) {
+            clearTimeout(networkTimerRef.current);
+        }
+
+        if (netInfo.type !== 'unknown' && !isConnected) {
+            // Мережа недоступна: встановлюємо таймер на показ
+            networkTimerRef.current = setTimeout(() => {
+                setIsNetworkDown(true);
+            }, DEBOUNCE_DELAY);
+        } else if (isConnected) {
+            // Мережа доступна, приховуємо банер негайно
+            setIsNetworkDown(false);
+        }
+        
+        return () => {
+            if (networkTimerRef.current) {
+                clearTimeout(networkTimerRef.current);
+            }
+        };
+    }, [netInfo.isConnected, netInfo.isInternetReachable, netInfo.type]);
+    // --- КІНЕЦЬ ЛОГІКИ ІНТЕРНЕТ-З'ЄДНАННЯ ---
 
     useEffect(() => {
         const checkOnboarding = async () => {
@@ -126,7 +164,6 @@ function RootNavigator() {
             if (session?.user) {
                 if (nextAppState === 'active') {
                     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
-                    // ✨ FIX: При поверненні в додаток, примусово оновлюємо лічильник
                     fetchUnreadCount();
                 } else {
                     supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then();
@@ -139,7 +176,7 @@ function RootNavigator() {
         return () => {
             appStateSubscription.remove();
         };
-    }, [session, fetchUnreadCount]); // ✨ FIX: Додаємо fetchUnreadCount в залежності
+    }, [session, fetchUnreadCount]);
 
     useEffect(() => {
         const updateTotalBadgeCount = async () => {
@@ -178,71 +215,124 @@ function RootNavigator() {
                     <AuthNavigator isFirstLaunch={isFirstLaunch} />
                 )}
             </NavigationContainer>
-            <NoInternetModal visible={isInternetReachable === false} />
+            {/* Банер тепер повністю керується станом isNetworkDown */}
+            <NoInternetBanner visible={isNetworkDown} />
         </View>
     );
 }
 
-export default function App() {
-  return (
-    <ThemeProvider>
-      <AuthProvider>
-        <UnreadCountProvider>
-          <NewOffersProvider>
-            <NewTripsProvider>
-                <FormProvider>
-                    <RootNavigator />
-                </FormProvider>
-            </NewTripsProvider>
-          </NewOffersProvider>
-        </UnreadCountProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  );
-}
-
-const NoInternetModal = ({ visible }) => {
+// -----------------------------------------------------------
+// КОМПОНЕНТ: Спадаючий Банер NoInternetBanner
+// -----------------------------------------------------------
+const NoInternetBanner = memo(({ visible }) => {
     const { colors } = useTheme(); 
     const { t } = useTranslation(); 
-    const styles = getStyles(colors);
-    return (
-        <Modal animationType="fade" transparent={true} visible={visible}>
-            <View style={styles.modalBackdrop}>
-                <View style={styles.modalContent}>
-                    <Ionicons name="wifi-outline" size={80} color={colors.secondaryText} />
-                    <Text style={styles.modalTitle}>{t('errors.noInternetTitle')}</Text>
-                    <Text style={styles.modalSubtitle}>{t('errors.noInternetSubtitle')}</Text>
-                </View>
-            </View>
-        </Modal>
-    );
-};
+    const animation = useRef(new Animated.Value(0)).current;
+    // 💡 ВИПРАВЛЕНО: useSafeAreaInsets тепер доступний
+    const insets = useSafeAreaInsets();
+    const HEADER_HEIGHT = 80 + insets.top; // Динамічна висота для врахування safe area
+    
+    // Логіка анімації: реагує на visible
+    useEffect(() => {
+        Animated.timing(animation, {
+            toValue: visible ? 1 : 0,
+            duration: 300,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+        }).start();
+    }, [visible, animation]);
+    
+    // Якщо банер приховано (анімація завершена), не рендеримо його
+    if (!visible && animation._value === 0) return null;
 
-const getStyles = (colors) => StyleSheet.create({
-    modalBackdrop: { 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: 'rgba(0, 0, 0, 0.7)' 
-    },
-    modalContent: {
-        backgroundColor: colors?.card || '#1e1e1e',
-        borderRadius: 20,
-        padding: 30,
-        alignItems: 'center',
-        width: '80%',
-    },
-    modalTitle: { 
-        fontSize: 22, 
-        fontWeight: 'bold', 
-        color: colors?.text || '#fff', 
-        marginTop: 20, 
-        textAlign: 'center' 
-    },
-    modalSubtitle: { 
-        fontSize: 16, 
-        color: colors?.secondaryText || '#aaa', 
-        textAlign: 'center', 
-        marginTop: 8 
-    },
+    const translateY = animation.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-HEADER_HEIGHT, 0], 
+    });
+
+    const styles = getBannerStyles(colors, HEADER_HEIGHT, insets.top);
+    
+    return (
+        <Animated.View style={[styles.bannerContainer, { transform: [{ translateY }] }]}>
+            <View style={styles.content}>
+                <Ionicons 
+                    name="cloud-offline-outline" 
+                    size={20} 
+                    color={colors.text} 
+                    style={styles.icon} 
+                />
+                <Text style={styles.title} numberOfLines={1}>
+                    {t('errors.noInternetTitle') || 'Немає з\'єднання з Інтернетом'}
+                </Text>
+            </View>
+           
+        </Animated.View>
+    );
 });
+
+const getBannerStyles = (colors, height, topInset) => StyleSheet.create({
+    bannerContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: height,
+        backgroundColor: colors?.danger || '#FF4444', 
+        paddingTop: topInset,
+        paddingHorizontal: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        zIndex: 1000,
+    },
+    content: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 1,
+    },
+    icon: {
+        marginRight: 8,
+    },
+    title: { 
+        fontSize: 14, 
+        fontWeight: '600', 
+        color: colors?.text || '#fff', 
+    },
+    button: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 5,
+    },
+    buttonText: {
+        color: colors?.text || '#fff', 
+        fontWeight: 'bold', 
+        fontSize: 14,
+    }
+});
+
+export default function App() {
+  return (
+    // 💡 КЛЮЧОВЕ ВИПРАВЛЕННЯ
+    <SafeAreaProvider> 
+      <ThemeProvider>
+        <AuthProvider>
+          <UnreadCountProvider>
+            <NewOffersProvider>
+              <NewTripsProvider>
+                  <FormProvider>
+                      <RootNavigator />
+                  </FormProvider>
+              </NewTripsProvider>
+            </NewOffersProvider>
+          </UnreadCountProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from '
 import {
     StyleSheet, Text, View, SafeAreaView, FlatList, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal,
-    Pressable, Linking, RefreshControl, Clipboard, AppState
+    Pressable, Linking, RefreshControl, Clipboard, AppState, StatusBar
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Audio } from 'expo-av';
@@ -26,6 +26,7 @@ import Hyperlink from 'react-native-hyperlink';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+// import * as SplashScreen from 'expo-splash-screen'; // Залишаємо це опціонально, якщо не використовується глобально
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ (без змін) ---
 const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
@@ -155,7 +156,9 @@ export default function IndividualChatScreen() {
     const [isSendingLocation, setIsSendingLocation] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-
+    
+    const [isRecipientOnline, setIsRecipientOnline] = useState(false);
+    
     const flatListRef = useRef(null);
     const channelRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -165,18 +168,23 @@ export default function IndividualChatScreen() {
     const lastSeenRef = useRef(initialLastSeen);
     const appState = useRef(AppState.currentState);
 
+    // Функція форматування статусу
     const formatUserStatus = useCallback((isOnline, lastSeen) => { 
         if (isOnline) return t('chat.onlineStatus'); 
         if (!lastSeen) return t('chat.offlineStatus'); 
         const lsMoment = moment(lastSeen); 
         if (!lsMoment.isValid()) return t('chat.offlineStatus'); 
+        
         if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); 
+        
         if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); 
         if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); 
         return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); 
     }, [t]);
     
-    const [userStatus, setUserStatus] = useState(() => formatUserStatus(false, initialLastSeen));
+    const userStatus = useMemo(() => {
+        return formatUserStatus(isRecipientOnline, lastSeenRef.current);
+    }, [isRecipientOnline, formatUserStatus]);
     
     useEffect(() => {
         moment.locale(i18n.language);
@@ -247,28 +255,13 @@ export default function IndividualChatScreen() {
         setIsRefreshing(false);
     }, [markAsRead]);
 
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', nextAppState => {
-            if (
-                appState.current.match(/inactive|background/) &&
-                nextAppState === 'active'
-            ) {
-                if (currentRoomId) {
-                    fetchMessages(currentRoomId);
-                }
-            }
-            appState.current = nextAppState;
-        });
-        return () => {
-            subscription.remove();
-        };
-    }, [currentRoomId, fetchMessages]);
-    
+    // ВИПРАВЛЕННЯ: Головний useEffect для підписок та початкового завантаження
     useEffect(() => {
         let isMounted = true;
         let profileSub;
+        
         const setupRoomAndSubscriptions = async () => {
-            if (!session || !recipientId) { if (isMounted) setIsLoading(false); return; }
+            if (!session || !recipientId) { setIsLoading(false); return; }
             let roomId = currentRoomId;
             if (!roomId) {
                 try {
@@ -276,17 +269,30 @@ export default function IndividualChatScreen() {
                     if (!isMounted) return;
                     roomId = data;
                     setCurrentRoomId(roomId);
-                } catch (e) { console.error("Error finding/creating room:", e); if (isMounted) setIsLoading(false); return; }
+                } catch (e) { console.error("Error finding/creating room:", e); setIsLoading(false); return; }
             }
-            if (!roomId) { if (isMounted) setIsLoading(false); return; }
+            if (!roomId) { setIsLoading(false); return; }
+            
+            // 1. Початкове завантаження повідомлень
             if (isMounted) {
-                setIsLoading(true);
                 await fetchMessages(roomId);
-                setIsLoading(false);
+                setIsLoading(false); 
             }
+            
+            // 2. Налаштування підписок (Presence, Broadcast, Changes)
             if (channelRef.current) supabase.removeChannel(channelRef.current);
-            const roomChannel = supabase.channel(`room-${roomId}`, { config: { presence: { key: session.user.id } } });
+            
+            const roomChannel = supabase.channel(`room-${roomId}`, { 
+                config: { presence: { key: session.user.id, room: roomId } } 
+            });
+            
             channelRef.current = roomChannel;
+            
+            const handlePresenceState = (state) => {
+                const isOnline = Object.keys(state).some(key => key === recipientId);
+                setIsRecipientOnline(isOnline);
+            };
+
             roomChannel
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
                     setMessages(currentMessages => {
@@ -312,9 +318,17 @@ export default function IndividualChatScreen() {
                     setMessages(currentMessages => currentMessages.filter(m => m.id !== payload.old.id));
                 })
                 .on('presence', { event: 'sync' }, () => {
-                    const presenceState = roomChannel.presenceState();
-                    const isOnline = Object.keys(presenceState).some(key => key === recipientId);
-                    setUserStatus(formatUserStatus(isOnline, lastSeenRef.current));
+                    handlePresenceState(roomChannel.presenceState());
+                })
+                .on('presence', { event: 'join' }, ({ newPresences }) => {
+                    if (newPresences.some(p => p.key === recipientId)) {
+                        handlePresenceState(roomChannel.presenceState());
+                    }
+                })
+                .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+                     if (leftPresences.some(p => p.key === recipientId)) {
+                        handlePresenceState(roomChannel.presenceState());
+                    }
                 })
                 .on('broadcast', { event: 'typing' }, ({ payload }) => {
                     if (payload.user_id === recipientId) {
@@ -323,34 +337,54 @@ export default function IndividualChatScreen() {
                         typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000);
                     }
                 })
-                .subscribe();
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        const userPresence = { room: roomId, last_seen: new Date().toISOString() };
+                        await roomChannel.track(userPresence);
+                        handlePresenceState(roomChannel.presenceState());
+                    }
+                });
+            
             profileSub = supabase.channel(`profile-listener-${recipientId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
                 lastSeenRef.current = payload.new.last_seen;
-                const presenceState = channelRef.current?.presenceState() || {};
-                const isOnline = Object.keys(presenceState).some(key => key === recipientId);
-                setUserStatus(formatUserStatus(isOnline, payload.new.last_seen));
                 setRecipientInfo({ name: payload.new.full_name, avatar: payload.new.avatar_url });
             }).subscribe();
         };
+        
         setupRoomAndSubscriptions();
-        return () => { isMounted = false; const channel = channelRef.current; if (channel) supabase.removeChannel(channel); if (profileSub) supabase.removeChannel(profileSub); };
-    }, [session, recipientId, currentRoomId, fetchMessages]);
 
-    useFocusEffect(useCallback(() => {
-        const updatePresence = async (roomId) => {
-            if (!session || !roomId) return;
-            await supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: roomId, updated_at: new Date().toISOString() });
-            await fetchMessages(roomId);
-        };
-        if (currentRoomId) {
-            updatePresence(currentRoomId);
-        }
-        return () => {
-            if (session) {
-                supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then();
+        return () => { 
+            isMounted = false; 
+            const channel = channelRef.current; 
+            if (profileSub) supabase.removeChannel(profileSub); 
+            
+            if (channel) {
+                 channel.untrack().then(() => supabase.removeChannel(channel)); 
             }
         };
-    }, [currentRoomId, session, fetchMessages]));
+    }, [session, recipientId, currentRoomId, fetchMessages, markAsRead]);
+
+    // ВИПРАВЛЕННЯ: useFocusEffect тільки для оновлення статусу та прочитання
+    useFocusEffect(useCallback(() => {
+        const enterChat = async () => {
+             if (session) {
+                 supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
+             }
+             if (currentRoomId) {
+                 markAsRead(currentRoomId);
+             }
+        };
+
+        enterChat();
+        
+        return () => {
+            if (session) {
+                supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
+            }
+        };
+    }, [currentRoomId, session, markAsRead]));
+    
+    // --- РЕШТА ЛОГІКИ БЕЗ ЗМІН ---
     
     const sendMessage = useCallback(async (messageData) => {
         if (!currentRoomId || !session) return;
@@ -474,64 +508,93 @@ export default function IndividualChatScreen() {
     const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
+
+    // --- ПЛАВНЕ ВІДКРИТТЯ: Повноекранний індикатор завантаження ---
     if (isLoading) {
-        return (<SafeAreaView style={styles.container}><View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><View style={styles.headerUserInfo}><Text style={styles.headerUserName}>{recipientInfo.name || t('common.loading')}</Text></View><Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} /></View><ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} /></SafeAreaView>);
+        return (
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+                <ActivityIndicator size="large" color={colors.primary} />
+            </SafeAreaView>
+        );
     }
+    // ----------------------------------------------------------------
 
     return (
-        <SafeAreaView style={styles.container}>
-            {selectionMode ? ( <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} /> ) : (
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
-                    <View style={styles.headerUserInfo}>
-                        <Text style={styles.headerUserName}>{recipientInfo.name}</Text>
-                        {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
+        // --- ПЛАВНЕ ВІДКРИТТЯ: Весь контейнер має фон ---
+        <View style={styles.container}>
+            <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
+            <SafeAreaView style={{ flex: 0, backgroundColor: colors.card }} /> 
+            
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            
+                {selectionMode ? ( <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} /> ) : (
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
+                        <View style={styles.headerUserInfo}>
+                            <Text style={styles.headerUserName}>{recipientInfo.name}</Text>
+                            {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
+                        </View>
+                            <TouchableOpacity 
+                                onPress={() => {
+                                if (recipientId) {
+                                    navigation.navigate('PublicDriverProfile', {
+                                        driverId: recipientId,
+                                        driverName: recipientInfo.name
+                                    });
+                                }
+                            }}
+                        >
+                        
+                            <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
+                        </TouchableOpacity>                
                     </View>
-                        <TouchableOpacity 
-                             onPress={() => {
-                            if (recipientId) {
-                                navigation.navigate('PublicDriverProfile', {
-                                    driverId: recipientId,
-                                    driverName: recipientInfo.name
-                                });
-                            }
+                )}
+                
+                {/* Використовуємо `View` як контейнер для FlatList, 
+                    а `KeyboardAvoidingView` застосовуємо до цієї View та поля введення. 
+                    На iOS ми використовуємо 'padding', що вимагає, щоб `KeyboardAvoidingView` охоплював елемент.
+                */}
+                <KeyboardAvoidingView 
+                    style={{ flex: 1, backgroundColor: 'colors.background' }} 
+                    behavior={Platform.OS === "ios" ? "padding" : "height"} 
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 70 : 0}
+                >
+                    <FlatList
+                        ref={flatListRef}
+                        data={processedData}
+                        inverted
+                        renderItem={({ item }) => {
+                            if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
+                            return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
                         }}
-                    >
-                       
-                        <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
-                    </TouchableOpacity>                </View>
-                  
+                        keyExtractor={item => item.id.toString()}
+                        contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
+                        style={{ flex: 1 }}
+                        initialNumToRender={25}
+                        maxToRenderPerBatch={15}
+                        windowSize={31}
+                        removeClippedSubviews={true}
+                        // refreshControl={
+                        //     <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchMessages(currentRoomId)} tintColor={colors.primary} />
+                        // }
+                    />
 
-            )}
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}>
-                <FlatList
-                    ref={flatListRef}
-                    data={processedData}
-                    inverted
-                    renderItem={({ item }) => {
-                        if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
-                        return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
-                    }}
-                    keyExtractor={item => item.id.toString()}
-                    contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
-                    style={{ flex: 1 }}
-                    refreshControl={
-                        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchMessages(currentRoomId)} tintColor={colors.primary} />
-                    }
-                />
-
-                <View style={styles.inputContainer}>
-                    <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
-                    {canLikeLastMessage && <TouchableOpacity style={styles.likeButton} onPress={() => handleReaction('👍', lastMessage)}><Ionicons name="thumbs-up-outline" size={24} color={colors.secondaryText} /></TouchableOpacity> }
-                    <TextInput ref={textInputRef} style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSendText}><Ionicons name={editingMessage ? "checkmark" : "paper-plane"} size={24} color="#fff" /></TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
+                 
+                    <View style={styles.inputContainer}>
+                        <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
+                        <TextInput ref={textInputRef} style={styles.textInput} value={inputText} onChangeText={handleTyping} placeholder={t('chat.placeholder')} placeholderTextColor={colors.secondaryText} multiline blurOnSubmit={false} />
+                        <TouchableOpacity style={styles.sendButton} onPress={handleSendText}><Ionicons name={editingMessage ? "checkmark" : "paper-plane"} size={24} color="#fff" /></TouchableOpacity>
+                    </View>
+   
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+            
             <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessageForAction} isMyMessage={selectedMessageForAction?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessageForAction?.content || '')} onEdit={() => { setEditingMessage(selectedMessageForAction); setInputText(selectedMessageForAction?.content || ''); textInputRef.current?.focus(); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }} />
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}>
                 <Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}>
-                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+                    <View style={[styles.modalContent, { marginBottom: insets.bottom > 0 ? 0 : 20 }]}> {/* Використовуємо відступ лише якщо insets.bottom == 0 */}
                         <TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity>
@@ -539,11 +602,11 @@ export default function IndividualChatScreen() {
                 </Pressable>
             </Modal>
             {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
-        </SafeAreaView>
+        </View>
     );
 }
 
-// --- СТИЛІ ---
+// --- СТИЛІ (з фіксованими фонами) ---
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
@@ -552,7 +615,9 @@ const getStyles = (colors) => StyleSheet.create({
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
-    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
+    // ⚠️ Змінено: Основний контейнер тепер `View` з повним фоном
+    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+    // ---------------------------------------------------------
     header: { 
         flexDirection: 'row', 
         alignItems: 'center',  
@@ -561,7 +626,8 @@ const getStyles = (colors) => StyleSheet.create({
         paddingVertical: 5, 
         borderBottomWidth: 1, 
         borderBottomColor: colors.border, 
-        paddingTop: Platform.OS === 'android' ? 10 : 0 
+        paddingTop: 0, // Не використовуємо відступ тут, це робить SafeAreaView вище
+        backgroundColor: colors.card // Гарантуємо фон заголовка
     },
     headerUserInfoContainer: {
         flex: 1,
@@ -576,7 +642,7 @@ const getStyles = (colors) => StyleSheet.create({
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
     headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
-    messageContainer: { marginVertical: 1, paddingHorizontal: 0},
+    messageContainer: { marginVertical: 2, paddingHorizontal: 0},
     messageRow: { flexDirection: 'row', alignItems: 'center' },
     messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
     myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
@@ -590,8 +656,16 @@ const getStyles = (colors) => StyleSheet.create({
     messageInfoOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
     messageTime: { color: colors.secondaryText, fontSize: 11 },
     myMessageTime: { color: '#FFFFFF90' },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
-    textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 8, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
+    inputContainer: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        borderTopColor: colors.border, 
+        backgroundColor: colors.card,
+        borderRadius: 30,
+        paddingHorizontal:10,
+        paddingVertical:10,
+    },
+    textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 0, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
     sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
     imageViewerBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center' },
     fullScreenImage: { width: '100%', height: '80%' },

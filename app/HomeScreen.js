@@ -37,7 +37,8 @@ export const FormProvider = ({ children }) => {
     const [flightNumber, setFlightNumber] = useState('');
     const [luggageInfo, setLuggageInfo] = useState('');
     const [activeTab, setActiveTab] = useState('to');
-    const [transferType, setTransferType] = useState('individual');
+    // ✅ ЗМІНА №1: Встановлюємо 'group' як тип трансферу за замовчуванням
+    const [transferType, setTransferType] = useState('group');
     const [withPet, setWithPet] = useState(false);
     const [meetWithSign, setMeetWithSign] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -61,7 +62,7 @@ const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContent: { paddingBottom: 40 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingHorizontal: 15, paddingTop: 16 },
-    profilePic: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card }, // Додано фон для кращого вигляду при завантаженні
+    profilePic: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card },
     roleSwitcher: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 4, ...shadowStyle, position: 'relative' },
     roleOption: { padding: 8, borderRadius: 16, zIndex: 1, width: 40, alignItems: 'center', justifyContent: 'center' },
     rolePill: { position: 'absolute', top: 4, bottom: 4, left: 4, width: 40, backgroundColor: colors.primary, borderRadius: 16 },
@@ -121,65 +122,14 @@ const getStyles = (colors, theme) => StyleSheet.create({
 });
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ ---
-const RoleSwitcher = ({ role, onSwitch, isSwitching }) => {
-    const { colors } = useTheme(); const styles = getStyles(colors); const isDriver = role === 'driver'; const switchValue = useSharedValue(isDriver ? 1 : 0);
-    useEffect(() => { switchValue.value = withSpring(isDriver ? 1 : 0, { damping: 15, stiffness: 120 }); }, [isDriver]);
-    const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: switchValue.value * 48 }] }));
-    const passengerIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], ['#FFFFFF', colors.secondaryText]) }));
-    const driverIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], [colors.secondaryText, '#FFFFFF']) }));
-    if (isSwitching) { return ( <View style={[styles.roleSwitcher, { paddingHorizontal: 28, paddingVertical: 12 }]}><ActivityIndicator size="small" color={colors.primary} /></View> ); }
-    return ( <View style={styles.roleSwitcher}><Animated.View style={[styles.rolePill, pillStyle]} /><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(false)} disabled={!isDriver}><Animated.View><Ionicons name="person-outline" size={20} style={passengerIconStyle} /></Animated.View></TouchableOpacity><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(true)} disabled={isDriver}><Animated.View><Ionicons name="car-sport-outline" size={20} style={driverIconStyle} /></Animated.View></TouchableOpacity></View> );
-};
-
+const RoleSwitcher = ({ role, onSwitch, isSwitching }) => { const { colors } = useTheme(); const styles = getStyles(colors); const isDriver = role === 'driver'; const switchValue = useSharedValue(isDriver ? 1 : 0); useEffect(() => { switchValue.value = withSpring(isDriver ? 1 : 0, { damping: 15, stiffness: 120 }); }, [isDriver]); const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: switchValue.value * 48 }] })); const passengerIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], ['#FFFFFF', colors.secondaryText]) })); const driverIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], [colors.secondaryText, '#FFFFFF']) })); if (isSwitching) { return ( <View style={[styles.roleSwitcher, { paddingHorizontal: 28, paddingVertical: 12 }]}><ActivityIndicator size="small" color={colors.primary} /></View> ); } return ( <View style={styles.roleSwitcher}><Animated.View style={[styles.rolePill, pillStyle]} /><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(false)} disabled={!isDriver}><Animated.View><Ionicons name="person-outline" size={20} style={passengerIconStyle} /></Animated.View></TouchableOpacity><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(true)} disabled={isDriver}><Animated.View><Ionicons name="car-sport-outline" size={20} style={driverIconStyle} /></Animated.View></TouchableOpacity></View> ); };
 const AnimatedBlock = ({ children, delay }) => ( <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay }} >{children}</MotiView> );
-
-const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => {
-    const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme);
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>);
-};
-
-const AddCommentModal = ({ visible, onClose, onCommentSubmit, onCancelTransfer }) => {
-    const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme);
-    const [comment, setComment] = useState('');
-
-    // ✅ ВИПРАВЛЕННЯ №2: Очищення коментаря при відкритті вікна
-    useEffect(() => {
-        if (visible) {
-            setComment('');
-        }
-    }, [visible]);
-
-    const handleSendComment = () => { onCommentSubmit(comment); };
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackdrop}><Pressable style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Ionicons name="pencil-outline" size={48} color={colors.primary} style={{ marginBottom: 16 }} /><Text style={styles.modalTitle}>{t('addCommentModal.title')}</Text><Text style={styles.modalSubtitle}>{t('addCommentModal.subtitle')}</Text><TextInput style={styles.modalCommentInput} placeholder={t('addCommentModal.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline /><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}><Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text></TouchableOpacity></View><TouchableOpacity style={styles.modalDestructiveButton} onPress={onCancelTransfer}><Text style={styles.modalDestructiveButtonText}>{t('addCommentModal.cancelTransfer')}</Text></TouchableOpacity></Pressable></KeyboardAvoidingView></Modal>);
-};
-
-const TransferSuccessModal = ({ visible, onClose, onViewTransfers }) => {
-    const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme);
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} style={{marginBottom: 16}} /><Text style={styles.modalTitle}>{t('transferSuccess.title')}</Text><Text style={styles.modalSubtitle}>{t('transferSuccess.subtitle')}</Text><View style={{width: '100%'}}><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}><Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text></TouchableOpacity></View></View></View></Modal>);
-};
-
-const PassengerSelectorModal = ({ visible, onClose, passengerCounts, setPassengerCounts }) => {
-    const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme);
-    const updateCount = (type, amount) => setPassengerCounts(prev => ({ ...prev, [type]: Math.max(type === 'adults' ? 1 : 0, prev[type] + amount) }));
-    const PassengerRow = ({ label, sublabel, count, onUpdate, minCount = 0 }) => {
-        return (<View style={styles.passengerRow}><View><Text style={styles.passengerLabel}>{label}</Text><Text style={styles.passengerSublabel}>{sublabel}</Text></View><View style={styles.passengerCounter}><TouchableOpacity onPress={() => onUpdate(-1)} disabled={count <= minCount}><Ionicons name="remove-circle" size={32} color={count <= minCount ? colors.border : colors.primary} /></TouchableOpacity><Text style={styles.passengerCountText}>{count}</Text><TouchableOpacity onPress={() => onUpdate(1)}><Ionicons name="add-circle" size={32} color={colors.primary} /></TouchableOpacity></View></View>);
-    };
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.modalBackdrop} onPress={onClose}><Pressable style={styles.modalContent}><Text style={styles.modalTitle}>{t('passengers.title')}</Text><PassengerRow label={t('passengers.adults')} sublabel={t('passengers.adultsAge')} count={passengerCounts.adults} onUpdate={(amount) => updateCount('adults', amount)} minCount={1} /><PassengerRow label={t('passengers.children')} sublabel={t('passengers.childrenAge')} count={passengerCounts.children} onUpdate={(amount) => updateCount('children', amount)} /><PassengerRow label={t('passengers.infants')} sublabel={t('passengers.infantsAge')} count={passengerCounts.infants} onUpdate={(amount) => updateCount('infants', amount)} /><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onClose}><Text style={styles.modalPrimaryButtonText}>{t('common.done')}</Text></TouchableOpacity></Pressable></Pressable></Modal>);
-};
-
-const GradientCard = ({ children, style }) => {
-    const { colors, theme } = useTheme(); const styles = getStyles(colors, theme);
-    const gradientColors = theme === 'light' ? ['#FFFFFF', '#F7F7F7'] : [colors.card, '#2C2C2E'];
-    return (<LinearGradient colors={gradientColors} style={[styles.card, style]}>{children}</LinearGradient>);
-};
-
-const InputRow = forwardRef(({ icon, placeholderKey, value, onChangeText, onClear, style, keyboardType, hasError, errorMessage }, ref) => {
-    const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme);
-    const shake = useSharedValue(0);
-    const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
-    useImperativeHandle(ref, () => ({ shake: () => { shake.value = withSequence( withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(0, { duration: 50 }) ); }, }));
-    return ( <View style={style}><Animated.View style={[styles.inputRow, hasError && styles.errorHighlight, animatedStyle]}><Ionicons name={icon} size={20} color={colors.secondaryText} /><TextInput placeholder={t(placeholderKey)} placeholderTextColor={colors.secondaryText} style={styles.textInput} value={value} onChangeText={onChangeText} keyboardType={keyboardType || 'default'} />{value?.length > 0 && ( <TouchableOpacity onPress={onClear} style={styles.clearIcon}><Ionicons name="close-circle" size={20} color={colors.secondaryText} /></TouchableOpacity> )}</Animated.View>{errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}</View> );
-});
+const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>); };
+const AddCommentModal = ({ visible, onClose, onCommentSubmit, onCancelTransfer }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); const [comment, setComment] = useState(''); useEffect(() => { if (visible) { setComment(''); } }, [visible]); const handleSendComment = () => { onCommentSubmit(comment); }; return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackdrop}><Pressable style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Ionicons name="pencil-outline" size={48} color={colors.primary} style={{ marginBottom: 16 }} /><Text style={styles.modalTitle}>{t('addCommentModal.title')}</Text><Text style={styles.modalSubtitle}>{t('addCommentModal.subtitle')}</Text><TextInput style={styles.modalCommentInput} placeholder={t('addCommentModal.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline /><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('addCommentModal.skipButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={handleSendComment}><Text style={styles.modalPrimaryButtonText}>{t('addCommentModal.sendButton')}</Text></TouchableOpacity></View><TouchableOpacity style={styles.modalDestructiveButton} onPress={onCancelTransfer}><Text style={styles.modalDestructiveButtonText}>{t('addCommentModal.cancelTransfer')}</Text></TouchableOpacity></Pressable></KeyboardAvoidingView></Modal>); };
+const TransferSuccessModal = ({ visible, onClose, onViewTransfers }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><Ionicons name="checkmark-circle-outline" size={64} color={'#4CAF50'} style={{marginBottom: 16}} /><Text style={styles.modalTitle}>{t('transferSuccess.title')}</Text><Text style={styles.modalSubtitle}>{t('transferSuccess.subtitle')}</Text><View style={{width: '100%'}}><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onViewTransfers}><Text style={styles.modalPrimaryButtonText}>{t('transferSuccess.viewTransfersButton')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalFullWidthSecondaryButton} onPress={onClose}><Text style={styles.modalSecondaryButtonText}>{t('transferSuccess.closeButton')}</Text></TouchableOpacity></View></View></View></Modal>); };
+const PassengerSelectorModal = ({ visible, onClose, passengerCounts, setPassengerCounts }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); const updateCount = (type, amount) => setPassengerCounts(prev => ({ ...prev, [type]: Math.max(type === 'adults' ? 1 : 0, prev[type] + amount) })); const PassengerRow = ({ label, sublabel, count, onUpdate, minCount = 0 }) => { return (<View style={styles.passengerRow}><View><Text style={styles.passengerLabel}>{label}</Text><Text style={styles.passengerSublabel}>{sublabel}</Text></View><View style={styles.passengerCounter}><TouchableOpacity onPress={() => onUpdate(-1)} disabled={count <= minCount}><Ionicons name="remove-circle" size={32} color={count <= minCount ? colors.border : colors.primary} /></TouchableOpacity><Text style={styles.passengerCountText}>{count}</Text><TouchableOpacity onPress={() => onUpdate(1)}><Ionicons name="add-circle" size={32} color={colors.primary} /></TouchableOpacity></View></View>); }; return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.modalBackdrop} onPress={onClose}><Pressable style={styles.modalContent}><Text style={styles.modalTitle}>{t('passengers.title')}</Text><PassengerRow label={t('passengers.adults')} sublabel={t('passengers.adultsAge')} count={passengerCounts.adults} onUpdate={(amount) => updateCount('adults', amount)} minCount={1} /><PassengerRow label={t('passengers.children')} sublabel={t('passengers.childrenAge')} count={passengerCounts.children} onUpdate={(amount) => updateCount('children', amount)} /><PassengerRow label={t('passengers.infants')} sublabel={t('passengers.infantsAge')} count={passengerCounts.infants} onUpdate={(amount) => updateCount('infants', amount)} /><TouchableOpacity style={styles.modalFullWidthPrimaryButton} onPress={onClose}><Text style={styles.modalPrimaryButtonText}>{t('common.done')}</Text></TouchableOpacity></Pressable></Pressable></Modal>); };
+const GradientCard = ({ children, style }) => { const { colors, theme } = useTheme(); const styles = getStyles(colors, theme); const gradientColors = theme === 'light' ? ['#FFFFFF', '#F7F7F7'] : [colors.card, '#2C2C2E']; return (<LinearGradient colors={gradientColors} style={[styles.card, style]}>{children}</LinearGradient>); };
+const InputRow = forwardRef(({ icon, placeholderKey, value, onChangeText, onClear, style, keyboardType, hasError, errorMessage }, ref) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); const shake = useSharedValue(0); const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] })); useImperativeHandle(ref, () => ({ shake: () => { shake.value = withSequence( withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(0, { duration: 50 }) ); }, })); return ( <View style={style}><Animated.View style={[styles.inputRow, hasError && styles.errorHighlight, animatedStyle]}><Ionicons name={icon} size={20} color={colors.secondaryText} /><TextInput placeholder={t(placeholderKey)} placeholderTextColor={colors.secondaryText} style={styles.textInput} value={value} onChangeText={onChangeText} keyboardType={keyboardType || 'default'} />{value?.length > 0 && ( <TouchableOpacity onPress={onClear} style={styles.clearIcon}><Ionicons name="close-circle" size={20} color={colors.secondaryText} /></TouchableOpacity> )}</Animated.View>{errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}</View> ); });
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function HomeScreen({ navigation }) {
@@ -223,11 +173,19 @@ export default function HomeScreen({ navigation }) {
         } catch (error) { console.error("Error fetching profile:", error.message); } finally { setLoadingProfile(false); }
     }, [session]);
 
+    // ✅ ЗМІНА №2: Розширюємо функцію очищення форми
     const clearForm = useCallback(() => {
-        setFromLocation({ fullText: '', city: '', region: '', country: '' }); setToLocation({ fullText: '', city: '', region: '', country: '' });
-        setFlightNumber(''); setLuggageInfo(''); setWithPet(false); setMeetWithSign(false);
-        setPassengerCounts({ adults: 1, children: 0, infants: 0 }); setErrors({});
-    }, [setFromLocation, setToLocation, setFlightNumber, setLuggageInfo, setWithPet, setMeetWithSign, setPassengerCounts]);
+        setFromLocation({ fullText: '', city: '', region: '', country: '' });
+        setToLocation({ fullText: '', city: '', region: '', country: '' });
+        setFlightNumber('');
+        setLuggageInfo('');
+        setWithPet(false);
+        setMeetWithSign(false);
+        setSelectedDate(new Date()); // Скидаємо дату
+        setTransferType('group'); // Скидаємо тип трансферу до дефолтного
+        setPassengerCounts({ adults: 1, children: 0, infants: 0 });
+        setErrors({});
+    }, [setFromLocation, setToLocation, setFlightNumber, setLuggageInfo, setWithPet, setMeetWithSign, setPassengerCounts, setSelectedDate, setTransferType]);
     
     const handleTextChange = useCallback((text, field) => {
         const setter = field === 'fromLocation' ? setFromLocation : setToLocation;
@@ -299,13 +257,17 @@ export default function HomeScreen({ navigation }) {
             <AuthPromptModal visible={isAuthModalVisible} onClose={() => setAuthModalVisible(false)} onLogin={() => { setAuthModalVisible(false); navigation.navigate('LoginScreen'); }} onRegister={() => { setAuthModalVisible(false); navigation.navigate('RegistrationScreen'); }} />
             <AddCommentModal visible={isCommentModalVisible} onClose={() => handleCommentSubmit('')} onCommentSubmit={handleCommentSubmit} onCancelTransfer={handleCancelTransfer} />
             
-            {/* ✅ ВИПРАВЛЕННЯ №3: Закриття вікна при переході */}
             <TransferSuccessModal 
                 visible={isSuccessModalVisible} 
-                onClose={() => { setSuccessModalVisible(false); clearForm(); } } 
+                // ✅ ЗМІНА №3: Додаємо очищення форми при закритті вікна
+                onClose={() => { 
+                    setSuccessModalVisible(false); 
+                    clearForm(); 
+                }} 
                 onViewTransfers={() => {
-                    setSuccessModalVisible(false); // Спочатку закриваємо вікно
-                    navigation.navigate('TransfersTab'); // Потім переходимо
+                    setSuccessModalVisible(false);
+                    clearForm(); // І при переході
+                    navigation.navigate('TransfersTab');
                 }} 
             />
 
@@ -321,7 +283,6 @@ export default function HomeScreen({ navigation }) {
                                     <Logo width={40} height={40} />
                                     {profile?.is_driver && ( <RoleSwitcher role={profile.role} onSwitch={handleRoleSwitch} isSwitching={isSwitchingRole} /> )}
                                     <TouchableOpacity onPress={() => session?.user ? navigation.navigate('ProfileTab') : navigation.navigate('Auth')}>
-                                        {/* ✅ ВИПРАВЛЕННЯ №1: Дефолтний аватар */}
                                         {loadingProfile ? (
                                             <ActivityIndicator size="small" style={{width: 40, height: 40}} />
                                         ) : (

@@ -116,7 +116,8 @@
     "call": "Call",
     "confirmCallTitle": "Call the driver?",
     "loginToWrite": "Please log in to your account to message the driver.",
-    "carInfo": "Car"
+    "carInfo": "Car",
+    "years": "year"
   },
   "settings": {
     "title": "Settings",
@@ -257,7 +258,7 @@
   },
   "transfersScreen": {
     "title": "My Transfers",
-    "emptyState": "You have no created requests yet.",
+    "emptyState": "Add your first transfer — and off you go!",
     "writeButton": "Message",
     "archiveTitle": "Transfer Archive",
     "finalPrice": "Final price",
@@ -308,8 +309,8 @@
     "cardDate": "MMMM D, HH:mm"
   },
   "onboarding": {
-    "welcomeTitle": "Welcome!",
-    "welcomeText": "Our app will help you easily book a transfer.",
+    "welcomeTitle": "Welcome to AirChat!",
+    "welcomeText": "Use our platform to plan trips, book airport transfers and communicate with drivers, all in one place.",
     "configureTitle": "Configure your trip",
     "configureText": "Choose the date, time, number of passengers, and luggage.",
     "readyTitle": "All set!",
@@ -331,7 +332,7 @@
   },
   "chatList": {
     "title": "Messages",
-    "noChats": "You have no chats yet.",
+    "noChats": "You do not have any active chats yet.",
     "deleteTitle": "Delete chat?",
     "deleteBody": "Are you sure you want to delete the chat with {{name}}? The entire chat history will be lost.",
     "favorites": "Favorites",

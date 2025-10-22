@@ -1,3 +1,5 @@
+// IndividualChatScreen.js
+
 import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import {
     StyleSheet, Text, View, SafeAreaView, FlatList, TextInput, TouchableOpacity,
@@ -20,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { MotiView, AnimatePresence } from 'moti';
-import TypingIndicator from '../app/components/TypingIndicator.js';
+import TypingIndicator from '../app/components/TypingIndicator.js'; // Припускається, що шлях правильний
 import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +30,86 @@ import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import ImageViewing from 'react-native-image-viewing'; 
 
-// --- ДОПОМІЖНІ КОМПОНЕНТИ (без змін) ---
+// --- КОНСТАНТИ ТА ДОПОМІЖНІ ФУНКЦІЇ ---
+const LOADING_FADE_DELAY = 300; 
+
+const formatUserStatus = (isOnline, lastSeen, t) => { 
+    if (isOnline) return t('chat.onlineStatus'); 
+    if (!lastSeen) return t('chat.offlineStatus'); 
+    const lsMoment = moment(lastSeen); 
+    if (!lsMoment.isValid()) return t('chat.offlineStatus'); 
+    if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); 
+    if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); 
+    if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); 
+    return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); 
+};
+
+// --- СТИЛІ (Для цілісності, припускається, що getStyles визначений) ---
+// (Стилі getStyles... тут має бути функція, яка повертає StyleSheet.create)
+const getStyles = (colors) => StyleSheet.create({
+    selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
+    selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
+    selectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 5, backgroundColor: colors.card },
+    selectionCountText: { color: colors.text, fontSize: 18, fontWeight: 'bold' },
+    dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
+    dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
+    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center',  
+        justifyContent: 'space-between',
+        paddingHorizontal: 12, 
+        paddingVertical: 5, 
+        borderBottomWidth: 1, 
+        borderBottomColor: colors.border, 
+        paddingTop: 0, 
+        backgroundColor: colors.card 
+    },
+    headerUserInfo: { alignItems: 'center', paddingHorizontal: 10, },
+    headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
+    headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
+    headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
+    messageContainer: { marginVertical: 2, paddingHorizontal: 0},
+    messageRow: { flexDirection: 'row', alignItems: 'center' },
+    messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
+    myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
+    otherMessageBubble: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
+    messageText: { color: colors.text, fontSize: 15, lineHeight: 20 },
+    myMessageText: { color: '#FFFFFF' },
+    messageImage: { width: 200, height: 150, borderRadius: 15 },
+    imageLoadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 15 },
+    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 15 },
+    messageMap: { width: 220, height: 150, borderRadius: 15 },
+    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 4, alignItems: 'center', gap: 4 },
+    messageInfoOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+    messageTime: { color: colors.secondaryText, fontSize: 11 },
+    myMessageTime: { color: '#FFFFFF90' },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopColor: colors.border, backgroundColor: colors.card, borderRadius: 30, paddingHorizontal:10, paddingVertical:5, },
+    textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 0, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
+    sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
+    reactionsContainer: { flexDirection: 'row', marginTop: -8, marginLeft: 10, marginRight: 10, zIndex: 10, position: 'relative' },
+    reactionBadge: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginRight: 4, borderWidth: 1, borderColor: colors.border, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
+    reactionBadgeText: { fontSize: 12, color: colors.text },
+    modalBackdropAttachments: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+    modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+    modalButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
+    modalButtonText: { color: colors.primary, fontSize: 18, marginLeft: 15 },
+    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+    loadingText: { color: '#fff', marginTop: 10, fontSize: 16 },
+    actionSheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)', },
+    actionSheetContainer: { marginHorizontal: 10, },
+    reactionPickerContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 8, justifyContent: 'space-around', alignItems: 'center', marginBottom: 8, elevation: 4, shadowOpacity: 0.1, shadowRadius: 5, },
+    actionButtonsContainer: { backgroundColor: colors.card, borderRadius: 20, },
+    actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, },
+    actionButtonText: { color: colors.text, fontSize: 18, marginLeft: 15, },
+    cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
+    cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
+});
+// --- КІНЕЦЬ СТИЛІВ ---
+
+// --- ДОПОМІЖНІ КОМПОНЕНТИ (ПОВТОРЮЮТЬСЯ) ---
+// (Всі memo компоненти залишаються тут для цілісності)
+
 const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -87,7 +168,6 @@ const ImageViewerModal = memo(({ visible, uri, onClose }) => {
     );
 });
 
-
 const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -119,24 +199,21 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
     const [isPressed, setIsPressed] = useState(false);
     
     const [isImageLoading, setIsImageLoading] = useState(false);
-    // 💡 ЗМІНА (КЕШУВАННЯ): Додаємо стан для відстеження, чи завантажено з кешу
     const [isImageCached, setIsImageCached] = useState(false);
 
     const handlePress = () => { if (selectionMode) { if (isMyMessage) onSelect(message.id); return; } const now = Date.now(); const DOUBLE_PRESS_DELAY = 300; if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); } lastTap.current = now; };
     const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
     
+    // 💡 Використовуємо View, якщо isInitialLoad === false для статичності
+    const Wrapper = isInitialLoad ? MotiView : View;
     const animationProps = isInitialLoad
-        ? { from: { opacity: 1, scale: 1, translateX: 0 } } 
-        : { from: { opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 } }; 
+        ? { from: { opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 }, animate: { opacity: 1, scale: 1, translateX: 0 }, transition: { type: 'timing', duration: 250 } } 
+        : {}; 
 
     return (
         <Pressable onPressIn={() => setIsPressed(true)} onPressOut={() => setIsPressed(false)} onLongPress={() => onLongPress(message)} onPress={handlePress} style={styles.messageContainer}>
-            <MotiView 
-                {...animationProps} 
-                animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0 }} 
-                transition={{ type: 'timing', duration: 250 }}
-            >
+            <Wrapper {...animationProps}>
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
                     <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
@@ -150,19 +227,16 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
                                         style={styles.messageImage} 
                                         contentFit="cover" 
                                         transition={300} 
-                                        // 💡 ЗМІНА (КЕШУВАННЯ): Повертаємо `cachePolicy`
                                         cachePolicy="disk" 
                                         placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}
                                         onLoadStart={() => setIsImageLoading(true)}
                                         onLoadEnd={() => setIsImageLoading(false)}
-                                        // 💡 ЗМІНА (КЕШУВАННЯ): Перевіряємо, чи зображення з кешу
                                         onLoad={(e) => {
                                             if (e.cacheType === 'disk' || e.cacheType === 'memory') {
                                                 setIsImageCached(true);
                                             }
                                         }}
                                     />
-                                    {/* 💡 ЗМІНА (КЕШУВАННЯ): Покращена логіка індикатора */}
                                     {isImageLoading && !isImageCached && message.status !== 'uploading' && (
                                         <View style={styles.imageLoadingOverlay}>
                                             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -178,10 +252,11 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
                         {message.reactions && message.reactions.length > 0 && (<View style={[styles.reactionsContainer, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>{message.reactions.map(r => ( <View key={r.emoji} style={styles.reactionBadge}><Text style={styles.reactionBadgeText}>{r.emoji} {r.count}</Text></View> ))}</View>)}
                     </View>
                 </View>
-            </MotiView>
+            </Wrapper>
         </Pressable>
     );
 });
+
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function IndividualChatScreen() {
@@ -210,8 +285,10 @@ export default function IndividualChatScreen() {
     const [isSendingLocation, setIsSendingLocation] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [isInitialLoad, setIsInitialLoad] = useState(false); 
     const [isRecipientOnline, setIsRecipientOnline] = useState(false);
+    const [isRoomSetup, setIsRoomSetup] = useState(false);
+
     
     const flatListRef = useRef(null);
     const channelRef = useRef(null);
@@ -288,6 +365,7 @@ export default function IndividualChatScreen() {
         } catch (e) { console.error("Error marking as read:", e.message); }
     }, [fetchUnreadCount]);
     
+    // 💡 ОНОВЛЕНО: Функція завантаження з плавною затримкою
     const fetchMessages = useCallback(async (roomId) => {
         if (!roomId) return;
         setIsRefreshing(true);
@@ -304,37 +382,66 @@ export default function IndividualChatScreen() {
         }
         await markAsRead(roomId);
         setIsRefreshing(false);
+        
+        // Плавне зникнення індикатора
+        setTimeout(() => {
+            setIsLoading(false); 
+        }, 300); 
+
     }, [markAsRead]);
 
+    // 💡 EFFECT: ЕТАП 1 - Налаштування кімнати (Швидка підготовка UI)
     useEffect(() => {
         let isMounted = true;
-        let profileSub;
         
-        const setupRoomAndSubscriptions = async () => {
-            if (!session || !recipientId) { setIsLoading(false); return; }
-            let roomId = currentRoomId;
+        const setupRoom = async () => {
+            if (!session || !recipientId) { return; }
+            let roomId = initialRoomId;
+            
             if (!roomId) {
                 try {
                     const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId });
                     if (!isMounted) return;
                     roomId = data;
                     setCurrentRoomId(roomId);
-                } catch (e) { console.error("Error finding/creating room:", e); setIsLoading(false); return; }
+                } catch (e) { console.error("Error finding/creating room:", e); return; }
             }
-            if (!roomId) { setIsLoading(false); return; }
+            if (!roomId) { return; }
             
             if (isMounted) {
-                await fetchMessages(roomId);
-                setIsLoading(false); 
-                setTimeout(() => {
-                    if (isMounted) setIsInitialLoad(false);
-                }, 300); 
+                setCurrentRoomId(roomId);
+                setIsRoomSetup(true); // UI готовий до рендеру Header та Input
             }
+        };
+        
+        setupRoom();
+
+        return () => { 
+            isMounted = false; 
+            const channel = channelRef.current; 
+            if (channel) {
+                 channel.untrack().then(() => supabase.removeChannel(channel)); 
+            }
+        };
+    }, [session, recipientId, initialRoomId]);
+
+    // 💡 EFFECT: ЕТАП 2 - Завантаження даних та підписки (Активація Realtime)
+    useEffect(() => {
+        let isMounted = true;
+        let profileSub;
+        
+        const subscribeToData = async () => {
+            if (!isRoomSetup || !currentRoomId || !session) return;
+            
+            // 2. Завантаження повідомлень
+            await fetchMessages(currentRoomId); 
+            
+            // 3. Налаштування підписок (Активація Realtime)
             
             if (channelRef.current) supabase.removeChannel(channelRef.current);
             
-            const roomChannel = supabase.channel(`room-${roomId}`, { 
-                config: { presence: { key: session.user.id, room: roomId } } 
+            const roomChannel = supabase.channel(`room-${currentRoomId}`, { 
+                config: { presence: { key: session.user.id, room: currentRoomId } } 
             });
             
             channelRef.current = roomChannel;
@@ -344,13 +451,14 @@ export default function IndividualChatScreen() {
                 setIsRecipientOnline(isOnline);
             };
 
+            // 💡 КРИТИЧНО: Повна логіка підписок для Realtime
             roomChannel
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
                     setMessages(currentMessages => {
                         if (payload.new.sender_id !== session.user.id) {
                             if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
                             playSound(receivedSoundRef);
-                            markAsRead(roomId);
+                            markAsRead(currentRoomId);
                             return [payload.new, ...currentMessages];
                         }
                         const optimisticMessageIndex = currentMessages.findIndex(m => m.client_id && m.client_id === payload.new.client_id);
@@ -364,10 +472,11 @@ export default function IndividualChatScreen() {
                         }
                     });
                 })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => setMessages(currentMessages => currentMessages.map(m => m.id === payload.new.id ? payload.new : m)))
-                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => setMessages(currentMessages => currentMessages.map(m => m.id === payload.new.id ? payload.new : m)))
+                .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
                     setMessages(currentMessages => currentMessages.filter(m => m.id !== payload.old.id));
                 })
+                // 💡 МИТТЄВА АКТИВНІСТЬ: Presence Logic
                 .on('presence', { event: 'sync' }, () => {
                     handlePresenceState(roomChannel.presenceState());
                 })
@@ -390,9 +499,9 @@ export default function IndividualChatScreen() {
                 })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
-                        const userPresence = { room: roomId, last_seen: new Date().toISOString() };
-                        await roomChannel.track(userPresence);
-                        handlePresenceState(roomChannel.presenceState());
+                        const userPresence = { room: currentRoomId, last_seen: new Date().toISOString() };
+                        await roomChannel.track(userPresence); // Відстежуємо себе
+                        handlePresenceState(roomChannel.presenceState()); // Оновлюємо стан одразу
                     }
                 });
             
@@ -402,7 +511,9 @@ export default function IndividualChatScreen() {
             }).subscribe();
         };
         
-        setupRoomAndSubscriptions();
+        if (isRoomSetup) {
+            subscribeToData();
+        }
 
         return () => { 
             isMounted = false; 
@@ -412,7 +523,7 @@ export default function IndividualChatScreen() {
                  channel.untrack().then(() => supabase.removeChannel(channel)); 
             }
         };
-    }, [session, recipientId, currentRoomId, fetchMessages, markAsRead]);
+    }, [isRoomSetup, currentRoomId, session, recipientId, fetchMessages, markAsRead, playSound]);
 
     useFocusEffect(useCallback(() => {
         const enterChat = async () => {
@@ -431,11 +542,14 @@ export default function IndividualChatScreen() {
         };
     }, [currentRoomId, session, markAsRead]));
     
+    // 💡 ОНОВЛЕНО: Надсилання повідомлень (Handling errors)
     const sendMessage = useCallback(async (messageData) => {
         if (!currentRoomId || !session) return;
         const { error } = await supabase.from('messages').insert([{ ...messageData, room_id: currentRoomId, sender_id: session.user.id }]);
+        
         if (error) { 
             Alert.alert(t('common.error'), error.message); 
+            // КРИТИЧНО: Видаляємо оптимістичне повідомлення при помилці
             setMessages(prev => prev.filter(m => m.client_id !== messageData.client_id)); 
         } else {
             supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, room_id: currentRoomId, sender_id: session.user.id, message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')), sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}).catch(e => console.error("Push notification function error:", e));
@@ -454,7 +568,6 @@ export default function IndividualChatScreen() {
         await sendMessage({ content: textToSend, client_id: clientId });
     }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound]);
 
-    // Ця функція незмінна, але `pickImage` тепер викликатиме її в циклі
     const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
@@ -547,7 +660,6 @@ export default function IndividualChatScreen() {
         ]);
     }, [selectedMessages, t, handleCancelSelection]);
 
-    // 💡 ЗМІНА (МУЛЬТИВИБІР): Оновлена функція pickImage
     const pickImage = useCallback(async () => { 
         setAttachmentModalVisible(false); 
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); 
@@ -557,19 +669,16 @@ export default function IndividualChatScreen() {
         } 
         const result = await ImagePicker.launchImageLibraryAsync({ 
             quality: 0.8,
-            allowsMultipleSelection: true // 👈 Дозволяємо вибір кількох фото
+            allowsMultipleSelection: true
         }); 
 
         if (!result.canceled && result.assets) {
-            // 💡 Обробляємо кожне вибране зображення в циклі
             for (const asset of result.assets) {
-                // Використовуємо `await`, щоб вони відправлялись по черзі
                 await uploadAndSendImage(asset); 
             }
         } 
     }, [uploadAndSendImage, t]);
 
-    // Функція `takePhoto` залишається без змін, оскільки камера повертає лише 1 фото
     const takePhoto = useCallback(async () => { 
         setAttachmentModalVisible(false); 
         const { status } = await ImagePicker.requestCameraPermissionsAsync(); 
@@ -579,7 +688,6 @@ export default function IndividualChatScreen() {
         } 
         const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); 
         if (!result.canceled) {
-            // result.assets тут завжди буде масивом з одного елемента
             uploadAndSendImage(result.assets[0]); 
         }
     }, [uploadAndSendImage, t]);
@@ -589,7 +697,9 @@ export default function IndividualChatScreen() {
     const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
-    if (isLoading) {
+
+    // 💡 ЕТАП 1 РЕНДЕР: Повний екран завантаження, доки isRoomSetup === true
+    if (!isRoomSetup) {
         return (
             <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
@@ -598,12 +708,13 @@ export default function IndividualChatScreen() {
         );
     }
     
+    // 💡 ЕТАП 2 РЕНДЕР: Статичний UI (Header та Input) відображається
     return (
         <View style={styles.container}> 
             <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
-            <SafeAreaView style={{ flex: 0.1, backgroundColor: colors.card }} /> 
-            
-            
+            <SafeAreaView style={{ flex: 0, backgroundColor: colors.card }} /> 
+            <SafeAreaView style={{ flex: 1}}>
+
                 {selectionMode ? ( <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} /> ) : (
                     <View style={styles.header}>
                         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
@@ -626,38 +737,46 @@ export default function IndividualChatScreen() {
                         </TouchableOpacity>                
                     </View>
                 )}
-                
+
                 <KeyboardAvoidingView 
                     style={{ flex: 1, backgroundColor: 'colors.background' }} 
                     behavior={Platform.OS === "ios" ? "padding" : "height"} 
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 70 : 0}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
                 >
-                    <FlatList
-                        ref={flatListRef}
-                        data={processedData}
-                        inverted
-                        renderItem={({ item }) => {
-                            if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
-                            return <MessageBubble 
-                                message={item} 
-                                currentUserId={session?.user?.id} 
-                                onImagePress={setViewingImageUri} 
-                                onLongPress={handleLongPress} 
-                                onDoubleTap={m => handleReaction('👍', m)} 
-                                onSelect={handleToggleSelection} 
-                                selectionMode={selectionMode} 
-                                isSelected={selectedMessages.has(item.id)}
-                                isInitialLoad={isInitialLoad} 
-                            />;
-                        }}
-                        keyExtractor={item => item.id.toString()}
-                        contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
-                        style={{ flex: 1 }}
-                        initialNumToRender={25}
-                        maxToRenderPerBatch={15}
-                        windowSize={31}
-                        removeClippedSubviews={true}
-                    />
+                    
+                    {isLoading ? (
+                         <View style={[styles.flatList, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+                             <ActivityIndicator size="large" color={colors.primary} />
+                             <Text style={{color: colors.secondaryText, marginTop: 10}}>{t('common.loadingMessages', 'Завантаження повідомлень...')}</Text>
+                         </View>
+                    ) : (
+                        <FlatList
+                            ref={flatListRef}
+                            data={processedData}
+                            inverted
+                            renderItem={({ item }) => {
+                                if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
+                                return <MessageBubble 
+                                    message={item} 
+                                    currentUserId={session?.user?.id} 
+                                    onImagePress={setViewingImageUri} 
+                                    onLongPress={handleLongPress} 
+                                    onDoubleTap={m => handleReaction('👍', m)} 
+                                    onSelect={handleToggleSelection} 
+                                    selectionMode={selectionMode} 
+                                    isSelected={selectedMessages.has(item.id)}
+                                    isInitialLoad={false} // ВИМКНЕНО
+                                />;
+                            }}
+                            keyExtractor={item => item.id.toString()}
+                            contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
+                            style={{ flex: 1 }}
+                            initialNumToRender={15} // Оптимізація
+                            maxToRenderPerBatch={10} // Оптимізація
+                            windowSize={21} // Оптимізація
+                            removeClippedSubviews={true}
+                        />
+                    )}
                  
                     <View style={styles.inputContainer}>
                         <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
@@ -670,7 +789,6 @@ export default function IndividualChatScreen() {
             <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessageForAction} isMyMessage={selectedMessageForAction?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessageForAction?.content || '')} onEdit={() => { setEditingMessage(selectedMessageForAction); setInputText(selectedMessageForAction?.content || ''); textInputRef.current?.focus(); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }} />
             
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
-            
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}>
                 <Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}>
                     <View style={[styles.modalContent, { marginBottom: insets.bottom > 0 ? 0 : 20 }]}> 
@@ -680,98 +798,7 @@ export default function IndividualChatScreen() {
                     </View>
                 </Pressable>
             </Modal>
-            {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
-        </View>
+         </SafeAreaView>   {isSendingLocation && (<View style={styles.loadingOverlay}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{t('chat.fetchingLocation')}</Text></View>)}
+        </View> 
     );
 }
-
-// --- СТИЛІ ---
-const getStyles = (colors) => StyleSheet.create({
-    selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
-    selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
-    selectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === 'android' ? 25 : 5, backgroundColor: colors.card },
-    selectionCountText: { color: colors.text, fontSize: 18, fontWeight: 'bold' },
-    likeButton: { paddingHorizontal: 8 },
-    dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
-    dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
-    container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-    header: { 
-        flexDirection: 'row', 
-        alignItems: 'center',  
-        justifyContent: 'space-between',
-        paddingHorizontal: 12, 
-        paddingVertical: 5, 
-        borderBottomWidth: 1, 
-        borderBottomColor: colors.border, 
-        paddingTop: 0, 
-        backgroundColor: colors.card 
-    },
-    headerUserInfoContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerUserInfo: { 
-        alignItems: 'center',
-        paddingHorizontal: 10,
-    },
-    headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
-    headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
-    headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
-    messageContainer: { marginVertical: 2, paddingHorizontal: 0},
-    messageRow: { flexDirection: 'row', alignItems: 'center' },
-    messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
-    myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
-    otherMessageBubble: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
-    messageText: { color: colors.text, fontSize: 15, lineHeight: 20 },
-    myMessageText: { color: '#FFFFFF' },
-    messageImage: { width: 200, height: 150, borderRadius: 15 },
-    
-    // 💡 ЗМІНА (КЕШУВАННЯ): Стиль залишається, але логіка його показу змінилась
-    imageLoadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.2)',
-        borderRadius: 15
-    },
-
-    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 15 },
-    messageMap: { width: 220, height: 150, borderRadius: 15 },
-    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 4, alignItems: 'center', gap: 4 },
-    messageInfoOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
-    messageTime: { color: colors.secondaryText, fontSize: 11 },
-    myMessageTime: { color: '#FFFFFF90' },
-    inputContainer: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        borderTopColor: colors.border, 
-        backgroundColor: colors.card,
-        borderRadius: 30,
-        paddingHorizontal:10,
-        paddingVertical:10,
-    },
-    textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 0, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
-    sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-    
-    reactionsContainer: { flexDirection: 'row', marginTop: -8, marginLeft: 10, marginRight: 10, zIndex: 10, position: 'relative' },
-    reactionBadge: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginRight: 4, borderWidth: 1, borderColor: colors.border, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
-    reactionBadgeText: { fontSize: 12, color: colors.text },
-    modalBackdropAttachments: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-    modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
-    modalButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
-    modalButtonText: { color: colors.text, fontSize: 18, marginLeft: 15 },
-    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-    loadingText: { color: '#fff', marginTop: 10, fontSize: 16 },
-    actionSheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)', },
-    actionSheetContainer: { marginHorizontal: 10, },
-    reactionPickerContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 8, justifyContent: 'space-around', alignItems: 'center', marginBottom: 8, elevation: 4, shadowOpacity: 0.1, shadowRadius: 5, },
-    reactionEmojiButton: { padding: 4, },
-    reactionEmojiText: { fontSize: 28, },
-    actionButtonsContainer: { backgroundColor: colors.card, borderRadius: 20, },
-    actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, },
-    actionButtonText: { color: colors.text, fontSize: 18, marginLeft: 15, },
-    cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
-    cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
-});

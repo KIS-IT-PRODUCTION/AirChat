@@ -1,8 +1,8 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';import { Platform } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
 
-import ChatListScreen from '../ChatListScreen'; 
-import IndividualChatScreen from '../IndividualChatScreen'; 
+import ChatListScreen from '../ChatListScreen'; // Створимо на наступному кроці
+import IndividualChatScreen from '../IndividualChatScreen'; // І цей теж
 
 const Stack = createStackNavigator();
 
@@ -10,26 +10,11 @@ export default function MessagesStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false,
-        
-        // ОПТИМІЗАЦІЯ: Налаштовуємо анімацію зсуву.
-        animation: 'slide_from_right', 
-
-        // 💡 ВИПРАВЛЕННЯ: presentation:'card' гарантує, що на iOS не буде модального переходу,
-        // а буде перехід зсувом, що є кращим для чату.
-        presentation: 'card', 
+        headerShown: false, // Ми будемо використовувати власні хедери на кожному екрані
       }}
     >
       <Stack.Screen name="ChatList" component={ChatListScreen} />
-      <Stack.Screen 
-        name="IndividualChat" 
-        component={IndividualChatScreen} 
-        options={{
-          // 💡 ВИПРАВЛЕННЯ: Це запобігає появі білого фону/мерехтіння, 
-          // оскільки фон буде прозорим, і відобразиться ваш фон з IndividualChatScreen.
-          contentStyle: { backgroundColor: 'transparent' }, 
-        }}
-      />
+      <Stack.Screen name="IndividualChat" component={IndividualChatScreen} />
     </Stack.Navigator>
   );
 }

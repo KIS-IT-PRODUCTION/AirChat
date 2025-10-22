@@ -26,7 +26,7 @@ import Hyperlink from 'react-native-hyperlink';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-// import * as SplashScreen from 'expo-splash-screen'; // Залишаємо це опціонально, якщо не використовується глобально
+import ImageViewing from 'react-native-image-viewing'; 
 
 // --- ДОПОМІЖНІ КОМПОНЕНТИ (без змін) ---
 const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
@@ -73,9 +73,20 @@ const DateSeparator = memo(({ date }) => {
 });
 
 const ImageViewerModal = memo(({ visible, uri, onClose }) => {
-    const { colors } = useTheme(); const styles = getStyles(colors); if (!uri) return null;
-    return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><Pressable style={styles.imageViewerBackdrop} onPress={onClose}><Image source={{ uri }} style={styles.fullScreenImage} contentFit="contain" /><TouchableOpacity style={styles.closeButton} onPress={onClose}><Ionicons name="close-circle" size={32} color="white" /></TouchableOpacity></Pressable></Modal>);
+    const images = useMemo(() => (uri ? [{ uri }] : []), [uri]);
+    if (!uri) return null;
+
+    return (
+        <ImageViewing
+            images={images}
+            imageIndex={0}
+            visible={visible}
+            onRequestClose={onClose}
+            animationType="fade"
+        />
+    );
 });
+
 
 const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect }) => {
     const { colors } = useTheme();
@@ -103,21 +114,64 @@ const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCop
     );
 });
 
-const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
+const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected, isInitialLoad }) => {
     const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const isMyMessage = message.sender_id === currentUserId; const lastTap = useRef(0);
     const [isPressed, setIsPressed] = useState(false);
+    
+    const [isImageLoading, setIsImageLoading] = useState(false);
+    // 💡 ЗМІНА (КЕШУВАННЯ): Додаємо стан для відстеження, чи завантажено з кешу
+    const [isImageCached, setIsImageCached] = useState(false);
+
     const handlePress = () => { if (selectionMode) { if (isMyMessage) onSelect(message.id); return; } const now = Date.now(); const DOUBLE_PRESS_DELAY = 300; if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); } lastTap.current = now; };
     const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
+    
+    const animationProps = isInitialLoad
+        ? { from: { opacity: 1, scale: 1, translateX: 0 } } 
+        : { from: { opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 } }; 
+
     return (
         <Pressable onPressIn={() => setIsPressed(true)} onPressOut={() => setIsPressed(false)} onLongPress={() => onLongPress(message)} onPress={handlePress} style={styles.messageContainer}>
-            <MotiView from={{ opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 }} animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0 }} transition={{ type: 'timing', duration: 250 }}>
+            <MotiView 
+                {...animationProps} 
+                animate={{ opacity: 1, scale: isPressed ? 0.97 : 1, translateX: 0 }} 
+                transition={{ type: 'timing', duration: 250 }}
+            >
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
                     <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
                         <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
                             {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
-                            {message.image_url && (<TouchableOpacity onPress={() => onImagePress(message.image_url)}><Image source={{ uri: message.image_url }} style={styles.messageImage} contentFit="cover" transition={300} cachePolicy="disk" placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}/>{message.status === 'uploading' && <UploadingIndicator />}</TouchableOpacity>)}
+                            
+                            {message.image_url && (
+                                <TouchableOpacity onPress={() => onImagePress(message.image_url)}>
+                                    <Image 
+                                        source={{ uri: message.image_url }} 
+                                        style={styles.messageImage} 
+                                        contentFit="cover" 
+                                        transition={300} 
+                                        // 💡 ЗМІНА (КЕШУВАННЯ): Повертаємо `cachePolicy`
+                                        cachePolicy="disk" 
+                                        placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}
+                                        onLoadStart={() => setIsImageLoading(true)}
+                                        onLoadEnd={() => setIsImageLoading(false)}
+                                        // 💡 ЗМІНА (КЕШУВАННЯ): Перевіряємо, чи зображення з кешу
+                                        onLoad={(e) => {
+                                            if (e.cacheType === 'disk' || e.cacheType === 'memory') {
+                                                setIsImageCached(true);
+                                            }
+                                        }}
+                                    />
+                                    {/* 💡 ЗМІНА (КЕШУВАННЯ): Покращена логіка індикатора */}
+                                    {isImageLoading && !isImageCached && message.status !== 'uploading' && (
+                                        <View style={styles.imageLoadingOverlay}>
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        </View>
+                                    )}
+                                    {message.status === 'uploading' && <UploadingIndicator />}
+                                </TouchableOpacity>
+                            )}
+
                             {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
                             <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
                         </View>
@@ -156,7 +210,7 @@ export default function IndividualChatScreen() {
     const [isSendingLocation, setIsSendingLocation] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isRecipientOnline, setIsRecipientOnline] = useState(false);
     
     const flatListRef = useRef(null);
@@ -168,15 +222,12 @@ export default function IndividualChatScreen() {
     const lastSeenRef = useRef(initialLastSeen);
     const appState = useRef(AppState.currentState);
 
-    // Функція форматування статусу
     const formatUserStatus = useCallback((isOnline, lastSeen) => { 
         if (isOnline) return t('chat.onlineStatus'); 
         if (!lastSeen) return t('chat.offlineStatus'); 
         const lsMoment = moment(lastSeen); 
         if (!lsMoment.isValid()) return t('chat.offlineStatus'); 
-        
         if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); 
-        
         if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); 
         if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); 
         return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); 
@@ -255,7 +306,6 @@ export default function IndividualChatScreen() {
         setIsRefreshing(false);
     }, [markAsRead]);
 
-    // ВИПРАВЛЕННЯ: Головний useEffect для підписок та початкового завантаження
     useEffect(() => {
         let isMounted = true;
         let profileSub;
@@ -273,13 +323,14 @@ export default function IndividualChatScreen() {
             }
             if (!roomId) { setIsLoading(false); return; }
             
-            // 1. Початкове завантаження повідомлень
             if (isMounted) {
                 await fetchMessages(roomId);
                 setIsLoading(false); 
+                setTimeout(() => {
+                    if (isMounted) setIsInitialLoad(false);
+                }, 300); 
             }
             
-            // 2. Налаштування підписок (Presence, Broadcast, Changes)
             if (channelRef.current) supabase.removeChannel(channelRef.current);
             
             const roomChannel = supabase.channel(`room-${roomId}`, { 
@@ -357,14 +408,12 @@ export default function IndividualChatScreen() {
             isMounted = false; 
             const channel = channelRef.current; 
             if (profileSub) supabase.removeChannel(profileSub); 
-            
             if (channel) {
                  channel.untrack().then(() => supabase.removeChannel(channel)); 
             }
         };
     }, [session, recipientId, currentRoomId, fetchMessages, markAsRead]);
 
-    // ВИПРАВЛЕННЯ: useFocusEffect тільки для оновлення статусу та прочитання
     useFocusEffect(useCallback(() => {
         const enterChat = async () => {
              if (session) {
@@ -374,17 +423,13 @@ export default function IndividualChatScreen() {
                  markAsRead(currentRoomId);
              }
         };
-
         enterChat();
-        
         return () => {
             if (session) {
                 supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
             }
         };
     }, [currentRoomId, session, markAsRead]));
-    
-    // --- РЕШТА ЛОГІКИ БЕЗ ЗМІН ---
     
     const sendMessage = useCallback(async (messageData) => {
         if (!currentRoomId || !session) return;
@@ -409,6 +454,7 @@ export default function IndividualChatScreen() {
         await sendMessage({ content: textToSend, client_id: clientId });
     }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound]);
 
+    // Ця функція незмінна, але `pickImage` тепер викликатиме її в циклі
     const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
@@ -501,15 +547,48 @@ export default function IndividualChatScreen() {
         ]);
     }, [selectedMessages, t, handleCancelSelection]);
 
-    const pickImage = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.galleryPermissionDenied')); return; } const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
-    const takePhoto = useCallback(async () => { setAttachmentModalVisible(false); const { status } = await ImagePicker.requestCameraPermissionsAsync(); if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.cameraPermissionDenied')); return; } const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); if (!result.canceled) uploadAndSendImage(result.assets[0]); }, [uploadAndSendImage, t]);
+    // 💡 ЗМІНА (МУЛЬТИВИБІР): Оновлена функція pickImage
+    const pickImage = useCallback(async () => { 
+        setAttachmentModalVisible(false); 
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync(); 
+        if (status !== 'granted') { 
+            Alert.alert(t('chat.permissionDeniedTitle'), t('chat.galleryPermissionDenied')); 
+            return; 
+        } 
+        const result = await ImagePicker.launchImageLibraryAsync({ 
+            quality: 0.8,
+            allowsMultipleSelection: true // 👈 Дозволяємо вибір кількох фото
+        }); 
+
+        if (!result.canceled && result.assets) {
+            // 💡 Обробляємо кожне вибране зображення в циклі
+            for (const asset of result.assets) {
+                // Використовуємо `await`, щоб вони відправлялись по черзі
+                await uploadAndSendImage(asset); 
+            }
+        } 
+    }, [uploadAndSendImage, t]);
+
+    // Функція `takePhoto` залишається без змін, оскільки камера повертає лише 1 фото
+    const takePhoto = useCallback(async () => { 
+        setAttachmentModalVisible(false); 
+        const { status } = await ImagePicker.requestCameraPermissionsAsync(); 
+        if (status !== 'granted') { 
+            Alert.alert(t('chat.permissionDeniedTitle'), t('chat.cameraPermissionDenied')); 
+            return; 
+        } 
+        const result = await ImagePicker.launchCameraAsync({ quality: 0.8 }); 
+        if (!result.canceled) {
+            // result.assets тут завжди буде масивом з одного елемента
+            uploadAndSendImage(result.assets[0]); 
+        }
+    }, [uploadAndSendImage, t]);
+
     const handleTyping = useCallback((text) => { setInputText(text); if (channelRef.current && channelRef.current.state === 'joined') { try { channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
 
     const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
-
-    // --- ПЛАВНЕ ВІДКРИТТЯ: Повноекранний індикатор завантаження ---
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -518,15 +597,12 @@ export default function IndividualChatScreen() {
             </SafeAreaView>
         );
     }
-    // ----------------------------------------------------------------
-
+    
     return (
-        // --- ПЛАВНЕ ВІДКРИТТЯ: Весь контейнер має фон ---
-        <View style={styles.container}>
+        <View style={styles.container}> 
             <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
-            <SafeAreaView style={{ flex: 0, backgroundColor: colors.card }} /> 
+            <SafeAreaView style={{ flex: 0.1, backgroundColor: colors.card }} /> 
             
-            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
             
                 {selectionMode ? ( <SelectionHeader selectionCount={selectedMessages.size} onCancel={handleCancelSelection} onDelete={handleDeleteSelected} colors={colors} /> ) : (
                     <View style={styles.header}>
@@ -551,10 +627,6 @@ export default function IndividualChatScreen() {
                     </View>
                 )}
                 
-                {/* Використовуємо `View` як контейнер для FlatList, 
-                    а `KeyboardAvoidingView` застосовуємо до цієї View та поля введення. 
-                    На iOS ми використовуємо 'padding', що вимагає, щоб `KeyboardAvoidingView` охоплював елемент.
-                */}
                 <KeyboardAvoidingView 
                     style={{ flex: 1, backgroundColor: 'colors.background' }} 
                     behavior={Platform.OS === "ios" ? "padding" : "height"} 
@@ -566,7 +638,17 @@ export default function IndividualChatScreen() {
                         inverted
                         renderItem={({ item }) => {
                             if (item.type === 'date_separator') return <DateSeparator date={item.date} />;
-                            return <MessageBubble message={item} currentUserId={session?.user?.id} onImagePress={setViewingImageUri} onLongPress={handleLongPress} onDoubleTap={m => handleReaction('👍', m)} onSelect={handleToggleSelection} selectionMode={selectionMode} isSelected={selectedMessages.has(item.id)} />;
+                            return <MessageBubble 
+                                message={item} 
+                                currentUserId={session?.user?.id} 
+                                onImagePress={setViewingImageUri} 
+                                onLongPress={handleLongPress} 
+                                onDoubleTap={m => handleReaction('👍', m)} 
+                                onSelect={handleToggleSelection} 
+                                selectionMode={selectionMode} 
+                                isSelected={selectedMessages.has(item.id)}
+                                isInitialLoad={isInitialLoad} 
+                            />;
                         }}
                         keyExtractor={item => item.id.toString()}
                         contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
@@ -575,11 +657,7 @@ export default function IndividualChatScreen() {
                         maxToRenderPerBatch={15}
                         windowSize={31}
                         removeClippedSubviews={true}
-                        // refreshControl={
-                        //     <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchMessages(currentRoomId)} tintColor={colors.primary} />
-                        // }
                     />
-
                  
                     <View style={styles.inputContainer}>
                         <TouchableOpacity onPress={() => setAttachmentModalVisible(true)}><Ionicons name="add" size={30} color={colors.secondaryText} /></TouchableOpacity>
@@ -588,13 +666,14 @@ export default function IndividualChatScreen() {
                     </View>
    
                 </KeyboardAvoidingView>
-            </SafeAreaView>
             
             <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessageForAction} isMyMessage={selectedMessageForAction?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessageForAction?.content || '')} onEdit={() => { setEditingMessage(selectedMessageForAction); setInputText(selectedMessageForAction?.content || ''); textInputRef.current?.focus(); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }} />
+            
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />
+            
             <Modal animationType="slide" transparent={true} visible={isAttachmentModalVisible} onRequestClose={() => setAttachmentModalVisible(false)}>
                 <Pressable style={styles.modalBackdropAttachments} onPress={() => setAttachmentModalVisible(false)}>
-                    <View style={[styles.modalContent, { marginBottom: insets.bottom > 0 ? 0 : 20 }]}> {/* Використовуємо відступ лише якщо insets.bottom == 0 */}
+                    <View style={[styles.modalContent, { marginBottom: insets.bottom > 0 ? 0 : 20 }]}> 
                         <TouchableOpacity style={styles.modalButton} onPress={takePhoto}><Ionicons name="camera-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.takePhoto')}</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.modalButton} onPress={pickImage}><Ionicons name="image-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.pickFromGallery')}</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.modalButton} onPress={handleSendLocation}><Ionicons name="location-outline" size={24} color={colors.primary} /><Text style={styles.modalButtonText}>{t('chat.shareLocation')}</Text></TouchableOpacity>
@@ -606,7 +685,7 @@ export default function IndividualChatScreen() {
     );
 }
 
-// --- СТИЛІ (з фіксованими фонами) ---
+// --- СТИЛІ ---
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
@@ -615,9 +694,7 @@ const getStyles = (colors) => StyleSheet.create({
     likeButton: { paddingHorizontal: 8 },
     dateSeparator: { alignSelf: 'center', backgroundColor: colors.border, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, marginVertical: 10 },
     dateSeparatorText: { color: colors.secondaryText, fontSize: 12, fontWeight: '600' },
-    // ⚠️ Змінено: Основний контейнер тепер `View` з повним фоном
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-    // ---------------------------------------------------------
     header: { 
         flexDirection: 'row', 
         alignItems: 'center',  
@@ -626,8 +703,8 @@ const getStyles = (colors) => StyleSheet.create({
         paddingVertical: 5, 
         borderBottomWidth: 1, 
         borderBottomColor: colors.border, 
-        paddingTop: 0, // Не використовуємо відступ тут, це робить SafeAreaView вище
-        backgroundColor: colors.card // Гарантуємо фон заголовка
+        paddingTop: 0, 
+        backgroundColor: colors.card 
     },
     headerUserInfoContainer: {
         flex: 1,
@@ -650,6 +727,16 @@ const getStyles = (colors) => StyleSheet.create({
     messageText: { color: colors.text, fontSize: 15, lineHeight: 20 },
     myMessageText: { color: '#FFFFFF' },
     messageImage: { width: 200, height: 150, borderRadius: 15 },
+    
+    // 💡 ЗМІНА (КЕШУВАННЯ): Стиль залишається, але логіка його показу змінилась
+    imageLoadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        borderRadius: 15
+    },
+
     uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 15 },
     messageMap: { width: 220, height: 150, borderRadius: 15 },
     messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 4, alignItems: 'center', gap: 4 },
@@ -667,9 +754,7 @@ const getStyles = (colors) => StyleSheet.create({
     },
     textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 0, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
     sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-    imageViewerBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center' },
-    fullScreenImage: { width: '100%', height: '80%' },
-    closeButton: { position: 'absolute', top: 50, right: 20, padding: 10 },
+    
     reactionsContainer: { flexDirection: 'row', marginTop: -8, marginLeft: 10, marginRight: 10, zIndex: 10, position: 'relative' },
     reactionBadge: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginRight: 4, borderWidth: 1, borderColor: colors.border, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
     reactionBadgeText: { fontSize: 12, color: colors.text },

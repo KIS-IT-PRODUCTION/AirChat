@@ -57,11 +57,11 @@ const getStyles = (colors) => StyleSheet.create({
         width: 7,
         height: 7,
         borderRadius: 3.5,
-        backgroundColor: colors.secondaryText,
+        backgroundColor: colors.primary,
         marginHorizontal: 3,
     },
     typingText: {
-        color: colors.secondaryText,
+        color: colors.primary,
         fontSize: 12,
         marginLeft: 6,
         fontStyle: 'italic',

@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.airchat.app",
+      "bundleIdentifier": "app.airchat.mobile",
       "config": {
         "googleMapsApiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
       },

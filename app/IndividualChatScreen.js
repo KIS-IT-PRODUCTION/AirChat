@@ -1,11 +1,11 @@
-// IndividualChatScreen.js
-
 import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import {
     StyleSheet, Text, View, SafeAreaView, FlatList, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal,
-    Pressable, Linking, RefreshControl, Clipboard, AppState, StatusBar
+    Pressable, Linking, RefreshControl, Clipboard, AppState, StatusBar,
+    Animated // 💡 ДОДАЙТЕ ЦЕ
 } from 'react-native';
+import * as Haptics from 'expo-haptics'; // 💡 ДОДАЙТЕ ЦЕ
 import { Image } from 'expo-image';
 import { Audio } from 'expo-av';
 import { useTheme } from './ThemeContext';
@@ -22,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { MotiView, AnimatePresence } from 'moti';
-import TypingIndicator from '../app/components/TypingIndicator.js'; // Припускається, що шлях правильний
+import TypingIndicator from '../app/components/TypingIndicator.js';
 import { useUnreadCount } from '../provider/Unread Count Context.js';
 import Hyperlink from 'react-native-hyperlink';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,20 +32,9 @@ import ImageViewing from 'react-native-image-viewing';
 
 // --- КОНСТАНТИ ТА ДОПОМІЖНІ ФУНКЦІЇ ---
 const LOADING_FADE_DELAY = 300; 
+const PAGE_SIZE = 25;
 
-const formatUserStatus = (isOnline, lastSeen, t) => { 
-    if (isOnline) return t('chat.onlineStatus'); 
-    if (!lastSeen) return t('chat.offlineStatus'); 
-    const lsMoment = moment(lastSeen); 
-    if (!lsMoment.isValid()) return t('chat.offlineStatus'); 
-    if (moment().diff(lsMoment, 'seconds') < 60) return t('chat.onlineStatus'); 
-    if (moment().isSame(lsMoment, 'day')) return t('chat.lastSeen.todayAt', { time: lsMoment.format('HH:mm') }); 
-    if (moment().clone().subtract(1, 'day').isSame(lsMoment, 'day')) return t('chat.lastSeen.yesterdayAt', { time: lsMoment.format('HH:mm') }); 
-    return t('chat.lastSeen.onDate', { date: lsMoment.format('D MMMM YYYY') }); 
-};
-
-// --- СТИЛІ (Для цілісності, припускається, що getStyles визначений) ---
-// (Стилі getStyles... тут має бути функція, яка повертає StyleSheet.create)
+// --- СТИЛІ ---
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
     selectionCircleEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.secondaryText },
@@ -69,27 +58,98 @@ const getStyles = (colors) => StyleSheet.create({
     headerUserName: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
     headerUserStatus: { color: colors.secondaryText, fontSize: 12 },
     headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border },
-    messageContainer: { marginVertical: 2, paddingHorizontal: 0},
+    
+    // --- Покращення Повідомлень ---
+    messageContainer: { 
+        marginVertical: 1, // 💡 Збільшено відступ між повідомленнями
+        paddingHorizontal: 0
+    },
     messageRow: { flexDirection: 'row', alignItems: 'center' },
-    messageBubble: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
-    myMessageBubble: { backgroundColor: '#00537A', borderBottomRightRadius: 4 },
-    otherMessageBubble: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
-    messageText: { color: colors.text, fontSize: 15, lineHeight: 20 },
-    myMessageText: { color: '#FFFFFF' },
-    messageImage: { width: 200, height: 150, borderRadius: 15 },
-    imageLoadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 15 },
-    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 15 },
-    messageMap: { width: 220, height: 150, borderRadius: 15 },
-    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 4, alignItems: 'center', gap: 4 },
+    messageBubble: { 
+        borderRadius: 20, 
+        paddingVertical: 5,    // 💡 Більше "повітря" всередині
+        paddingHorizontal: 15, // 💡 Більше "повітря" всередині
+        // 💡 Додаємо легку тінь для "плаваючого" ефекту
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 }
+    },
+    myMessageBubble: { 
+        backgroundColor: colors.primary, // 💡 Використовуємо колір теми (як у кнопки 'Send')
+        borderBottomRightRadius: 5     // 💡 Трохи м'якший "хвостик"
+    },
+    otherMessageBubble: { 
+        backgroundColor: colors.card,    // 💡 "Чужі" повідомлення мають колір картки
+        borderBottomLeftRadius: 5,       // 💡 Трохи м'якший "хвостик"
+         // 💡 Додаємо легку тінь, щоб виділити на фоні
+        shadowOpacity: 0.08,
+        shadowRadius: 5,
+    },
+    messageText: { 
+        color: colors.text, 
+        fontSize: 16,     // 💡 Трохи більший шрифт для читабельності
+        lineHeight: 22    // 💡 Відповідна висота рядка
+    },
+    myMessageText: { color: '#FFFFFF' }, // 💡 Залишаємо білий текст на кольоровому фоні
+    messageImage: { 
+        width: 220,       // 💡 Трохи ширше зображення
+        height: 180,      // 💡 Трохи вище
+        borderRadius: 16  // 💡 М'якші кути
+    },
+    imageLoadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16 }, // 💡 Оновлено borderRadius
+    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 16 }, // 💡 Оновлено borderRadius
+    messageMap: { width: 220, height: 150, borderRadius: 16 }, // 💡 Оновлено borderRadius
+    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 5, alignItems: 'center', gap: 4 }, // 💡 Збільшено marginTop
     messageInfoOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
     messageTime: { color: colors.secondaryText, fontSize: 11 },
     myMessageTime: { color: '#FFFFFF90' },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopColor: colors.border, backgroundColor: colors.card, borderRadius: 30, paddingHorizontal:10, paddingVertical:5, },
-    textInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 0, marginHorizontal: 10, color: colors.text, maxHeight: 120, fontSize: 16 },
-    sendButton: { backgroundColor: colors.primary, borderRadius: 25, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-    reactionsContainer: { flexDirection: 'row', marginTop: -8, marginLeft: 10, marginRight: 10, zIndex: 10, position: 'relative' },
+
+    // --- Покращення Поля Введення ---
+ inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopColor: colors.border, backgroundColor: colors.card, borderRadius: 30, paddingHorizontal:10, paddingVertical:5, },
+    textInput: { 
+        flex: 1, 
+        backgroundColor: colors.background, // 💡 КОНТРАСТ! Поле введення "втоплене"
+        borderRadius: 20, 
+        paddingHorizontal: 16, 
+        paddingVertical: Platform.OS === 'ios' ? 10 : 8, // 💡 Стандартизовано
+        marginHorizontal: 8, // 💡 Трохи менший відступ
+        color: colors.text, 
+        maxHeight: 120, 
+        fontSize: 16 
+    },
+    // 💡 Додано стиль для кнопки "додати"
+    attachButton: {
+        width: 30,
+        height: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Platform.OS === 'ios' ? 0 : 2 // 💡 Легке вирівнювання для Android
+    },
+    sendButton: { 
+        backgroundColor: colors.primary, 
+        borderRadius: 22, // 💡 Робимо кнопку трохи меншою і круглішою
+        width: 40,        // 💡 Менший розмір
+        height: 40,       // 💡 Менший розмір
+        justifyContent: 'center', 
+        alignItems: 'center',
+        marginBottom: Platform.OS === 'ios' ? 0 : 2 // 💡 Легке вирівнювання для Android
+    },
+    
+    // --- Покращення Реакцій ---
+    reactionsContainer: { 
+        flexDirection: 'row', 
+        marginTop: -10, // 💡 Адаптовано під нові відступи
+        marginLeft: 15, 
+        marginRight: 15,
+        zIndex: 10, 
+        position: 'relative' 
+    },
     reactionBadge: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginRight: 4, borderWidth: 1, borderColor: colors.border, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
     reactionBadgeText: { fontSize: 12, color: colors.text },
+    
+    // --- (Решта стилів без змін) ---
     modalBackdropAttachments: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
     modalContent: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
     modalButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
@@ -104,12 +164,12 @@ const getStyles = (colors) => StyleSheet.create({
     actionButtonText: { color: colors.text, fontSize: 18, marginLeft: 15, },
     cancelButton: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 8, alignItems: 'center', },
     cancelButtonText: { color: colors.primary, fontSize: 18, fontWeight: '600', },
+    reactionEmojiButton: { padding: 4 },
+    reactionEmojiText: { fontSize: 24 },
 });
 // --- КІНЕЦЬ СТИЛІВ ---
 
-// --- ДОПОМІЖНІ КОМПОНЕНТИ (ПОВТОРЮЮТЬСЯ) ---
-// (Всі memo компоненти залишаються тут для цілісності)
-
+// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 const SelectionHeader = memo(({ selectionCount, onCancel, onDelete, colors }) => {
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -193,32 +253,102 @@ const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCop
         </Modal>
     );
 });
-
-const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected, isInitialLoad }) => {
-    const { colors } = useTheme(); const styles = getStyles(colors); const { t } = useTranslation(); const isMyMessage = message.sender_id === currentUserId; const lastTap = useRef(0);
-    const [isPressed, setIsPressed] = useState(false);
+const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
+    const { colors } = useTheme(); 
+    const styles = getStyles(colors); 
+    const { t } = useTranslation(); 
+    const isMyMessage = message.sender_id === currentUserId; 
+    const lastTap = useRef(0);
     
     const [isImageLoading, setIsImageLoading] = useState(false);
     const [isImageCached, setIsImageCached] = useState(false);
 
-    const handlePress = () => { if (selectionMode) { if (isMyMessage) onSelect(message.id); return; } const now = Date.now(); const DOUBLE_PRESS_DELAY = 300; if (now - lastTap.current < DOUBLE_PRESS_DELAY) { if (!isMyMessage) onDoubleTap(message); } lastTap.current = now; };
-    const openMap = () => { const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); const latLng = `${message.location.latitude},${message.location.longitude}`; const label = t('chat.locationLabel'); const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); Linking.openURL(url); };
+    // 💡 1. Створюємо анімовану змінну для масштабування
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    // 💡 2. Обробник натискання (початок)
+    const handlePressIn = () => {
+        // Легка вібрація
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Анімація зменшення (до 96%)
+        Animated.spring(scaleAnim, {
+            toValue: 0.96,
+            useNativeDriver: true,
+            friction: 5, // Контролює "пружинність"
+        }).start();
+    };
+
+    // 💡 3. Обробник відпускання
+    const handlePressOut = () => {
+        // Анімація повернення до 100%
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 5,
+        }).start();
+    };
+
+    const handlePress = () => { 
+        if (selectionMode) { 
+            if (isMyMessage) onSelect(message.id); 
+            return; 
+        } 
+        const now = Date.now(); 
+        const DOUBLE_PRESS_DELAY = 300; 
+        if (now - lastTap.current < DOUBLE_PRESS_DELAY) { 
+            if (!isMyMessage) onDoubleTap(message); 
+        } 
+        lastTap.current = now; 
+    };
+    
+    const openMap = () => { 
+        const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' }); 
+        const latLng = `${message.location.latitude},${message.location.longitude}`; 
+        const label = t('chat.locationLabel'); 
+        const url = Platform.select({ ios: `${scheme}${label}@${latLng}`, android: `${scheme}${latLng}(${label})` }); 
+        Linking.openURL(url); 
+    };
+    
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
     
-    // 💡 Використовуємо View, якщо isInitialLoad === false для статичності
-    const Wrapper = isInitialLoad ? MotiView : View;
-    const animationProps = isInitialLoad
-        ? { from: { opacity: 0, scale: 0.9, translateX: isMyMessage ? 40 : -40 }, animate: { opacity: 1, scale: 1, translateX: 0 }, transition: { type: 'timing', duration: 250 } } 
-        : {}; 
+    // 💡 4. Використовуємо Animated.View замість View
+    const Wrapper = Animated.View; 
+
+    const aggregatedReactions = useMemo(() => {
+        if (!message.reactions || message.reactions.length === 0) {
+            return [];
+        }
+        const counts = message.reactions.reduce((acc, reaction) => {
+            if (reaction && reaction.emoji) {
+                 acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+            }
+            return acc;
+        }, {});
+        return Object.entries(counts).map(([emoji, count]) => ({ emoji, count }));
+    }, [message.reactions]);
+
 
     return (
-        <Pressable onPressIn={() => setIsPressed(true)} onPressOut={() => setIsPressed(false)} onLongPress={() => onLongPress(message)} onPress={handlePress} style={styles.messageContainer}>
-            <Wrapper {...animationProps}>
+        // 💡 5. Додаємо обробники до Pressable
+        <Pressable 
+            onLongPress={() => onLongPress(message)} 
+            onPress={handlePress} 
+            onPressIn={handlePressIn}   // <-- ДОДАНО
+            onPressOut={handlePressOut} // <-- ДОДАНО
+            style={styles.messageContainer}
+        >
+            {/* 💡 6. Застосовуємо анімацію до Wrapper */}
+            <Wrapper style={{ transform: [{ scale: scaleAnim }] }}>
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
                     <View style={{ maxWidth: selectionMode ? '70%' : '80%' }}>
                         <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble, (message.image_url || message.location) && { padding: 4 }]}>
-                            {message.content && (<Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}><Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text></Hyperlink>)}
+                            
+                            {message.content && (
+                                <Hyperlink linkDefault={true} linkStyle={{ color: isMyMessage ? '#9ECAE8' : '#2980b9' }}>
+                                    <Text style={[styles.messageText, isMyMessage && styles.myMessageText]}>{message.content}</Text>
+                                </Hyperlink>
+                            )}
                             
                             {message.image_url && (
                                 <TouchableOpacity onPress={() => onImagePress(message.image_url)}>
@@ -228,6 +358,8 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
                                         contentFit="cover" 
                                         transition={300} 
                                         cachePolicy="disk" 
+                                        prefetch={1000}
+                                        priority="normal"
                                         placeholder={message.blurhash || 'L6Pj0^i_.AyE_3t7t7R**0o#DgR4'}
                                         onLoadStart={() => setIsImageLoading(true)}
                                         onLoadEnd={() => setIsImageLoading(false)}
@@ -246,10 +378,40 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
                                 </TouchableOpacity>
                             )}
 
-                            {message.location && <TouchableOpacity onPress={openMap}><MapView style={styles.messageMap} initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} scrollEnabled={false} zoomEnabled={false}><Marker coordinate={message.location} /></MapView></TouchableOpacity>}
-                            <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}><Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>{isMyMessage && <Ionicons name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} size={16} color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} />}</View>
+                            {message.location && (
+                                <TouchableOpacity onPress={openMap}>
+                                    <MapView 
+                                        style={styles.messageMap} 
+                                        initialRegion={{ ...message.location, latitudeDelta: 0.01, longitudeDelta: 0.01 }} 
+                                        scrollEnabled={false} 
+                                        zoomEnabled={false}
+                                    >
+                                        <Marker coordinate={message.location} />
+                                    </MapView>
+                                </TouchableOpacity>
+                            )}
+                            
+                            <View style={[styles.messageInfo, (message.image_url || message.location) && styles.messageInfoOverlay]}>
+                                <Text style={[styles.messageTime, isMyMessage && styles.myMessageTime]}>{moment(message.created_at).format('HH:mm')}</Text>
+                                {isMyMessage && (
+                                    <Ionicons 
+                                        name={message.status === 'sending' || message.status === 'uploading' ? "time-outline" : (message.status === 'read' ? "checkmark-done" : "checkmark")} 
+                                        size={16} 
+                                        color={message.status === 'read' ? "#4FC3F7" : "#FFFFFF90"} 
+                                    />
+                                )}
+                            </View>
                         </View>
-                        {message.reactions && message.reactions.length > 0 && (<View style={[styles.reactionsContainer, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>{message.reactions.map(r => ( <View key={r.emoji} style={styles.reactionBadge}><Text style={styles.reactionBadgeText}>{r.emoji} {r.count}</Text></View> ))}</View>)}
+                        
+                        {aggregatedReactions.length > 0 && (
+                            <View style={[styles.reactionsContainer, { alignSelf: isMyMessage ? 'flex-end' : 'flex-start' }]}>
+                                {aggregatedReactions.map(r => ( 
+                                    <View key={r.emoji} style={styles.reactionBadge}>
+                                        <Text style={styles.reactionBadgeText}>{r.emoji} {r.count}</Text>
+                                    </View> 
+                                ))}
+                            </View>
+                        )}
                     </View>
                 </View>
             </Wrapper>
@@ -268,12 +430,11 @@ export default function IndividualChatScreen() {
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
     const insets = useSafeAreaInsets();
-    const { roomId: initialRoomId, recipientId, recipientName, recipientAvatar, recipientLastSeen: initialLastSeen } = route.params;
 
-    const [recipientInfo, setRecipientInfo] = useState({ name: recipientName, avatar: recipientAvatar });
+    const [recipientInfo, setRecipientInfo] = useState({ name: route.params.recipientName, avatar: route.params.recipientAvatar });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
-    const [currentRoomId, setCurrentRoomId] = useState(initialRoomId);
+    const [currentRoomId, setCurrentRoomId] = useState(route.params.roomId);
     const [isRecipientTyping, setIsRecipientTyping] = useState(false);
     const [editingMessage, setEditingMessage] = useState(null);
     const [selectedMessageForAction, setSelectedMessageForAction] = useState(null);
@@ -285,10 +446,11 @@ export default function IndividualChatScreen() {
     const [isSendingLocation, setIsSendingLocation] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [isInitialLoad, setIsInitialLoad] = useState(false); 
     const [isRecipientOnline, setIsRecipientOnline] = useState(false);
-    const [isRoomSetup, setIsRoomSetup] = useState(false);
-
+const [isRoomSetup, setIsRoomSetup] = useState(false);
+    const [appIsActive, setAppIsActive] = useState(true);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
     
     const flatListRef = useRef(null);
     const channelRef = useRef(null);
@@ -296,7 +458,7 @@ export default function IndividualChatScreen() {
     const sentSoundRef = useRef(new Audio.Sound());
     const receivedSoundRef = useRef(new Audio.Sound());
     const textInputRef = useRef(null);
-    const lastSeenRef = useRef(initialLastSeen);
+    const lastSeenRef = useRef(route.params.recipientLastSeen);
     const appState = useRef(AppState.currentState);
 
     const formatUserStatus = useCallback((isOnline, lastSeen) => { 
@@ -312,6 +474,7 @@ export default function IndividualChatScreen() {
     
     const userStatus = useMemo(() => {
         return formatUserStatus(isRecipientOnline, lastSeenRef.current);
+
     }, [isRecipientOnline, formatUserStatus]);
     
     useEffect(() => {
@@ -365,52 +528,93 @@ export default function IndividualChatScreen() {
         } catch (e) { console.error("Error marking as read:", e.message); }
     }, [fetchUnreadCount]);
     
-    // 💡 ОНОВЛЕНО: Функція завантаження з плавною затримкою
-    const fetchMessages = useCallback(async (roomId) => {
+const fetchMessages = useCallback(async (roomId, page = 0) => {
         if (!roomId) return;
+        if (page > 0) return; // Завантажуємо лише один раз
+
         setIsRefreshing(true);
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*, reactions(*)')
-            .eq('room_id', roomId)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Fetch Error on focus:", error);
-        } else {
-            setMessages(data || []);
-        }
-        await markAsRead(roomId);
-        setIsRefreshing(false);
         
-        // Плавне зникнення індикатора
-        setTimeout(() => {
-            setIsLoading(false); 
-        }, 300); 
+        try {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*, reactions(*)') 
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                throw error; // Передаємо помилку в catch
+            }
+            
+            // Цей код виконається лише якщо помилки не було
+            setMessages(data || []);
+            setAllMessagesLoaded(true); 
+            setCurrentPage(0); 
 
-    }, [markAsRead]);
+            if (page === 0) {
+                await markAsRead(roomId);
+            }
+        
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            // Не показуємо Alert, щоб не дратувати користувача при поганому зв'язку
+            // Alert.alert(t('common.error'), error.message);
+        } finally {
+            // 💡 Цей блок виконається ЗАВЖДИ
+            setIsRefreshing(false);
+            setTimeout(() => {
+                setIsLoading(false); 
+            }, LOADING_FADE_DELAY); 
+        }
 
-    // 💡 EFFECT: ЕТАП 1 - Налаштування кімнати (Швидка підготовка UI)
+    }, [markAsRead, t]);
+
+    // ЕТАП 1 - Налаштування кімнати
     useEffect(() => {
         let isMounted = true;
         
+        const { 
+            roomId: paramRoomId, 
+            recipientId: paramRecipientId, 
+            recipientName: paramName, 
+            recipientAvatar: paramAvatar, 
+            recipientLastSeen: paramLastSeen 
+        } = route.params;
+        
+        setMessages([]);
+        setIsLoading(true);
+        setSelectionMode(false);
+        setSelectedMessages(new Set());
+        setEditingMessage(null);
+        setInputText('');
+        setIsRecipientTyping(false);
+        setCurrentPage(0);
+        setAllMessagesLoaded(false);
+
+        setRecipientInfo({ name: paramName, avatar: paramAvatar });
+        lastSeenRef.current = paramLastSeen;
+
         const setupRoom = async () => {
-            if (!session || !recipientId) { return; }
-            let roomId = initialRoomId;
+            if (!session || !paramRecipientId) { 
+                if(isMounted) setIsLoading(false);
+                return; 
+            }
+            
+            setIsRoomSetup(false);
+            
+            let roomId = paramRoomId;
             
             if (!roomId) {
                 try {
-                    const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: recipientId });
+                    const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: paramRecipientId });
                     if (!isMounted) return;
                     roomId = data;
-                    setCurrentRoomId(roomId);
                 } catch (e) { console.error("Error finding/creating room:", e); return; }
             }
             if (!roomId) { return; }
             
             if (isMounted) {
                 setCurrentRoomId(roomId);
-                setIsRoomSetup(true); // UI готовий до рендеру Header та Input
+                setIsRoomSetup(true);
             }
         };
         
@@ -421,25 +625,34 @@ export default function IndividualChatScreen() {
             const channel = channelRef.current; 
             if (channel) {
                  channel.untrack().then(() => supabase.removeChannel(channel)); 
+                 channelRef.current = null;
             }
         };
-    }, [session, recipientId, initialRoomId]);
+    }, [session, route.params]);
 
-    // 💡 EFFECT: ЕТАП 2 - Завантаження даних та підписки (Активація Realtime)
+// 💡 ОНОВЛЕНО: ЕТАП 2 - Завантаження даних та підписки
     useEffect(() => {
         let isMounted = true;
         let profileSub;
+
+        // Отримуємо свіжий ID отримувача
+        const { recipientId: paramRecipientId } = route.params;
         
         const subscribeToData = async () => {
-            if (!isRoomSetup || !currentRoomId || !session) return;
+            // 💡 1. Додано перевірку: не підписуватись, якщо додаток у фоні або не готовий
+            if (!isRoomSetup || !currentRoomId || !session || !paramRecipientId || !appIsActive) {
+                return;
+            }
             
-            // 2. Завантаження повідомлень
-            await fetchMessages(currentRoomId); 
+            // 💡 2. Цей ефект тепер сам викликає fetchMessages при активації
+            await fetchMessages(currentRoomId, 0); 
             
-            // 3. Налаштування підписок (Активація Realtime)
+            if (channelRef.current) {
+                // Прибираємо старий (можливо, "мертвий") канал
+                supabase.removeChannel(channelRef.current);
+            }
             
-            if (channelRef.current) supabase.removeChannel(channelRef.current);
-            
+            // Створюємо НОВИЙ канал
             const roomChannel = supabase.channel(`room-${currentRoomId}`, { 
                 config: { presence: { key: session.user.id, room: currentRoomId } } 
             });
@@ -447,51 +660,112 @@ export default function IndividualChatScreen() {
             channelRef.current = roomChannel;
             
             const handlePresenceState = (state) => {
-                const isOnline = Object.keys(state).some(key => key === recipientId);
+                const isOnline = Object.keys(state).some(key => key === paramRecipientId);
                 setIsRecipientOnline(isOnline);
             };
 
-            // 💡 КРИТИЧНО: Повна логіка підписок для Realtime
+            // --- ПІДПИСКА НА ПОВІДОМЛЕННЯ ---
             roomChannel
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
+                    // Ігноруємо власні INSERT (обробляються await)
+                    if (payload.new.sender_id === session.user.id) {
+                        return;
+                    }
+                    // Обробка вхідного повідомлення
                     setMessages(currentMessages => {
-                        if (payload.new.sender_id !== session.user.id) {
-                            if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
-                            playSound(receivedSoundRef);
-                            markAsRead(currentRoomId);
-                            return [payload.new, ...currentMessages];
-                        }
-                        const optimisticMessageIndex = currentMessages.findIndex(m => m.client_id && m.client_id === payload.new.client_id);
-                        if (optimisticMessageIndex > -1) {
-                            const newMessages = [...currentMessages];
-                            newMessages[optimisticMessageIndex] = payload.new;
-                            return newMessages;
-                        } else {
-                             if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
-                            return [payload.new, ...currentMessages];
-                        }
+                        if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
+                        playSound(receivedSoundRef);
+                        markAsRead(currentRoomId);
+                        const newMessage = { ...payload.new, reactions: [] }; // Додаємо 'reactions'
+                        return [newMessage, ...currentMessages];
                     });
                 })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => setMessages(currentMessages => currentMessages.map(m => m.id === payload.new.id ? payload.new : m)))
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
+                    // Оновлюємо повідомлення, зберігаючи 'reactions', якщо вони є
+                    setMessages(currentMessages => 
+                        currentMessages.map(m => 
+                            m.id === payload.new.id ? { ...m, ...payload.new, reactions: payload.new.reactions || m.reactions } : m
+                        )
+                    )
+                })
                 .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
                     setMessages(currentMessages => currentMessages.filter(m => m.id !== payload.old.id));
                 })
-                // 💡 МИТТЄВА АКТИВНІСТЬ: Presence Logic
+                
+                // --- ПІДПИСКА НА РЕАКЦІЇ (з функціональним setMessages) ---
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'reactions'
+                }, 
+                (payload) => {
+                    let reactionData;
+                    let messageId;
+
+                    if (payload.eventType === 'DELETE') {
+                        reactionData = payload.old;
+                        if (!reactionData || !reactionData.id) return; 
+                        messageId = reactionData.message_id;
+                        if (!messageId) return; 
+                    } else {
+                        // INSERT or UPDATE
+                        reactionData = payload.new;
+                        if (!reactionData || !reactionData.id) return;
+                        messageId = reactionData.message_id;
+                    }
+                    
+                    // Використовуємо функціональне оновлення setMessages
+                    setMessages(currentMessages => {
+                        // Перевіряємо, чи є таке повідомлення в поточному стані
+                        if (!currentMessages.some(m => m.id === messageId)) {
+                            return currentMessages; // Немає повідомлення, нічого не змінюємо
+                        }
+
+                        // Якщо є, оновлюємо його
+                        return currentMessages.map(msg => {
+                            if (msg.id === messageId) {
+                                // Це наше повідомлення
+                                let updatedReactions = [...(msg.reactions || [])];
+
+                                if (payload.eventType === 'INSERT') {
+                                    // Додаємо, тільки якщо її ще немає
+                                    if (!updatedReactions.some(r => r.id === reactionData.id)) {
+                                        updatedReactions.push(reactionData);
+                                    }
+                                } 
+                                else if (payload.eventType === 'DELETE') {
+                                    // Видаляємо за ID
+                                    updatedReactions = updatedReactions.filter(r => r.id !== reactionData.id);
+                                }
+                                else if (payload.eventType === 'UPDATE') {
+                                    // Оновлюємо за ID
+                                    updatedReactions = updatedReactions.map(r => 
+                                        r.id === reactionData.id ? reactionData : r
+                                    );
+                                }
+                                return { ...msg, reactions: updatedReactions };
+                            }
+                            return msg; // Інше повідомлення
+                        });
+                    });
+                })
+                // --- КІНЕЦЬ ПІДПИСКИ НА РЕАКЦІЇ ---
+
                 .on('presence', { event: 'sync' }, () => {
                     handlePresenceState(roomChannel.presenceState());
                 })
                 .on('presence', { event: 'join' }, ({ newPresences }) => {
-                    if (newPresences.some(p => p.key === recipientId)) {
+                    if (newPresences.some(p => p.key === paramRecipientId)) {
                         handlePresenceState(roomChannel.presenceState());
                     }
                 })
                 .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-                     if (leftPresences.some(p => p.key === recipientId)) {
+                     if (leftPresences.some(p => p.key === paramRecipientId)) {
                         handlePresenceState(roomChannel.presenceState());
                     }
                 })
                 .on('broadcast', { event: 'typing' }, ({ payload }) => {
-                    if (payload.user_id === recipientId) {
+                    if (payload.user_id === paramRecipientId) {
                         setIsRecipientTyping(true);
                         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
                         typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000);
@@ -500,31 +774,35 @@ export default function IndividualChatScreen() {
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
                         const userPresence = { room: currentRoomId, last_seen: new Date().toISOString() };
-                        await roomChannel.track(userPresence); // Відстежуємо себе
-                        handlePresenceState(roomChannel.presenceState()); // Оновлюємо стан одразу
+                        await roomChannel.track(userPresence); 
+                        handlePresenceState(roomChannel.presenceState()); 
                     }
                 });
             
-            profileSub = supabase.channel(`profile-listener-${recipientId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, (payload) => {
+            // --- ПІДПИСКА НА ПРОФІЛЬ ---
+            profileSub = supabase.channel(`profile-listener-${paramRecipientId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${paramRecipientId}` }, (payload) => {
                 lastSeenRef.current = payload.new.last_seen;
                 setRecipientInfo({ name: payload.new.full_name, avatar: payload.new.avatar_url });
             }).subscribe();
         };
         
+        // Викликаємо функцію підписки
         if (isRoomSetup) {
             subscribeToData();
         }
 
+        // Функція очищення
         return () => { 
             isMounted = false; 
             const channel = channelRef.current; 
             if (profileSub) supabase.removeChannel(profileSub); 
             if (channel) {
                  channel.untrack().then(() => supabase.removeChannel(channel)); 
+                 channelRef.current = null;
             }
         };
-    }, [isRoomSetup, currentRoomId, session, recipientId, fetchMessages, markAsRead, playSound]);
-
+    // 💡 3. 'appIsActive' тепер є в масиві залежностей
+    }, [isRoomSetup, currentRoomId, session, route.params.recipientId, fetchMessages, markAsRead, playSound, appIsActive]);
     useFocusEffect(useCallback(() => {
         const enterChat = async () => {
              if (session) {
@@ -542,32 +820,87 @@ export default function IndividualChatScreen() {
         };
     }, [currentRoomId, session, markAsRead]));
     
-    // 💡 ОНОВЛЕНО: Надсилання повідомлень (Handling errors)
+useEffect(() => {
+        const subscription = AppState.addEventListener('change', async (nextAppState) => {
+            
+            // Коли програма повернулась у фокус
+            if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+                if (session) {
+                    supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
+                }
+                
+                // 💡 1. Просто повідомляємо, що додаток активний
+                setAppIsActive(true);
+            }
+            
+            // Коли програма згорнулась
+            if (nextAppState.match(/inactive|background/)) {
+                 if (session) {
+                     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
+                 }
+                 // 💡 2. Повідомляємо, що додаток неактивний
+                 setAppIsActive(false); 
+            }
+            
+            appState.current = nextAppState;
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    // 💡 3. Залишаємо лише 'session', щоб ефект не перезапускався без потреби
+    }, [session]);
+    // (sendMessage - обробка відповіді)
     const sendMessage = useCallback(async (messageData) => {
-        if (!currentRoomId || !session) return;
-        const { error } = await supabase.from('messages').insert([{ ...messageData, room_id: currentRoomId, sender_id: session.user.id }]);
+        if (!currentRoomId || !session) return { data: null, error: { message: 'Not connected' } };
+        
+        const { data, error } = await supabase
+            .from('messages')
+            .insert([{ ...messageData, room_id: currentRoomId, sender_id: session.user.id }])
+            .select() 
+            .single(); 
         
         if (error) { 
             Alert.alert(t('common.error'), error.message); 
-            // КРИТИЧНО: Видаляємо оптимістичне повідомлення при помилці
-            setMessages(prev => prev.filter(m => m.client_id !== messageData.client_id)); 
+            return { data: null, error };
         } else {
-            supabase.functions.invoke('send-push-notification', { body: { recipient_id: recipientId, room_id: currentRoomId, sender_id: session.user.id, message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')), sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}).catch(e => console.error("Push notification function error:", e));
+            supabase.functions.invoke('send-push-notification', { body: { recipient_id: route.params.recipientId, room_id: currentRoomId, sender_id: session.user.id, message_content: messageData.content || (messageData.image_url ? t('chat.sentAnImage') : t('chat.sentLocation')), sender_name: profile?.full_name, sender_avatar: profile?.avatar_url, sender_last_seen: new Date().toISOString() }}).catch(e => console.error("Push notification function error:", e));
+            return { data: { ...data, reactions: [] }, error: null };
         }
-    }, [currentRoomId, session, t, recipientId, profile]);
+    }, [currentRoomId, session, t, route.params.recipientId, profile]);
 
+    // (handleSendText - обробка відповіді)
     const handleSendText = useCallback(async () => {
         if (editingMessage) { handleEditMessage(); return; }
         const textToSend = inputText.trim();
         if (textToSend.length === 0) return;
+        
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, content: textToSend, status: 'sending', reactions: [] };
+        
         setMessages(prev => [optimisticMessage, ...prev]);
         setInputText('');
-        playSound(sentSoundRef);
-        await sendMessage({ content: textToSend, client_id: clientId });
-    }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound]);
+        
+        if (flatListRef.current) {
+            flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+        }
 
+        playSound(sentSoundRef);
+        
+        const { data: newMessage, error } = await sendMessage({ content: textToSend, client_id: clientId });
+
+        if (error) {
+            setMessages(prev => prev.filter(m => m.client_id !== clientId));
+        } else if (newMessage) {
+            setMessages(prev => 
+                prev.map(m => 
+                    m.client_id === clientId ? newMessage : m
+                )
+            );
+        }
+    }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound, handleEditMessage]);
+
+    // (uploadAndSendImage - обробка відповіді)
     const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
@@ -580,56 +913,115 @@ export default function IndividualChatScreen() {
             formData.append('file', { uri: asset.uri, name: filePath, type: `image/${fileExt}` });
             const { error: uploadError } = await supabase.storage.from('chat_images').upload(filePath, formData);
             if (uploadError) throw uploadError;
+            
             const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(filePath);
-            await sendMessage({ image_url: urlData.publicUrl, client_id: clientId, blurhash: asset.blurhash });
+            
+            const { data: newMessage, error } = await sendMessage({ image_url: urlData.publicUrl, client_id: clientId, blurhash: asset.blurhash });
+
+            if (error) {
+                throw error; 
+            } else if (newMessage) {
+                setMessages(prev => 
+                    prev.map(m => 
+                        m.client_id === clientId ? newMessage : m
+                    )
+                );
+            }
         } catch (e) { Alert.alert(t('common.error'), e.message); setMessages(prev => prev.filter(m => m.client_id !== clientId)); }
     }, [session, sendMessage, t, currentRoomId, playSound]);
 
+    // (handleSendLocation - обробка відповіді)
     const handleSendLocation = useCallback(async () => {
         setAttachmentModalVisible(false);
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') { Alert.alert(t('chat.permissionDeniedTitle'), t('chat.locationPermissionDenied')); return; }
+        
         setIsSendingLocation(true);
+        const clientId = uuidv4(); 
+        
         try {
             let { coords } = await Location.getCurrentPositionAsync({});
             const locationData = { latitude: coords.latitude, longitude: coords.longitude };
-            const clientId = uuidv4();
+            
             const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, location: locationData, status: 'sending', reactions: [] };
             setMessages(prev => [optimisticMessage, ...prev]);
             playSound(sentSoundRef);
-            await sendMessage({ location: locationData, client_id: clientId });
-        } catch (e) { Alert.alert(t('common.error'), t('chat.locationFetchError')); }
+            
+            const { data: newMessage, error } = await sendMessage({ location: locationData, client_id: clientId });
+            
+            if (error) {
+                throw error; 
+            } else if (newMessage) {
+                setMessages(prev => 
+                    prev.map(m => 
+                        m.client_id === clientId ? newMessage : m
+                    )
+                );
+            }
+        } catch (e) { 
+            Alert.alert(t('common.error'), t('chat.locationFetchError')); 
+            setMessages(prev => prev.filter(m => m.client_id !== clientId));
+        }
         finally { setIsSendingLocation(false); }
     }, [sendMessage, t, session, currentRoomId, playSound]);
-
+    
     const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); const originalContent = editingMessage.content; setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); } }, [editingMessage, inputText, t]);
     
+    // (handleReaction - оптимістичне оновлення, БЕЗ 'select')
     const handleReaction = useCallback(async (emoji, message) => {
         const target = message || selectedMessageForAction;
         if (!target) return;
-        const { error: rpcError } = await supabase.rpc('toggle_reaction', { 
+        
+        const myUserId = session?.user?.id;
+        if (!myUserId) return;
+
+        // --- 1. Оптимістичне оновлення ---
+        const originalReactions = target.reactions ? [...target.reactions] : [];
+        let updatedReactions = [...originalReactions];
+        
+        const existingIndex = updatedReactions.findIndex(r => r.emoji === emoji && r.user_id === myUserId);
+
+        if (existingIndex > -1) {
+            updatedReactions.splice(existingIndex, 1);
+        } else {
+            updatedReactions.push({ 
+                id: uuidv4(), 
+                message_id: target.id,
+                user_id: myUserId,
+                emoji: emoji,
+                created_at: new Date().toISOString()
+            }); 
+        }
+
+        setMessages(currentMessages =>
+            currentMessages.map(m => 
+                (m.id === target.id ? { ...m, reactions: updatedReactions } : m)
+            )
+        );
+        // --- Кінець оптимістичного оновлення ---
+
+
+        // --- 2. Запит до Бази Даних ---
+        const { error: rpcErrorToggle } = await supabase.rpc('toggle_reaction', { 
             p_message_id: target.id, 
             p_emoji: emoji 
         });
-        if (rpcError) {
-            Alert.alert(t('common.error'), rpcError.message);
-            return;
-        }
-        const { data: updatedMessage, error: fetchError } = await supabase
-            .from('messages')
-            .select('*, reactions(*)')
-            .eq('id', target.id)
-            .single();
-        if (fetchError) {
-            console.error("Failed to fetch updated message after reaction:", fetchError);
-            return;
-        }
-        if (updatedMessage) {
+
+        // 3. Обробка помилки (якщо є)
+        if (rpcErrorToggle) {
+            Alert.alert(t('common.error'), rpcErrorToggle.message);
             setMessages(currentMessages =>
-                currentMessages.map(m => (m.id === updatedMessage.id ? updatedMessage : m))
+                currentMessages.map(m => 
+                    (m.id === target.id ? { ...m, reactions: originalReactions } : m)
+                )
             );
+            return;
         }
-    }, [selectedMessageForAction, t]);
+        
+        // 4. Успіх - нічого не робимо, оптимістичний стан вірний.
+        
+    }, [selectedMessageForAction, t, session]);
+
 
     const handleDeleteMessage = useCallback(() => {
         if (!selectedMessageForAction) return;
@@ -694,11 +1086,13 @@ export default function IndividualChatScreen() {
 
     const handleTyping = useCallback((text) => { setInputText(text); if (channelRef.current && channelRef.current.state === 'joined') { try { channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
 
+    // Пагінація/refresh більше не потрібні, оскільки завантажуємо все
+    // const handleRefresh = ...
+
     const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
-
-    // 💡 ЕТАП 1 РЕНДЕР: Повний екран завантаження, доки isRoomSetup === true
+    // РЕНДЕР: Повний екран завантаження
     if (!isRoomSetup) {
         return (
             <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -708,7 +1102,7 @@ export default function IndividualChatScreen() {
         );
     }
     
-    // 💡 ЕТАП 2 РЕНДЕР: Статичний UI (Header та Input) відображається
+    // РЕНДЕР: Основний UI
     return (
         <View style={styles.container}> 
             <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
@@ -720,18 +1114,18 @@ export default function IndividualChatScreen() {
                         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
                         <View style={styles.headerUserInfo}>
                             <Text style={styles.headerUserName}>{recipientInfo.name}</Text>
-                            {isRecipientTyping ? <TypingIndicator /> : <Text style={styles.headerUserStatus}>{userStatus}</Text>}
+                            {isRecipientTyping ? <TypingIndicator /> : <Text  style={styles.headerUserStatus}>{userStatus}</Text>}
                         </View>
                             <TouchableOpacity 
                                 onPress={() => {
-                                if (recipientId) {
-                                    navigation.navigate('PublicDriverProfile', {
-                                        driverId: recipientId,
-                                        driverName: recipientInfo.name
-                                    });
-                                }
-                            }}
-                        >
+                                    if (route.params.recipientId) {
+                                        navigation.navigate('PublicDriverProfile', {
+                                            driverId: route.params.recipientId,
+                                            driverName: recipientInfo.name
+                                        });
+                                    }
+                                }}
+                            >
                         
                             <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={styles.headerAvatar} cachePolicy="disk" />
                         </TouchableOpacity>                
@@ -744,7 +1138,7 @@ export default function IndividualChatScreen() {
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
                 >
                     
-                    {isLoading ? (
+                    {isLoading && messages.length === 0 ? (
                          <View style={[styles.flatList, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
                              <ActivityIndicator size="large" color={colors.primary} />
                              <Text style={{color: colors.secondaryText, marginTop: 10}}>{t('common.loadingMessages', 'Завантаження повідомлень...')}</Text>
@@ -761,19 +1155,18 @@ export default function IndividualChatScreen() {
                                     currentUserId={session?.user?.id} 
                                     onImagePress={setViewingImageUri} 
                                     onLongPress={handleLongPress} 
-                                    onDoubleTap={m => handleReaction('👍', m)} 
+                                    onDoubleTap={m => handleReaction('👍', m)} // Спрощено DoubleTap
                                     onSelect={handleToggleSelection} 
                                     selectionMode={selectionMode} 
                                     isSelected={selectedMessages.has(item.id)}
-                                    isInitialLoad={false} // ВИМКНЕНО
                                 />;
                             }}
                             keyExtractor={item => item.id.toString()}
                             contentContainerStyle={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 10 }}
                             style={{ flex: 1 }}
-                            initialNumToRender={15} // Оптимізація
-                            maxToRenderPerBatch={10} // Оптимізація
-                            windowSize={21} // Оптимізація
+                            initialNumToRender={15} 
+                            maxToRenderPerBatch={10} 
+                            windowSize={21} 
                             removeClippedSubviews={true}
                         />
                     )}
@@ -786,6 +1179,7 @@ export default function IndividualChatScreen() {
    
                 </KeyboardAvoidingView>
             
+            {/* (Модальні вікна) */}
             <MessageActionSheet visible={isActionSheetVisible && !selectionMode} onClose={() => setActionSheetVisible(false)} message={selectedMessageForAction} isMyMessage={selectedMessageForAction?.sender_id === session?.user?.id} onCopy={() => Clipboard.setString(selectedMessageForAction?.content || '')} onEdit={() => { setEditingMessage(selectedMessageForAction); setInputText(selectedMessageForAction?.content || ''); textInputRef.current?.focus(); }} onDelete={handleDeleteMessage} onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)} onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }} />
             
             <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} />

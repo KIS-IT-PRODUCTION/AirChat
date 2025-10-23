@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react';
+// usePushNotifications.js (ОНОВЛЕНО)
+
+import { useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -16,13 +18,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ✨ 1. КЛЮЧОВЕ ВИПРАВЛЕННЯ: Спрощена та надійна функція навігації
+// ✨ 1. КЛЮЧОВЕ ВИПРАВЛЕННЯ: Спрощена та надійна функція навігації (винесена для чистоти)
 const handleChatNavigation = (navigationRef, data) => {
   if (navigationRef.current?.isReady() && data?.roomId) {
     console.log('Navigating directly to IndividualChat with data:', data);
     
-    // Замість того, щоб вказувати 'UserAppFlow', ми переходимо напряму на 'IndividualChat'.
-    // React Navigation сам знайде цей екран у поточному активному стеку (водія чи пасажира).
     navigationRef.current.navigate('IndividualChat', {
       roomId: data.roomId,
       recipientId: data.recipientId,
@@ -31,7 +31,6 @@ const handleChatNavigation = (navigationRef, data) => {
       recipientLastSeen: data.recipientLastSeen,
     });
   } else if (!navigationRef.current?.isReady()) {
-    // Якщо навігація ще не готова (холодний старт), чекаємо і пробуємо знову.
     setTimeout(() => handleChatNavigation(navigationRef, data), 200);
   }
 };
@@ -46,7 +45,8 @@ export const usePushNotifications = (navigationRef) => {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  const registerForPushNotificationsAsync = async () => {
+  // 💡 ОНОВЛЕНО: Видалення проблемного projectId
+  const registerForPushNotificationsAsync = useCallback(async () => {
     let token;
     if (Device.isDevice) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -59,9 +59,17 @@ export const usePushNotifications = (navigationRef) => {
         console.log('Failed to get push token for push notification!');
         return;
       }
-      token = (await Notifications.getExpoPushTokenAsync({
-        projectId: 'e5ae05a0-322d-4a51-84d9-84738230258b',
-      })).data;
+      
+      // 💡 КРИТИЧНЕ ВИПРАВЛЕННЯ: Видаляємо projectId. 
+      // Дозволяємо Expo автоматично визначити ID з конфігурації EAS Build.
+      try {
+        const tokenResponse = await Notifications.getExpoPushTokenAsync({}); 
+        token = tokenResponse.data;
+      } catch (e) {
+        console.error("Error fetching Expo Push Token:", e);
+        return;
+      }
+
     } else {
       console.log('Must use physical device for Push Notifications');
     }
@@ -75,16 +83,23 @@ export const usePushNotifications = (navigationRef) => {
       });
     }
     return token;
-  };
+  }, []);
 
   useEffect(() => {
     if (session?.user?.id && profile) {
+      // 💡 ОНОВЛЕНО: Обов'язково чистимо старий токен, якщо реєстрація була успішною, але токен не отримано
       registerForPushNotificationsAsync().then(async (token) => {
         if (token) {
           await supabase
             .from('profiles')
             .update({ expo_push_token: token })
             .eq('id', session.user.id);
+        } else {
+             // 💡 ДОДАТКОВА НАДІЙНІСТЬ: Якщо токен не отримано (через помилку), чистимо старий токен в БД.
+             await supabase
+                .from('profiles')
+                .update({ expo_push_token: null })
+                .eq('id', session.user.id);
         }
       });
 
@@ -94,7 +109,7 @@ export const usePushNotifications = (navigationRef) => {
         if (fetchUnreadCount) {
           fetchUnreadCount();
         }
-        if (type === 'new_offer' && profile.role === 'client' && fetchNewOffersCount) { // У пасажира роль 'client'
+        if (type === 'new_offer' && profile.role === 'client' && fetchNewOffersCount) { 
           fetchNewOffersCount();
         }
         if (type === 'offer_accepted' && profile.role === 'driver' && fetchNewTripsCount) {
@@ -108,6 +123,7 @@ export const usePushNotifications = (navigationRef) => {
         handleChatNavigation(navigationRef, notificationData);
       });
       
+      // 💡 ПЕРЕВІРКА ХОЛОДНОГО СТАРТУ: Виконується один раз при завантаженні застосунку
       Notifications.getLastNotificationResponseAsync().then(response => {
         if (response) {
             console.log('Додаток відкрито з холодного старту через сповіщення');
@@ -125,7 +141,7 @@ export const usePushNotifications = (navigationRef) => {
         }
       };
     }
-  }, [session, profile, fetchUnreadCount, fetchNewOffersCount, fetchNewTripsCount, navigationRef]);
+  }, [session, profile, fetchUnreadCount, fetchNewOffersCount, fetchNewTripsCount, navigationRef, registerForPushNotificationsAsync]);
 
   return {};
 };

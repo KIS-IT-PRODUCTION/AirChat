@@ -40,7 +40,7 @@ const TypingIndicator = memo(() => {
                 />
             ))}
              {/* Додаємо текст "друкує...", щоб було зрозуміліше */}
-            <Text style={styles.typingText}>{t('chat.typing', 'друкує...')}</Text>
+            <Text style={styles.typingText}>{t('chat.typing')}</Text>
         </MotiView>
     );
 });

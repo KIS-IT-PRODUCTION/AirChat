@@ -320,7 +320,7 @@ export default function TransferDetailScreen({ navigation, route }) {
         <View style={styles.passengerDetailItem}>
           <Ionicons name="people-outline" size={20} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {`${transferData.adults_count} дор.`}
+                                {`${transferData.adults_count}`} {t('transferData.adults_count')} 
           </Text>
         </View>
       )}
@@ -328,7 +328,7 @@ export default function TransferDetailScreen({ navigation, route }) {
         <View style={styles.passengerDetailItem}>
           <Ionicons name="person-outline" size={20} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {`${transferData.children_count} дит.`}
+                                {`${transferData.children_count}`} {t('transferData.children_count')} 
           </Text>
         </View>
       )}
@@ -336,7 +336,7 @@ export default function TransferDetailScreen({ navigation, route }) {
         <View style={styles.passengerDetailItem}>
           <Ionicons name="happy-outline" size={20} color={colors.text} />
           <Text style={styles.passengerDetailText}>
-            {`${transferData.infants_count} нем.`}
+                                {`${transferData.infants_count}`} {t('transferData.infants_count')} 
           </Text>
         </View>
       )}
@@ -349,7 +349,7 @@ export default function TransferDetailScreen({ navigation, route }) {
                     <DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} />
                     <DetailItem 
                         icon="car-sport-outline" 
-                        value={transferData?.transfer_type === 'individual' ? 'індив.' : t(`transferTypes.${transferData?.transfer_type}`)} 
+                            value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} 
                         label={t('transferDetail.transferType')} 
                         colors={colors}
                     />

@@ -1,14 +1,13 @@
-import 'react-native-google-places-autocomplete'
+import 'react-native-google-places-autocomplete';
 import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
-import './i18n';
+import './i18n'; // Переконайтесь, що i18n ініціалізовано тут
 
-// 💡 ВИПРАВЛЕНО: Додано memo та useCallback до імпорту з React
-import React, { useState, useEffect, useRef, memo, useCallback } from 'react'; 
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, StyleSheet, Text, AppState, Platform, Animated, TouchableOpacity, Easing } from 'react-native';
+import { View, StyleSheet, Text, AppState, Platform, Animated, TouchableOpacity, Easing, StatusBar } from 'react-native'; // 💡 Додано StatusBar, Easing
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
@@ -16,8 +15,7 @@ import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { LogBox } from 'react-native';
-// 💡 ВИПРАВЛЕНО: Додано useSafeAreaInsets
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
+import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context'; // 💡 Додано SafeAreaProvider
 
 import { ThemeProvider, useTheme } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
@@ -27,8 +25,8 @@ import { NewTripsProvider, useNewTrips } from './provider/NewTripsContext';
 import HomeScreen, { FormProvider } from './app/HomeScreen';
 import { usePushNotifications } from './usePushNotifications.js';
 import { supabase } from './config/supabase';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Імпорти екранів
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
@@ -44,18 +42,25 @@ import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js
 import Support from './app/SupportScreen.js';
 import IndividualChatScreen from './app/IndividualChatScreen.js';
 
+// Імпортуємо react-native-screens (переконайтесь, що викликано enableScreens())
+import { enableScreens } from 'react-native-screens';
+enableScreens();
+
 SplashScreen.preventAutoHideAsync();
 LogBox.ignoreLogs([
   'Warning: Text strings must be rendered within a <Text> component.'
 ]);
+
 const Stack = createStackNavigator();
 
-// [AuthNavigator, UserAppStack, DriverAppStack, linkingConfig - без змін]
+// --- Навігатори ---
 function AuthNavigator({ isFirstLaunch }) {
     return (
         <Stack.Navigator
             initialRouteName={isFirstLaunch ? 'Onboarding' : 'HomeScreen'}
-            screenOptions={{ headerShown: false, animationEnabled: false }}
+            // 💡 Можливо, варто увімкнути стандартні анімації для плавності?
+            // screenOptions={{ headerShown: false, animationEnabled: true }}
+             screenOptions={{ headerShown: false, animationEnabled: false }} // Як було у вас
         >
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="HomeScreen" component={HomeScreen} />
@@ -70,7 +75,10 @@ function AuthNavigator({ isFirstLaunch }) {
 
 function UserAppStack() {
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false, animationEnabled: false }}>
+        <Stack.Navigator
+            // screenOptions={{ headerShown: false, animationEnabled: true }}
+            screenOptions={{ headerShown: false, animationEnabled: false }}
+        >
             <Stack.Screen name="MainTabs" component={TabNavigator} />
             <Stack.Screen name="TransferDetail" component={TransferDetailScreen} />
             <Stack.Screen name="IndividualChat" component={IndividualChatScreen} />
@@ -83,7 +91,10 @@ function UserAppStack() {
 
 function DriverAppStack() {
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false, animationEnabled: false }}>
+        <Stack.Navigator
+            // screenOptions={{ headerShown: false, animationEnabled: true }}
+             screenOptions={{ headerShown: false, animationEnabled: false }}
+        >
             <Stack.Screen name="DriverMainTabs" component={DriverTabNavigator} />
             <Stack.Screen name="DriverRequest" component={DriverRequestDetailScreen} />
             <Stack.Screen name="Support" component={Support} />
@@ -93,35 +104,37 @@ function DriverAppStack() {
     );
 }
 
+// --- Deep Linking Config ---
 const linkingConfig = {
   prefixes: [Linking.createURL('/'), 'airchat://'],
-  config: { 
-    screens: { 
+  config: {
+    screens: {
         ResetPasswordScreen: 'reset-password',
         IndividualChat: 'chat/:roomId',
-    } 
+        // Додайте інші шляхи, якщо потрібно
+    }
   },
 };
-// [Кінець: AuthNavigator, UserAppStack, DriverAppStack, linkingConfig]
 
+// --- Кореневий Навігатор ---
 function RootNavigator() {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
     const navigationRef = useRef(null);
-    
-    // --- ЛОГІКА ІНТЕРНЕТ-З'ЄДНАННЯ ---
+
+    // --- Логіка інтернет-з'єднання ---
     const netInfo = useNetInfo();
     const [isNetworkDown, setIsNetworkDown] = useState(false);
     const networkTimerRef = useRef(null);
-    const DEBOUNCE_DELAY = 1500; 
-    
+    const DEBOUNCE_DELAY = 1500;
+
     usePushNotifications(navigationRef);
     const { unreadCount, fetchUnreadCount } = useUnreadCount();
     const { newOffersCount } = useNewOffers();
     const { newTripsCount } = useNewTrips();
 
     useEffect(() => {
-        const isConnected = netInfo.isConnected && netInfo.isInternetReachable;
+        const isConnected = netInfo.isConnected === true && netInfo.isInternetReachable === true;
 
         if (networkTimerRef.current) {
             clearTimeout(networkTimerRef.current);
@@ -136,19 +149,24 @@ function RootNavigator() {
             // Мережа доступна, приховуємо банер негайно
             setIsNetworkDown(false);
         }
-        
+
         return () => {
             if (networkTimerRef.current) {
                 clearTimeout(networkTimerRef.current);
             }
         };
     }, [netInfo.isConnected, netInfo.isInternetReachable, netInfo.type]);
-    // --- КІНЕЦЬ ЛОГІКИ ІНТЕРНЕТ-З'ЄДНАННЯ ---
+    // --- Кінець логіки інтернет-з'єднання ---
 
     useEffect(() => {
         const checkOnboarding = async () => {
-            const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
-            setIsFirstLaunch(hasOnboarded === null);
+            try {
+                const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
+                setIsFirstLaunch(hasOnboarded === null);
+            } catch (e) {
+                console.error("Failed to read onboarding status:", e);
+                setIsFirstLaunch(true); // Показуємо онбордінг у разі помилки
+            }
         };
         checkOnboarding();
     }, []);
@@ -158,7 +176,7 @@ function RootNavigator() {
             SplashScreen.hideAsync();
         }
     }, [isAuthLoading, isFirstLaunch]);
-    
+
     useEffect(() => {
         const handleAppStateChange = (nextAppState) => {
             if (session?.user) {
@@ -166,12 +184,14 @@ function RootNavigator() {
                     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
                     fetchUnreadCount();
                 } else {
+                    // Коли додаток згортається, скидаємо активний чат
                     supabase.from('chat_room_presences').upsert({ user_id: session.user.id, active_room_id: null, updated_at: new Date().toISOString() }).then();
                 }
             }
         };
 
         const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+        // Викликаємо одразу при старті, щоб оновити статус
         handleAppStateChange(AppState.currentState);
         return () => {
             appStateSubscription.remove();
@@ -181,33 +201,52 @@ function RootNavigator() {
     useEffect(() => {
         const updateTotalBadgeCount = async () => {
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
-                const totalBadgeCount = (unreadCount || 0) + (newOffersCount || 0) + (newTripsCount || 0);
-                await Notifications.setBadgeCountAsync(totalBadgeCount);
+                try {
+                    const totalBadgeCount = (unreadCount || 0) + (newOffersCount || 0) + (newTripsCount || 0);
+                    await Notifications.setBadgeCountAsync(totalBadgeCount >= 0 ? totalBadgeCount : 0); // Перевірка на від'ємне значення
+                } catch (e) {
+                    console.error("Failed to set badge count:", e);
+                }
             }
         };
         updateTotalBadgeCount();
     }, [unreadCount, newOffersCount, newTripsCount]);
-    
+
     useEffect(() => {
         const handleDeepLink = (event) => {
             const url = event.url;
             if (!url || !navigationRef.current?.isReady()) return;
             const { path } = Linking.parse(url);
-            if (path.includes('reset-password') && !session) {
+            // Спрощена логіка, можливо потрібно додати більше перевірок
+            if (path?.includes('reset-password') && !session) {
                 navigationRef.current.navigate('ResetPasswordScreen');
             }
         };
 
+        // Обробка початкового URL (якщо додаток відкрили через deep link)
+        Linking.getInitialURL().then(url => {
+            if (url) {
+                const { path } = Linking.parse(url);
+                 if (path?.includes('reset-password') && !session) {
+                    // Затримка, щоб навігація встигла ініціалізуватись
+                    setTimeout(() => navigationRef.current?.navigate('ResetPasswordScreen'), 500);
+                 }
+            }
+        });
+
         const subscription = Linking.addEventListener('url', handleDeepLink);
         return () => { subscription.remove(); };
-    }, [session]);
+    }, [session]); // Залежність тільки від сесії
 
+    // Показуємо null (пустий екран), доки не визначимо isFirstLaunch та isAuthLoading
     if (isAuthLoading || isFirstLaunch === null) {
-        return null; 
+        return null;
     }
 
     return (
         <View style={{ flex: 1 }}>
+            {/* Встановлюємо стиль статус-бару */}
+            <StatusBar barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'} translucent backgroundColor="transparent" />
             <NavigationContainer ref={navigationRef} linking={linkingConfig}>
                 {session && profile ? (
                     profile.role === 'driver' ? <DriverAppStack /> : <UserAppStack />
@@ -215,74 +254,93 @@ function RootNavigator() {
                     <AuthNavigator isFirstLaunch={isFirstLaunch} />
                 )}
             </NavigationContainer>
-            {/* Банер тепер повністю керується станом isNetworkDown */}
+            {/* Банер тепер рендериться тут */}
             <NoInternetBanner visible={isNetworkDown} />
         </View>
     );
 }
 
 // -----------------------------------------------------------
-// КОМПОНЕНТ: Спадаючий Банер NoInternetBanner
+// 💡 ОНОВЛЕНИЙ КОМПОНЕНТ: Спадаючий Банер NoInternetBanner
 // -----------------------------------------------------------
 const NoInternetBanner = memo(({ visible }) => {
-    const { colors } = useTheme(); 
-    const { t } = useTranslation(); 
-    const animation = useRef(new Animated.Value(0)).current;
-    // 💡 ВИПРАВЛЕНО: useSafeAreaInsets тепер доступний
+    const { colors } = useTheme();
+    const { t } = useTranslation();
+    const animation = useRef(new Animated.Value(visible ? 1 : 0)).current;
     const insets = useSafeAreaInsets();
-    const HEADER_HEIGHT = 80 + insets.top; // Динамічна висота для врахування safe area
-    
-    // Логіка анімації: реагує на visible
+
+    const BANNER_CONTENT_HEIGHT = 50; // 💡 Зменшено висоту контенту
+    const TOTAL_BANNER_HEIGHT = BANNER_CONTENT_HEIGHT + insets.top;
+
     useEffect(() => {
         Animated.timing(animation, {
             toValue: visible ? 1 : 0,
             duration: 300,
-            easing: Easing.inOut(Easing.ease),
+            easing: Easing.out(Easing.ease),
             useNativeDriver: true,
         }).start();
     }, [visible, animation]);
-    
-    // Якщо банер приховано (анімація завершена), не рендеримо його
-    if (!visible && animation._value === 0) return null;
 
     const translateY = animation.interpolate({
         inputRange: [0, 1],
-        outputRange: [-HEADER_HEIGHT, 0], 
+        outputRange: [-TOTAL_BANNER_HEIGHT, 0],
     });
 
-    const styles = getBannerStyles(colors, HEADER_HEIGHT, insets.top);
-    
+    const styles = getBannerStyles(colors, TOTAL_BANNER_HEIGHT, insets.top, BANNER_CONTENT_HEIGHT);
+
+    // Зберігаємо стан видимості анімації, щоб уникнути зникнення під час анімації
+    const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+    const prevVisible = useRef(visible);
+
+    useEffect(() => {
+        if (prevVisible.current && !visible) {
+            setIsAnimatingOut(true);
+            const listenerId = animation.addListener(({ value }) => {
+                if (value === 0) {
+                    setIsAnimatingOut(false);
+                    animation.removeListener(listenerId);
+                }
+            });
+        } else if (!prevVisible.current && visible) {
+            setIsAnimatingOut(false); // Скидаємо, якщо він знову з'являється
+        }
+        prevVisible.current = visible;
+    }, [visible, animation]);
+
+
+    // Не рендеримо, якщо він невидимий І не анімується
+     if (!visible && !isAnimatingOut) {
+         return null;
+     }
+
     return (
         <Animated.View style={[styles.bannerContainer, { transform: [{ translateY }] }]}>
             <View style={styles.content}>
-                <Ionicons 
-                    name="cloud-offline-outline" 
-                    size={20} 
-                    color={colors.text} 
-                    style={styles.icon} 
+                <Ionicons
+                    name="cloud-offline-outline"
+                    size={20}
+                    color={styles.title.color}
+                    style={styles.icon}
                 />
                 <Text style={styles.title} numberOfLines={1}>
                     {t('errors.noInternetTitle') || 'Немає з\'єднання з Інтернетом'}
                 </Text>
             </View>
-           
         </Animated.View>
     );
 });
 
-const getBannerStyles = (colors, height, topInset) => StyleSheet.create({
+// 💡 ОНОВЛЕНІ СТИЛІ для банера
+const getBannerStyles = (colors, totalHeight, topInset, contentHeight) => StyleSheet.create({
     bannerContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        height: height,
-        backgroundColor: colors?.danger || '#FF4444', 
-        paddingTop: topInset,
+        height: totalHeight,
+        backgroundColor: colors?.danger || '#D32F2F', // Трохи темніший червоний
         paddingHorizontal: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end', // Контент внизу
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
@@ -293,33 +351,25 @@ const getBannerStyles = (colors, height, topInset) => StyleSheet.create({
     content: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexShrink: 1,
+        height: contentHeight, // Фіксована висота контенту
+        marginBottom: 8, // 💡 Зменшено відступ знизу
     },
     icon: {
-        marginRight: 8,
+        marginRight: 10, // Трохи більший відступ
     },
-    title: { 
-        fontSize: 14, 
-        fontWeight: '600', 
-        color: colors?.text || '#fff', 
-    },
-    button: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 5,
-    },
-    buttonText: {
-        color: colors?.text || '#fff', 
-        fontWeight: 'bold', 
+    title: {
         fontSize: 14,
-    }
+        fontWeight: '600',
+        color: '#FFFFFF',
+        flexShrink: 1, // Дозволяємо тексту скорочуватись
+    },
 });
 
+// --- Головний компонент Додатку ---
 export default function App() {
   return (
-    // 💡 КЛЮЧОВЕ ВИПРАВЛЕННЯ
-    <SafeAreaProvider> 
+    // SafeAreaProvider має бути найвищим рівнем
+    <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
           <UnreadCountProvider>

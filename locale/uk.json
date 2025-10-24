@@ -118,7 +118,13 @@
     "confirmCallTitle": "Подзвонити водію?",
     "loginToWrite": "Будь ласка, увійдіть в акаунт, щоб написати водію.",
     "carInfo": "Автомобіль",
-    "years": "років"
+    "years": "років",
+    "car_make": "Марка",
+    "carModel": "Модель авто",
+    "carPlate": "Номерний знак",
+    "passengerProfileTitle": "Профіль пасажира",
+    "passengerInfoTitle": "Профіль недоступний",
+    "passengerInfoBody": "Публічні профілі доступні лише для водіїв. Пасажири не мають публічних сторінок."
   },
   "settings": {
     "title": "Налаштування",
@@ -194,6 +200,7 @@
     "login": "Увійти"
   },
   "common": {
+    "loadingMessages": "Завантаження",
     "error": "Помилка",
     "success": "Успіх",
     "loading": "Завантаження...",
@@ -207,7 +214,8 @@
     "close": "Закрити",
     "currency_uah": "UAH",
     "user": "Користувач",
-    "call": "Подзвонити"
+    "call": "Подзвонити",
+    "back": "Назад"
   },
   "support": {
     "title": "Підтримка",
@@ -263,6 +271,8 @@
   },
 
   "transfersScreen": {
+    "individual": "індивід.",
+    "group": "груповий",
     "title": "Мої трансфери",
     "emptyState": "Додай свій перший трансфер — і вперед у подорож!",
     "writeButton": "Написати",
@@ -273,6 +283,11 @@
     "deleteConfirmBody_one": "Ви впевнені, що хочете видалити {{count}} обраний трансфер? Цю дію не можна буде повернути.",
     "deleteConfirmBody_few": "Ви впевнені, що хочете видалити {{count}} обрані трансфери? Цю дію не можна буде повернути.",
     "deleteConfirmBody_many": "Ви впевнені, що хочете видалити {{count}} обраних трансферів? Цю дію не можна буде повернути."
+  },
+  "transferData":{
+    "adults_count": "дор.",
+    "children_count": "діт.",
+    "infants_count": "нем."
   },
   "transferStatus": {
     "pending": {
@@ -353,6 +368,7 @@
   }
 },
   "chat": {
+    "typing": "пише",
     "onlineStatus": "в мережі",
     "offlineStatus": "не в мережі",
     "typingStatus": "друкує...",
@@ -446,7 +462,8 @@
     "passengerNotified": "Пасажир отримав вашу пропозицію. Очікуйте на відповідь.",
     "pricePlaceholder": "0",
     "commentPlaceholder": "Ваш коментар (необов'язково)",
-    "submitButton": "Надіслати пропозицію"
+    "submitButton": "Надіслати пропозицію",
+    "makeOfferButton": "Подати пропозицію"
   },
   
   "passengerSummary": {

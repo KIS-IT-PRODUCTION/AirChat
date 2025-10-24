@@ -46,15 +46,15 @@ const PassengerProfileInfo = ({ onGoBack }) => {
                 <TouchableOpacity onPress={onGoBack}>
                     <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('profile.passengerProfileTitle', 'Профіль Пасажира')}</Text>
+                <Text style={styles.headerTitle}>{t('profile.passengerProfileTitle')}</Text>
                 <View style={{ width: 40 }} />
             </View>
             <View style={styles.content}>
                 <Ionicons name="people-outline" size={80} color={colors.secondaryText} style={{ marginBottom: 20 }} />
-                <Text style={styles.infoTitle}>{t('profile.passengerInfoTitle', 'Профіль недоступний')}</Text>
-                <Text style={styles.infoText}>{t('profile.passengerInfoBody', 'Публічні профілі доступні лише для водіїв. Пасажири не мають публічних сторінок.')}</Text>
+                <Text style={styles.infoTitle}>{t('profile.passengerInfoTitle')}</Text>
+                <Text style={styles.infoText}>{t('profile.passengerInfoBody')}</Text>
                 <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
-                    <Text style={styles.backButtonText}>{t('common.back', 'Назад')}</Text>
+                    <Text style={styles.backButtonText}>{t('common.back')}</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -182,7 +182,7 @@ export default function PublicDriverProfileScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back-circle" size={40} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('profile.loadingProfile', 'Завантаження профілю...')}</Text>
+                <Text style={styles.headerTitle}>{t('profile.loadingProfile')}</Text>
                 <View style={{ width: 40 }} />
             </View>
             <ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} />
@@ -250,11 +250,11 @@ export default function PublicDriverProfileScreen() {
 
         <View style={styles.infoCard}>
             <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
-            <InfoRow label={t('profile.carMake', 'Марка')} value={profile.car_make || t('settings.notSet')} icon="car-sport-outline" />
+            <InfoRow label={t('profile.carMake')} value={profile.car_make || t('settings.notSet')} icon="car-sport-outline" />
             <View style={styles.divider} />
-            <InfoRow label={t('profile.carModel', 'Модель')} value={profile.car_model || t('settings.notSet')} icon="car-outline" />
+            <InfoRow label={t('profile.carModel')} value={profile.car_model || t('settings.notSet')} icon="car-outline" />
             <View style={styles.divider} />
-            <InfoRow label={t('profile.carPlate', 'Номерний знак')} value={profile.car_plate || t('settings.notSet')} icon="reader-outline" />
+            <InfoRow label={t('profile.carPlate')} value={profile.car_plate || t('settings.notSet')} icon="reader-outline" />
         </View>
 
         <View style={styles.statsContainer}>

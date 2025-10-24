@@ -1141,7 +1141,7 @@ useEffect(() => {
                     {isLoading && messages.length === 0 ? (
                          <View style={[styles.flatList, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
                              <ActivityIndicator size="large" color={colors.primary} />
-                             <Text style={{color: colors.secondaryText, marginTop: 10}}>{t('common.loadingMessages', 'Завантаження повідомлень...')}</Text>
+                             <Text style={{color: colors.secondaryText, marginTop: 10}}>{t('common.loadingMessages')}</Text>
                          </View>
                     ) : (
                         <FlatList

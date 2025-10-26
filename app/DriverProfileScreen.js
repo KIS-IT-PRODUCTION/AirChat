@@ -11,9 +11,7 @@ import Logo from '../assets/icon.svg';
 import moment from 'moment';
 import { MotiView } from 'moti';
 
-// ✅ ПОЧАТОК ЗМІН: Нові компоненти для кращого вигляду
-
-// Компонент для статистики (без змін)
+// Компоненти StatCard та InfoRow (без змін)
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
@@ -25,7 +23,6 @@ const StatCard = ({ icon, value, label, colors }) => {
     );
 };
 
-// Новий компонент для рядка з інформацією (як на інших екранах)
 const InfoRow = ({ icon, label, value }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -40,7 +37,6 @@ const InfoRow = ({ icon, label, value }) => {
         </View>
     );
 };
-// ✅ КІНЕЦЬ ЗМІН
 
 export default function DriverProfileScreen() {
   const { colors } = useTheme();
@@ -51,7 +47,6 @@ export default function DriverProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
-  const [completedTripsCount, setCompletedTripsCount] = useState(0); // ✅ Стан для кількості поїздок
 
   const calculateTimeInApp = (joinDate) => {
     if (!joinDate) return `0 ${t('profile.years')}`;
@@ -62,37 +57,23 @@ export default function DriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
+  // ✅ ВИПРАВЛЕНО: Функція тепер набагато простіша
   const fetchProfileData = useCallback(async () => {
-    if (!session?.user) { setLoading(false); return; }
+    if (!session?.user) { 
+        setLoading(false); 
+        return; 
+    }
     try {
       setLoading(true);
       
-      // Паралельно запитуємо дані профілю та поїздки
-      const [profileResponse, tripsResponse] = await Promise.all([
-        supabase.rpc('get_driver_profile_details', { p_driver_id: session.user.id }).single(),
-        supabase
-          .from('transfers')
-          .select('transfer_datetime')
-          .eq('driver_id', session.user.id)
-          .in('status', ['accepted', 'completed'])
-      ]);
+      // Викликаємо одну-єдину функцію, яка робить все на сервері
+      const { data, error } = await supabase
+        .rpc('get_full_driver_profile', { p_driver_id: session.user.id })
+        .single(); // .single() тут безпечно, бо функція завжди повертає один об'єкт
 
-      const { data: profileData, error: profileError } = profileResponse;
-      if (profileError) throw profileError;
-      setProfile(profileData);
-
-      // ✅ ПОЧАТОК ЗМІН: Логіка підрахунку завершених поїздок
-      const { data: tripsData, error: tripsError } = tripsResponse;
-      if (tripsError) throw tripsError;
+      if (error) throw error;
       
-      if (tripsData) {
-        const now = moment();
-        const archivedTrips = tripsData.filter(trip => 
-            moment(trip.transfer_datetime).isBefore(now.clone().subtract(1, 'day'))
-        );
-        setCompletedTripsCount(archivedTrips.length);
-      }
-      // ✅ КІНЕЦЬ ЗМІН
+      setProfile(data);
 
     } catch (error) {
       Alert.alert(t('common.error'), error.message);
@@ -101,14 +82,24 @@ export default function DriverProfileScreen() {
     }
   }, [session, t]);
 
-  useFocusEffect(useCallback(() => { fetchProfileData(); }, [fetchProfileData]));
+  // useFocusEffect залишається для оновлення даних при поверненні на екран
+  useFocusEffect(useCallback(() => { 
+    fetchProfileData(); 
+  }, [fetchProfileData]));
 
   if (loading) {
     return <SafeAreaView style={styles.container}><ActivityIndicator style={{ flex: 1 }} size="large" color={colors.primary} /></SafeAreaView>;
   }
-
+  
   if (!profile) {
-    return <SafeAreaView style={styles.container}><Text style={styles.fullName}>{t('profile.noData', 'Не вдалося завантажити профіль.')}</Text></SafeAreaView>;
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centeredMessage}>
+            <Ionicons name="alert-circle-outline" size={50} color={colors.secondaryText} />
+            <Text style={styles.noDataText}>{t('profile.noProfileFound', 'Профіль водія не знайдено.')}</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -129,14 +120,12 @@ export default function DriverProfileScreen() {
               style={styles.avatar}
               contentFit="cover"
               transition={300}
-              cachePolicy="disk"
             />
             <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний водій')}</Text>
             <Text style={styles.phone}>{profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
           </View>
         </MotiView>
 
-        {/* ✅ ПОЧАТОК ЗМІН: Новий дизайн блоку "Автомобіль" */}
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 }}>
           <View style={styles.infoCard}>
               <Text style={styles.sectionTitle}>{t('profile.carInfo', 'Автомобіль')}</Text>
@@ -147,7 +136,6 @@ export default function DriverProfileScreen() {
               <InfoRow label={t('profile.carPlate', 'Номерний знак')} value={profile.car_plate || t('settings.notSet')} icon="reader-outline" />
           </View>
         </MotiView>
-        {/* ✅ КІНЕЦЬ ЗМІН */}
         
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 300 }}>
           <View style={styles.statsContainer}>
@@ -157,8 +145,8 @@ export default function DriverProfileScreen() {
                   label={t('profile.experience', 'Досвід водіння')} 
                   colors={colors} 
               />
-              {/* ✅ Використовуємо новий стан для кількості поїздок */}
-              <StatCard icon="checkmark-done-circle-outline" value={completedTripsCount} label={t('profile.completedTrips')} colors={colors} />
+              {/* ✅ ВИПРАВЛЕНО: Беремо пораховану кількість прямо з об'єкта профілю */}
+              <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips_count} label={t('profile.completedTrips')} colors={colors} />
               <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
           </View>
         </MotiView>
@@ -182,7 +170,7 @@ export default function DriverProfileScreen() {
     </SafeAreaView>
   );
 }
-
+// Стилі (без змін)
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -193,75 +181,22 @@ const getStyles = (colors) => StyleSheet.create({
     avatar: { width: 120, height: 120, borderRadius: 60, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },
     fullName: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
     phone: { color: colors.secondaryText, fontSize: 16, marginBottom: 8 },
-    infoCard: {
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 20,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.text,
-        marginBottom: 16,
-        paddingHorizontal: 4,
-    },
-    // ✅ ПОЧАТОК ЗМІН: Нові стилі для блоку "Автомобіль"
-    divider: {
-        height: 1,
-        backgroundColor: colors.border,
-        marginVertical: 8,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    infoRowIcon: {
-        marginRight: 16,
-    },
-    infoRowLabel: {
-        fontSize: 12,
-        color: colors.secondaryText,
-        marginBottom: 2,
-    },
-    infoRowValue: {
-        fontSize: 16,
-        color: colors.text,
-        fontWeight: '500',
-    },
-    // ✅ КІНЕЦЬ ЗМІН
-    statsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        backgroundColor: colors.card,
-        borderRadius: 20,
-        padding: 16,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    statItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    statValue: {
-        color: colors.text,
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginTop: 8,
-    },
-    statLabel: {
-        color: colors.secondaryText,
-        fontSize: 12,
-        marginTop: 4,
-        textAlign: 'center',
-    },
+    infoCard: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginTop: 16, borderWidth: 1, borderColor: colors.border },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 16, paddingHorizontal: 4 },
+    divider: { height: 1, backgroundColor: colors.border, marginVertical: 8 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+    infoRowIcon: { marginRight: 16 },
+    infoRowLabel: { fontSize: 12, color: colors.secondaryText, marginBottom: 2 },
+    infoRowValue: { fontSize: 16, color: colors.text, fontWeight: '500' },
+    statsContainer: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 16, borderWidth: 1, borderColor: colors.border },
+    statItem: { alignItems: 'center', flex: 1 },
+    statValue: { color: colors.text, fontSize: 18, fontWeight: 'bold', marginTop: 8 },
+    statLabel: { color: colors.secondaryText, fontSize: 12, marginTop: 4, textAlign: 'center' },
     settingsButton: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 24, gap: 8 },
     settingsButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     footer: { alignItems: 'center', marginTop: 32 },
     footerText: { color: colors.secondaryText, fontSize: 14 },
     footerLink: { color: colors.primary, fontSize: 14, fontWeight: '600', marginTop: 4, textDecorationLine: 'underline' },
+    centeredMessage: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, gap: 15 },
+    noDataText: { color: colors.secondaryText, fontSize: 16, textAlign: 'center', lineHeight: 24 }
 });

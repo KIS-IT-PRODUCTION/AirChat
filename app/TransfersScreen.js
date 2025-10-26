@@ -51,14 +51,14 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
     const url = `tel:${phoneNumber}`;
     Alert.alert( t('alerts.confirmCallTitle'), t('alerts.confirmCallBody', { phoneNumber }), [ { text: t('alerts.cancelButton'), style: "cancel" }, { text: t('alerts.callButton'), onPress: () => { Linking.openURL(url).catch(() => Alert.alert(t('alerts.errorTitle'), t('alerts.callFailedCheckDevice'))); } } ]);
   };
-
+  
   const handleMessage = async () => {
-    if (!item.driver_id || !session?.user?.id) return;
+    if (!item.accepted_driver_id || !session?.user?.id) return;
     setIsCreatingChat(true);
     try {
-      const { data: roomId, error } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: item.driver_id });
+      const { data: roomId, error } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: item.accepted_driver_id });
       if (error) throw error;
-      navigation.navigate('MessagesTab', { screen: 'IndividualChat', params: { roomId, recipientId: item.driver_id, recipientName: item.driver_name, recipientAvatar: item.driver_avatar_url } });
+      navigation.navigate('MessagesTab', { screen: 'IndividualChat', params: { roomId, recipientId: item.accepted_driver_id, recipientName: item.driver_name, recipientAvatar: item.driver_avatar_url } });
     } catch (error) { Alert.alert(t('alerts.errorTitle'), t('alerts.chatFailed')); console.error("Error finding or creating chat room:", error); } 
     finally { setIsCreatingChat(false); }
   };
@@ -176,10 +176,7 @@ export default function TransfersScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // ✅ ПОЧАТОК ЗМІН: Скидаємо вкладку на "активні" при кожному поверненні на екран
       setViewMode('active');
-      // ✅ КІНЕЦЬ ЗМІН
-
       if(session?.user){
         setLoading(true);
         fetchTransfers();
@@ -216,7 +213,9 @@ export default function TransfersScreen() {
     const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
     const archived = transfers.filter(t => t.status === 'completed' || t.status === 'cancelled');
     
+    // ✅ ВИПРАВЛЕНО: Сортуємо активні трансфери від нових до старих
     active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
+    // Сортуємо архівні трансфери так само
     archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
     
     return { activeTransfers: active, archivedTransfers: archived };
@@ -358,24 +357,7 @@ const getStyles = (colors) => StyleSheet.create({
   priceFooter: { marginBottom: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   priceLabel: { fontSize: 14, color: colors.secondaryText },
   priceValue: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  viewOffersButton: {
-    marginTop: 16,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  viewOffersContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  viewOffersText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  viewOffersButton: { marginTop: 16, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  viewOffersContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  viewOffersText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });

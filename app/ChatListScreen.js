@@ -173,17 +173,27 @@ export default function ChatListScreen() {
     const [contextMenu, setContextMenu] = useState({ visible: false, user: null });
 
     const fetchChats = useCallback(async (isRefresh = false) => {
-        if (!session) { setIsInitialLoading(false); setIsRefreshing(false); return; }
+        if (!session || !session.user) { // Додаткова перевірка на session.user
+            setIsInitialLoading(false); 
+            setIsRefreshing(false); 
+            return; 
+        }
         if (isRefresh) setIsRefreshing(true);
 
         try {
-            const { data, error } = await supabase.rpc('get_my_chats');
+            // *** ВИПРАВЛЕНО: Передача p_user_id як параметра ***
+            const { data, error } = await supabase.rpc('get_my_chats', { p_user_id: session.user.id });
+            
             if (error) throw error;
             const chatsData = data || [];
             setFavoriteChats(chatsData.filter(chat => chat.is_favorite));
             setRegularChats(chatsData.filter(chat => !chat.is_favorite));
-        } catch (error) { console.error("Error fetching chats:", error.message);
-        } finally { setIsInitialLoading(false); setIsRefreshing(false); }
+        } catch (error) { 
+            console.error("Error fetching chats:", error.message);
+        } finally { 
+            setIsInitialLoading(false); 
+            setIsRefreshing(false); 
+        }
     }, [session]);
 
     useFocusEffect(useCallback(() => { fetchChats(); }, [fetchChats]));

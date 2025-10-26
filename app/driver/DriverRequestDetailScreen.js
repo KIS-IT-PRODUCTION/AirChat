@@ -13,7 +13,7 @@ import Logo from '../../assets/icon.svg';
 import { useNavigation } from '@react-navigation/native';
 import { MotiView } from 'moti';
 
-// --- Допоміжні компоненти ---
+// --- Допоміжні компоненти (без змін) ---
 const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
@@ -44,13 +44,8 @@ const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
-    
     return (
-        <TouchableOpacity 
-            style={[styles.otherOfferRow, isChosen && styles.chosenOffer]} 
-            onPress={onPress} 
-            activeOpacity={0.7}
-        >
+        <TouchableOpacity style={[styles.otherOfferRow, isChosen && styles.chosenOffer]} onPress={onPress} activeOpacity={0.7}>
             <Image
                 source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')}
                 style={styles.otherOfferAvatar}
@@ -68,12 +63,10 @@ const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
 const CURRENCIES = ['UAH', 'USD', 'EUR'];
 const HEADER_HEIGHT = Platform.select({ ios: 85, android: 100 });
 
-// Новий компонент модального вікна для подання пропозиції
 const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
-    
     const [price, setPrice] = useState('');
     const [comment, setComment] = useState('');
     const [currency, setCurrency] = useState('UAH');
@@ -95,16 +88,8 @@ const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
     };
 
     return (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={visible}
-            onRequestClose={onClose}
-        >
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={{ flex: 1 }}
-            >
+        <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                 <Pressable style={styles.modalBackdrop} onPress={onClose}>
                     <Pressable style={styles.modalContent}>
                         <View style={styles.modalHeader}>
@@ -113,7 +98,6 @@ const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
                                 <Ionicons name="close-circle" size={28} color={colors.secondaryText} />
                             </TouchableOpacity>
                         </View>
-                        
                         <View style={styles.priceInputContainer}>
                             <TextInput style={styles.priceInput} placeholder="0" placeholderTextColor={colors.secondaryText} keyboardType="numeric" value={price} onChangeText={setPrice} />
                         </View>
@@ -121,7 +105,6 @@ const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
                             {CURRENCIES.map((curr) => (<TouchableOpacity key={curr} style={[ styles.currencyButton, { backgroundColor: currency === curr ? colors.primary : colors.card, borderColor: colors.border }]} onPress={() => setCurrency(curr)}><Text style={[styles.currencyButtonText, { color: currency === curr ? '#fff' : colors.text }]}>{curr}</Text></TouchableOpacity>))}
                         </View>
                         <TextInput style={styles.commentInput} placeholder={t('driverOffer.commentPlaceholder')} placeholderTextColor={colors.secondaryText} value={comment} onChangeText={setComment} multiline />
-                        
                         <TouchableOpacity style={styles.submitButton} onPress={handlePressSubmit} disabled={isSubmitting}>
                             {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{t('driverOffer.submitButton')}</Text>}
                         </TouchableOpacity>
@@ -137,12 +120,13 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const { transferId } = route.params;
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { session } = useAuth();
   const mapViewRef = useRef(null);
 
   const [transferData, setTransferData] = useState(null);
-  const [otherOffers, setOtherOffers] = useState([]);
+  // ✅ ВИПРАВЛЕНО 1: Перейменовано стан для ясності коду
+  const [allOffers, setAllOffers] = useState([]); 
   const [hasAlreadyOffered, setHasAlreadyOffered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,8 +156,9 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
       if (data) {
         setTransferData(data);
-        const offers = data.other_offers || [];
-        setOtherOffers(offers);
+        // ✅ ВИПРАВЛЕНО 2: Використовуємо правильний ключ 'all_offers' з відповіді від SQL функції
+        const offers = data.all_offers || []; 
+        setAllOffers(offers);
         setHasAlreadyOffered(offers.some(offer => offer.driver_id === session.user.id));
         fetchRoute(data.from_location, data.to_location);
       }
@@ -201,7 +186,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
   const fetchRoute = async (origin, destination) => {
     try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}&language=${i18n.language}`;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}`;
       const response = await fetch(url);
       const json = await response.json();
       if (json.routes?.length > 0) {
@@ -217,13 +202,12 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
    const handleSubmitOffer = async ({ price, comment, currency }) => {
     setIsSubmitting(true);
     try {
-        const { error } = await supabase.functions.invoke('submit-offer-and-notify', { body: { transfer_id: transferId, driver_id: session.user.id, price, driver_comment: comment, currency }});
+        const { error } = await supabase.functions.invoke('submit-offer-and-notify', { body: { transfer_id: transferId, price, driver_comment: comment, currency }});
         if (error) throw error;
         
         setIsModalVisible(false);
-        
         Alert.alert(t('common.success'), t('driverOffer.offerSent'));
-        fetchData();
+        fetchData(); // Оновлюємо дані після успішної відправки
     } catch (error) {
         Alert.alert(t('common.error'), error.message);
     } finally {
@@ -253,57 +237,26 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   
   return (
     <SafeAreaView style={styles.container}>
-      <SubmitOfferModal
-        visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-        onSubmit={handleSubmitOffer}
-        isSubmitting={isSubmitting}
-      />
-
+      <SubmitOfferModal visible={isModalVisible} onClose={() => setIsModalVisible(false)} onSubmit={handleSubmitOffer} isSubmitting={isSubmitting} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity>
         <Text style={styles.title}>{t('driverOffer.requestDetails')}</Text>
         <Logo width={40} height={40} />
       </View>
-      
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={HEADER_HEIGHT}
-      >
-        <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={HEADER_HEIGHT}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
+                {/* ... (решта JSX без змін) ... */}
                 <View style={styles.userInfoSection}>
-                    <Image
-                        source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')}
-                        style={styles.userAvatar}
-                        contentFit="cover"
-                        transition={300}
-                        cachePolicy="disk"
-                    />
+                    <Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} contentFit="cover" transition={300} cachePolicy="disk" />
                     <Text style={styles.userName}>{transferData?.passenger_name || '...'}</Text>
                     <Text style={styles.memberSince}>{t('driverHome.memberSince', { date: moment(transferData?.passenger_created_at).format('ll') })}</Text>
                 </View>
-
                 <View style={styles.infoCard}>
-                    <InfoRow 
-                        icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} 
-                        label={t('transferDetail.from')} 
-                        value={transferData?.from_location} 
-                        colors={colors} 
-                    />
+                    <InfoRow icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} />
                     <View style={styles.dottedLine} />
-                    <InfoRow 
-                        icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} 
-                        label={t('transferDetail.to')} 
-                        value={transferData?.to_location} 
-                        colors={colors} 
-                    />
+                    <InfoRow icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} />
                 </View>
-                
                 <View style={styles.infoCard}>
                     <Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text>
                     <View style={styles.detailsGrid}>
@@ -312,49 +265,20 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                         <DetailItem icon="barcode-outline" value={transferData?.flight_number} label={t('transferDetail.flightNumber')} colors={colors} />
                     </View>
                     <View style={styles.divider} />
-                    
                     <View style={styles.passengerDetailsContainer}>
-                        {transferData.adults_count > 0 && (
-                            <View style={styles.passengerDetailItem}>
-                            <Ionicons name="people-outline" size={20} color={colors.text} />
-                            <Text style={styles.passengerDetailText}>
-                                {`${transferData.adults_count}`} {t('transferData.adults_count')} 
-                            </Text>
-                            </View>
-                        )}
-                        {transferData.children_count > 0 && (
-                            <View style={styles.passengerDetailItem}>
-                            <Ionicons name="person-outline" size={20} color={colors.text} />
-                            <Text style={styles.passengerDetailText}>
-                                {`${transferData.children_count}`} {t('transferData.children_count')} 
-                            </Text>
-                            </View>
-                        )}
-                        {transferData.infants_count > 0 && (
-                            <View style={styles.passengerDetailItem}>
-                            <Ionicons name="happy-outline" size={20} color={colors.text} />
-                            <Text style={styles.passengerDetailText}>
-                                {`${transferData.infants_count}`}, {t('transferData.infants_count')} 
-                            </Text>
-                            </View>
-                        )}
+                        {transferData.adults_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="people-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.adults_count}`} {t('transferData.adults_count')}</Text></View>)}
+                        {transferData.children_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="person-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.children_count}`} {t('transferData.children_count')}</Text></View>)}
+                        {transferData.infants_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="happy-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.infants_count}`}, {t('transferData.infants_count')}</Text></View>)}
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.detailsGrid}>
                         <DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} />
                         <DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} />
                         <DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} />
-                        <DetailItem 
-                            icon="car-sport-outline" 
-                            value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} 
-                            label={t('transferDetail.transferType')} 
-                            colors={colors}
-                        />
+                        <DetailItem icon="car-sport-outline" value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} label={t('transferDetail.transferType')} colors={colors} />
                     </View>
                 </View>
-
                 {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
-                
                 <View style={styles.infoCard}>
                     <Text style={styles.sectionTitle}>{t('transferDetail.route')}</Text>
                     <View style={styles.mapContainer}>
@@ -365,12 +289,13 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                     {routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport') : t('transferDetail.toAirport')}</Text></View></View>)}
                 </View>
 
-                {otherOffers.length > 0 && (
+                {/* ✅ ВИПРАВЛЕНО 3: Відображаємо пропозиції з правильного стану 'allOffers' */}
+                {allOffers.length > 0 && (
                     <View style={styles.infoCard}>
                         <Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle')}</Text>
-                        {otherOffers.map((offer, index) => (
+                        {allOffers.map((offer) => (
                             <OtherDriverOffer 
-                                key={index} 
+                                key={offer.driver_id} // Використовуємо унікальний driver_id як ключ
                                 offer={offer} 
                                 isChosen={offer.driver_id === transferData?.accepted_driver_id}
                                 onPress={() => navigation.navigate('PublicDriverProfile', { driverId: offer.driver_id })}
@@ -398,6 +323,7 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   );
 }
 
+// --- Стилі (без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -429,45 +355,25 @@ const getStyles = (colors) => StyleSheet.create({
     routeInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     routeInfoText: { color: colors.text, fontSize: 16, fontWeight: '500' },
     offerSection: { margin: 16, marginTop: 24 },
+    alreadyOfferedContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, gap: 12 },
+    alreadyOfferedText: { flex: 1, color: colors.text, fontSize: 16 },
+    otherOfferRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    otherOfferAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
+    otherOfferName: { flex: 1, color: colors.text, fontSize: 16 },
+    otherOfferPrice: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
+    chosenOffer: { backgroundColor: `${colors.primary}20`, paddingHorizontal: 8, borderRadius: 8 },
+    chosenOfferText: { color: colors.primary, fontWeight: 'bold' },
+    submitButton: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
+    submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+    modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+    modalContent: { backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+    modalCloseButton: { padding: 4 },
     priceInputContainer: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
     priceInput: { color: colors.text, fontSize: 48, fontWeight: 'bold', paddingVertical: 16, textAlign: 'center' },
     currencySelector: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16 },
     currencyButton: { paddingVertical: 10, paddingHorizontal: 30, borderRadius: 20, borderWidth: 1 },
     currencyButtonText: { fontSize: 16, fontWeight: 'bold' },
     commentInput: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', color: colors.text, fontSize: 16, marginBottom: 16 },
-    submitButton: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
-    submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-    alreadyOfferedContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, padding: 16, gap: 12 },
-    alreadyOfferedText: { flex: 1, color: colors.text, fontSize: 16 },
-    otherOfferRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 8, borderRadius: 8 },
-    otherOfferAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
-    otherOfferName: { flex: 1, color: colors.text, fontSize: 16 },
-    otherOfferPrice: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
-    chosenOffer: { backgroundColor: `${colors.primary}20` },
-    chosenOfferText: { color: colors.primary, fontWeight: 'bold' },
-    modalBackdrop: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: colors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 24,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: colors.text,
-    },
-    modalCloseButton: {
-        padding: 4,
-    },
 });

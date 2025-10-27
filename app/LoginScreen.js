@@ -169,7 +169,7 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   keyboardAvoidingContainer: { flex: 1 },
   closeButton: { position: 'absolute', top: insets.top + 10, right: 20, zIndex: 10, padding: 5 },
-  scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  scrollContainer: { flexGrow: 1, padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
   title: { color: colors.text, fontSize: 32, fontWeight: 'bold' },
   subtitle: { color: colors.secondaryText, fontSize: 16, marginTop: 8 },
@@ -177,14 +177,14 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
   inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginBottom: 16, paddingHorizontal: 15 },
   inputIcon: { marginRight: 10 },
   textInput: { flex: 1, height: 50, color: colors.text, fontSize: 16 },
-  // ✅ 2. ОНОВЛЕННЯ СТИЛІВ: Додано фіксовану ширину для іконки та заглушки
   eyeIcon: {
     padding: 5,
-    width: 34, // Фіксована ширина
-    alignItems: 'center', // Центрування іконки
+    width: 34, 
+    alignItems: 'center',
   },
   eyeIconPlaceholder: {
-    width: 34, // Така сама ширина, як у іконки
+    padding: 5, // ✅ ДОДАНО: Це робить заглушку ідентичною іконці
+    width: 34, 
   },
   forgotPasswordText: { color: colors.primary, textAlign: 'center', fontWeight: '600', margin: 10 },
   errorText: { color: '#D32F2F', textAlign: 'center', marginBottom: 20, fontSize: 14, fontWeight: '500' },

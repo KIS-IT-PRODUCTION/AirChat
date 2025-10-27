@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, KeyboardAvoidingView, Modal, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../ThemeContext';
@@ -13,8 +13,12 @@ import Logo from '../../assets/icon.svg';
 import { useNavigation } from '@react-navigation/native';
 import { MotiView } from 'moti';
 
-// --- Допоміжні компоненти (без змін) ---
-const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
+// ---
+// ✅ ОПТИМІЗАЦІЯ: Усі допоміжні компоненти винесені за межі основного
+// та обгорнуті в React.memo для запобігання зайвим рендерам.
+// ---
+
+const InfoRow = memo(({ icon, label, value, colors, valueStyle }) => {
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
   return (
@@ -26,9 +30,9 @@ const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
       </View>
     </View>
   );
-};
+});
 
-const DetailItem = ({ icon, value, label, colors }) => {
+const DetailItem = memo(({ icon, value, label, colors }) => {
   const styles = getStyles(colors);
   if (!value) return null;
   return (
@@ -38,14 +42,20 @@ const DetailItem = ({ icon, value, label, colors }) => {
       {label && <Text style={styles.detailLabel}>{label}</Text>}
     </View>
   );
-};
+});
 
-const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
+const OtherDriverOffer = memo(({ offer, isChosen, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
+
+    // ✅ ОПТИМІЗАЦІЯ: Створюємо стабільний обробник
+    const handlePress = useCallback(() => {
+        onPress(offer.driver_id);
+    }, [onPress, offer.driver_id]);
+
     return (
-        <TouchableOpacity style={[styles.otherOfferRow, isChosen && styles.chosenOffer]} onPress={onPress} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.otherOfferRow, isChosen && styles.chosenOffer]} onPress={handlePress} activeOpacity={0.7}>
             <Image
                 source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../../assets/default-avatar.png')}
                 style={styles.otherOfferAvatar}
@@ -58,12 +68,13 @@ const OtherDriverOffer = ({ offer, isChosen, onPress }) => {
             {isChosen && <Ionicons name="checkmark-circle" size={24} color={colors.primary} style={{ marginLeft: 8 }} />}
         </TouchableOpacity>
     );
-};
+});
 
+// ✅ ОПТИМІЗАЦІЯ: Константи винесено за межі компонента
 const CURRENCIES = ['UAH', 'USD', 'EUR'];
 const HEADER_HEIGHT = Platform.select({ ios: 85, android: 100 });
 
-const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
+const SubmitOfferModal = memo(({ visible, onClose, onSubmit, isSubmitting }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -79,13 +90,13 @@ const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
         }
     }, [visible]);
 
-    const handlePressSubmit = () => {
+    const handlePressSubmit = useCallback(() => {
         if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
             Alert.alert(t('common.error'), t('driverOffer.priceRequired'));
             return;
         }
         onSubmit({ price: parseFloat(price), comment, currency });
-    };
+    }, [price, comment, currency, onSubmit, t]);
 
     return (
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
@@ -113,19 +124,18 @@ const SubmitOfferModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
             </KeyboardAvoidingView>
         </Modal>
     );
-};
+});
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function DriverRequestDetailScreen({ navigation, route }) {
   const { transferId } = route.params;
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const mapViewRef = useRef(null);
 
   const [transferData, setTransferData] = useState(null);
-  // ✅ ВИПРАВЛЕНО 1: Перейменовано стан для ясності коду
   const [allOffers, setAllOffers] = useState([]); 
   const [hasAlreadyOffered, setHasAlreadyOffered] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,14 +146,21 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
-  useEffect(() => {
-    const markAsViewed = async () => {
-        if (transferId) {
-            await supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: transferId });
-        }
-    };
-    markAsViewed();
-  }, [transferId]);
+  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
+  const fetchRoute = useCallback(async (origin, destination) => {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}&language=${i18n.language}`;
+      const response = await fetch(url);
+      const json = await response.json();
+      if (json.routes?.length > 0) {
+        const route = json.routes[0];
+        const points = polyline.decode(route.overview_polyline.points);
+        const coords = points.map(point => ({ latitude: point[0], longitude: point[1] }));
+        setRouteCoordinates(coords);
+        if (route.legs?.length > 0) { setRouteInfo({ distance: route.legs[0].distance.text, duration: route.legs[0].duration.text }); }
+      }
+    } catch (error) { console.error("Error fetching route:", error); }
+  }, [MAPS_API_KEY, i18n.language]);
 
   const fetchData = useCallback(async () => {
     if (!session?.user || !transferId) {
@@ -156,7 +173,6 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
 
       if (data) {
         setTransferData(data);
-        // ✅ ВИПРАВЛЕНО 2: Використовуємо правильний ключ 'all_offers' з відповіді від SQL функції
         const offers = data.all_offers || []; 
         setAllOffers(offers);
         setHasAlreadyOffered(offers.some(offer => offer.driver_id === session.user.id));
@@ -167,8 +183,15 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [transferId, session, t]);
+  }, [transferId, session, t, fetchRoute]); // Додано fetchRoute в залежності
 
+  useEffect(() => {
+    // "Fire-and-forget" запит, не блокує завантаження
+    supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: transferId }).then(({ error }) => {
+        if(error) console.error("Error marking as viewed:", error.message);
+    });
+  }, [transferId]);
+  
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -184,22 +207,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
   }, [routeCoordinates]);
 
-  const fetchRoute = async (origin, destination) => {
-    try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}`;
-      const response = await fetch(url);
-      const json = await response.json();
-      if (json.routes?.length > 0) {
-        const route = json.routes[0];
-        const points = polyline.decode(route.overview_polyline.points);
-        const coords = points.map(point => ({ latitude: point[0], longitude: point[1] }));
-        setRouteCoordinates(coords);
-        if (route.legs?.length > 0) { setRouteInfo({ distance: route.legs[0].distance.text, duration: route.legs[0].duration.text }); }
-      }
-    } catch (error) { console.error("Error fetching route:", error); }
-  };
-
-   const handleSubmitOffer = async ({ price, comment, currency }) => {
+  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
+   const handleSubmitOffer = useCallback(async ({ price, comment, currency }) => {
     setIsSubmitting(true);
     try {
         const { error } = await supabase.functions.invoke('submit-offer-and-notify', { body: { transfer_id: transferId, price, driver_comment: comment, currency }});
@@ -213,7 +222,12 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } finally {
         setIsSubmitting(false);
     }
-  };
+  }, [transferId, t, fetchData]); // Додано fetchData
+
+  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
+  const handleOtherDriverPress = useCallback((driverId) => {
+      navigation.navigate('PublicDriverProfile', { driverId });
+  }, [navigation]);
 
   if (loading) {
     return (
@@ -246,7 +260,6 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={HEADER_HEIGHT}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
-                {/* ... (решта JSX без змін) ... */}
                 <View style={styles.userInfoSection}>
                     <Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../../assets/default-avatar.png')} style={styles.userAvatar} contentFit="cover" transition={300} cachePolicy="disk" />
                     <Text style={styles.userName}>{transferData?.passenger_name || '...'}</Text>
@@ -289,16 +302,15 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                     {routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'business-outline'} size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{transferData?.direction === 'from_airport' ? t('transferDetail.fromAirport') : t('transferDetail.toAirport')}</Text></View></View>)}
                 </View>
 
-                {/* ✅ ВИПРАВЛЕНО 3: Відображаємо пропозиції з правильного стану 'allOffers' */}
                 {allOffers.length > 0 && (
                     <View style={styles.infoCard}>
                         <Text style={styles.sectionTitle}>{t('driverOffer.otherOffersTitle')}</Text>
                         {allOffers.map((offer) => (
                             <OtherDriverOffer 
-                                key={offer.driver_id} // Використовуємо унікальний driver_id як ключ
+                                key={offer.driver_id} 
                                 offer={offer} 
                                 isChosen={offer.driver_id === transferData?.accepted_driver_id}
-                                onPress={() => navigation.navigate('PublicDriverProfile', { driverId: offer.driver_id })}
+                                onPress={handleOtherDriverPress} // ✅ Використання стабільної функції
                             />
                         ))}
                     </View>

@@ -12,8 +12,12 @@ import Logo from '../assets/icon.svg';
 import { useNavigation } from '@react-navigation/native';
 import { MotiView } from 'moti';
 
-// --- Допоміжні компоненти ---
-const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
+// ---
+// ✅ ОПТИМІЗАЦІЯ: Усі допоміжні компоненти винесені за межі основного
+// та обгорнуті в React.memo для запобігання зайвим рендерам.
+// ---
+
+const InfoRow = React.memo(({ icon, label, value, colors, valueStyle }) => {
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
   return (
@@ -25,9 +29,9 @@ const InfoRow = ({ icon, label, value, colors, valueStyle }) => {
       </View>
     </View>
   );
-};
+});
 
-const DetailItem = ({ icon, value, label, colors }) => {
+const DetailItem = React.memo(({ icon, value, label, colors }) => {
   const styles = getStyles(colors);
   if (!value) return null;
   return (
@@ -37,23 +41,28 @@ const DetailItem = ({ icon, value, label, colors }) => {
       {label && <Text style={styles.detailLabel}>{label}</Text>}
     </View>
   );
-};
+});
 
-const DriverOfferCard = ({ offer, onAccept, isAccepting }) => {
+const DriverOfferCard = React.memo(({ offer, onAccept, isAccepting }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
     const navigation = useNavigation();
     const displayPrice = `${offer.price} ${offer.currency || t('common.currency_uah', 'UAH')}`;
 
+    // ✅ ОПТИМІЗАЦІЯ: Використовуємо useCallback, щоб не створювати функцію при кожному рендері
+    const handlePress = useCallback(() => {
+        navigation.navigate('PublicDriverProfile', { 
+            driverId: offer.driver_id,
+            driverName: offer.driver_name 
+        });
+    }, [navigation, offer.driver_id, offer.driver_name]);
+
     return(
         <View style={styles.driverCard}>
             <TouchableOpacity 
                 style={styles.driverCardHeader}
-                onPress={() => navigation.navigate('PublicDriverProfile', { 
-                    driverId: offer.driver_id,
-                    driverName: offer.driver_name 
-                })}
+                onPress={handlePress}
             >
                 <Image 
                     source={offer.driver_avatar_url ? { uri: offer.driver_avatar_url } : require('../assets/default-avatar.png')} 
@@ -77,9 +86,9 @@ const DriverOfferCard = ({ offer, onAccept, isAccepting }) => {
             </View>
         </View>
     );
-};
+});
 
-const ConfirmedDriverCard = ({ driver, onChangeDriver }) => {
+const ConfirmedDriverCard = React.memo(({ driver, onChangeDriver }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -104,7 +113,7 @@ const ConfirmedDriverCard = ({ driver, onChangeDriver }) => {
             </TouchableOpacity>
         </View>
     );
-};
+});
 
 // --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function TransferDetailScreen({ navigation, route }) {
@@ -113,6 +122,9 @@ export default function TransferDetailScreen({ navigation, route }) {
   const styles = getStyles(colors);
   const { t, i18n } = useTranslation();
   const mapViewRef = useRef(null);
+  
+  // ✅ ОПТИМІЗАЦІЯ: Додано useRef для запобігання циклічному виклику "mark_as_read"
+  const hasMarkedAsRead = useRef(false);
 
   const [transferData, setTransferData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -121,8 +133,9 @@ export default function TransferDetailScreen({ navigation, route }) {
   const [routeInfo, setRouteInfo] = useState(null);
   const [hiddenDriverId, setHiddenDriverId] = useState(null);
 
-  const MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // Замініть на ваш ключ
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
+  // Карта (без змін, логіка коректна)
   useEffect(() => {
     let timerId = null; 
     if (routeCoordinates.length > 1 && mapViewRef.current) {
@@ -135,85 +148,8 @@ export default function TransferDetailScreen({ navigation, route }) {
     return () => { if (timerId) clearTimeout(timerId); };
   }, [routeCoordinates]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_full_transfer_details', { p_transfer_id: transferId })
-        .single(); 
-      
-      if (error) throw error;
-      
-      if (data) {
-        setTransferData(data);
-        if (data.status === 'pending') {
-             supabase.rpc('mark_offers_as_read', { p_transfer_id: transferId }).then(({ error: markError }) => {
-                if (markError) console.error("Failed to mark offers as read:", markError.message);
-             });
-        }
-        fetchRoute(data.from_location, data.to_location);
-      }
-    } catch (error) { 
-        if (!error.message.includes('single row')) {
-            Alert.alert(t('common.error'), error.message); 
-        } else {
-            setTransferData(null);
-        }
-    } 
-    finally { setLoading(false); }
-  }, [transferId, t]);
-
-  useEffect(() => {
-    setLoading(true);
-    fetchData();
-
-    const channel = supabase
-      .channel(`transfer-details-${transferId}`)
-      .on( 'postgres_changes', { event: '*', schema: 'public', table: 'transfer_offers', filter: `transfer_id=eq.${transferId}` }, () => {
-          console.log('Real-time: New offer received, refetching details...');
-          fetchData();
-        }
-      )
-       .on( 'postgres_changes', { event: 'UPDATE', schema: 'public', table: 'transfers', filter: `id=eq.${transferId}` }, () => {
-          console.log('Real-time: Transfer status updated, refetching details...');
-          fetchData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [transferId, fetchData]);
-
-  const handleAcceptOffer = async (offer) => {
-      setIsAccepting(true);
-      try {
-          const { error } = await supabase.functions.invoke('accept-offer-and-notify', { body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } });
-          if (error) throw error;
-          Alert.alert(t('common.success'), t('transferDetail.driverConfirmed'));
-          // fetchData() буде викликано автоматично через real-time підписку
-      } catch (error) { Alert.alert(t('common.error'), error.message); } 
-      finally { setIsAccepting(false); }
-  };
-  
-  const handleChangeDriver = async () => {
-      Alert.alert(
-        t('transferDetail.changeDriverConfirmTitle'), t('transferDetail.changeDriverConfirmText'),
-        [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive',
-            onPress: async () => {
-              try {
-                const driverToHideId = transferData?.accepted_driver_details?.driver_id;
-                const { error: resetError } = await supabase.rpc('reset_transfer_to_pending', { p_transfer_id: transferId });
-                if (resetError) throw resetError;
-                if (driverToHideId) setHiddenDriverId(driverToHideId); 
-                // fetchData() буде викликано через real-time
-              } catch (error) { Alert.alert(t('common.error'), error.message); }
-            }
-          }]
-      );
-  };
-
-  const fetchRoute = async (origin, destination) => {
+  // ✅ ОПТИМІЗАЦІЯ: fetchRoute обгорнуто в useCallback
+  const fetchRoute = useCallback(async (origin, destination) => {
     if (!origin || !destination) return;
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}&language=${i18n.language}`;
@@ -227,10 +163,160 @@ export default function TransferDetailScreen({ navigation, route }) {
         if (route.legs?.length > 0) { setRouteInfo({ distance: route.legs[0].distance.text, duration: route.legs[0].duration.text }); }
       }
     } catch (error) { console.error("Error fetching route:", error); }
-  };
+  }, [MAPS_API_KEY, i18n.language]); // Залежить від мови
 
-  const handleCancelTransfer = async () => { Alert.alert(t('transferDetail.cancelConfirmTitle'), t('transferDetail.cancelConfirmText'), [{ text: t('common.no'), style: 'cancel' }, { text: t('common.yes'), style: 'destructive', onPress: async () => { try { const { error } = await supabase.from('transfers').update({ status: 'cancelled' }).eq('id', transferId); if (error) throw error; Alert.alert(t('common.success'), t('transferDetail.cancelledSuccess')); navigation.goBack(); } catch (error) { Alert.alert(t('common.error'), error.message); } } }]); };
+  // ✅ ОПТИМІЗАЦІЯ: fetchData обгорнуто в useCallback та винесено логіку "mark_as_read"
+  const fetchData = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_full_transfer_details', { p_transfer_id: transferId })
+        .single(); 
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTransferData(data);
+        fetchRoute(data.from_location, data.to_location);
+      }
+    } catch (error) { 
+        if (!error.message.includes('single row')) {
+            Alert.alert(t('common.error'), error.message); 
+        } else {
+            setTransferData(null);
+        }
+    } 
+    finally { setLoading(false); }
+  }, [transferId, t, fetchRoute]); // 't' потрібен для Alert, fetchRoute - для маршруту
 
+  // ✅ ВИПРАВЛЕНО: "mark_as_read" винесено в окремий useEffect,
+  // який спрацьовує один раз при завантаженні даних, розриваючи цикл.
+  useEffect(() => {
+    if (transferData && transferData.status === 'pending' && !hasMarkedAsRead.current) {
+        // Перевіряємо, чи є взагалі якісь пропозиції, щоб не робити зайвий виклик
+        if (transferData.all_offers && transferData.all_offers.length > 0) {
+            hasMarkedAsRead.current = true; // Встановлюємо прапорець ДО виклику
+            supabase.rpc('mark_offers_as_read', { p_transfer_id: transferId }).then(({ error: markError }) => {
+                if (markError) {
+                    console.error("Failed to mark offers as read:", markError.message);
+                    hasMarkedAsRead.current = false; // Скидаємо, щоб спробувати ще раз
+                }
+            });
+        }
+    }
+  }, [transferData, transferId]); // Цей hook спрацює, коли 'transferData' завантажиться
+
+  // Основний useEffect для завантаження даних та підписки
+  useEffect(() => {
+    setLoading(true);
+    fetchData(); // Початкове завантаження
+
+    const channel = supabase
+      .channel(`transfer-details-${transferId}`)
+      .on( 'postgres_changes', { event: '*', schema: 'public', table: 'transfer_offers', filter: `transfer_id=eq.${transferId}` }, 
+        (payload) => {
+          console.log('Real-time: Offer change detected.', payload);
+          fetchData();
+        }
+      )
+       .on( 'postgres_changes', { event: 'UPDATE', schema: 'public', table: 'transfers', filter: `id=eq.${transferId}` }, 
+        (payload) => {
+          console.log('Real-time: Transfer status update detected.', payload);
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [transferId, fetchData]); // Залежність від fetchData тут коректна
+
+  // ✅ ОПТИМІЗАЦІЯ: Усі обробники обгорнуті в useCallback
+  const handleAcceptOffer = useCallback(async (offer) => {
+      setIsAccepting(true);
+      try {
+          const { error } = await supabase.functions.invoke('accept-offer-and-notify', { body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } });
+          if (error) throw error;
+          Alert.alert(t('common.success'), t('transferDetail.driverConfirmed'));
+          // fetchData() буде викликано автоматично через real-time підписку
+      } catch (error) { Alert.alert(t('common.error'), error.message); } 
+      finally { setIsAccepting(false); }
+  }, [transferId, t]);
+  
+const handleChangeDriver = useCallback(async () => {
+      Alert.alert(
+        t('transferDetail.changeDriverConfirmTitle'),
+        t('transferDetail.changeDriverConfirmText'),
+        [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+                text: t('common.confirm'),
+                style: 'destructive',
+                onPress: async () => {
+                    let driverToHideId = null;
+                    try {
+                        // Зберігаємо ID водія для тимчасового приховування
+                        driverToHideId = transferData?.accepted_driver_details?.driver_id;
+
+                        // 1. Викликаємо RPC для скидання статусу та прийнятого водія
+                        const { error: resetError } = await supabase.rpc('reset_transfer_to_pending', {
+                            p_transfer_id: transferId
+                        });
+                        // Якщо RPC не вдалося, викидаємо помилку і не продовжуємо
+                        if (resetError) throw new Error(`Помилка скидання трансферу: ${resetError.message}`);
+
+                        // 2. ЗАВЖДИ скидаємо прапорець is_admin_assigned на false
+                        // Це гарантує, що трансфер знову стане видимим для водіїв,
+                        // навіть якщо попередній скидання прапорця не вдалося або водій не був адміном.
+                        console.log("Ensuring is_admin_assigned is false...");
+                        const { error: updateError } = await supabase
+                            .from('transfers')
+                            .update({ is_admin_assigned: false }) // <-- Встановлюємо false
+                            .eq('id', transferId);
+
+                        if (updateError) {
+                            // Помилка скидання прапорця не є критичною для основного функціоналу,
+                            // але може призвести до того, що трансфер залишиться прихованим. Логуємо помилку.
+                            console.error("Failed to ensure is_admin_assigned is false:", updateError.message);
+                            // Можна додати Alert, якщо це важливо
+                            // Alert.alert(t('common.warning'), 'Не вдалося оновити видимість трансферу для водіїв.');
+                        } else {
+                            console.log("is_admin_assigned flag ensured to be false.");
+                        }
+
+                        // 3. Тимчасово приховуємо картку щойно відхиленого водія
+                        if (driverToHideId) {
+                            setHiddenDriverId(driverToHideId);
+                        }
+                        // Дані оновляться автоматично через Realtime підписку
+
+                    } catch (error) {
+                        // Обробляємо помилки з RPC або оновлення прапорця
+                        Alert.alert(t('common.error'), error.message);
+                    }
+                }
+            }
+        ]
+      );
+  }, [t, transferId, transferData?.accepted_driver_details?.driver_id]); // Залежності залишаються ті самі
+  const handleCancelTransfer = useCallback(async () => { 
+    Alert.alert(
+        t('transferDetail.cancelConfirmTitle'), 
+        t('transferDetail.cancelConfirmText'), 
+        [{ text: t('common.no'), style: 'cancel' }, 
+         { text: t('common.yes'), style: 'destructive', 
+            onPress: async () => { 
+                try { 
+                    const { error } = await supabase.from('transfers').update({ status: 'cancelled' }).eq('id', transferId); 
+                    if (error) throw error; 
+                    Alert.alert(t('common.success'), t('transferDetail.cancelledSuccess')); 
+                    navigation.goBack(); 
+                } catch (error) { Alert.alert(t('common.error'), error.message); } 
+            } 
+        }]); 
+  }, [t, transferId, navigation]);
+
+  // useMemo для фільтрації пропозицій (без змін, логіка коректна)
   const visibleOffers = useMemo(() => {
     if (!transferData?.all_offers) return [];
     return transferData.all_offers.filter(offer => {
@@ -240,6 +326,7 @@ export default function TransferDetailScreen({ navigation, route }) {
     });
   }, [transferData, hiddenDriverId]);
 
+  // --- Рендер ---
   if (loading) {
     return (
         <SafeAreaView style={styles.container}>
@@ -283,7 +370,7 @@ export default function TransferDetailScreen({ navigation, route }) {
   );
 }
 
-// --- Стилі ---
+// --- Стилі (без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

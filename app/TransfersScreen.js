@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'; // ✅ Додано useRef
 import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, Linking, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
 
 const getDisplayStatus = (item, t) => {
+  // ... (код без змін)
   switch (item.status) {
     case 'pending':
       if (item.offers_count > 0) {
@@ -30,7 +31,8 @@ const getDisplayStatus = (item, t) => {
   }
 };
 
-const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }) => {
+const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, selectionMode }) => {
+  // ... (увесь компонент TransferCard без змін)
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const navigation = useNavigation();
@@ -41,18 +43,22 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
   const displayStatus = getDisplayStatus(item, t);
   const hasCarInfo = item.car_make && item.car_model && item.car_plate;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (selectionMode) { onSelect(item.id); } 
     else { navigation.navigate('TransferDetail', { transferId: item.id }); }
-  };
+  }, [selectionMode, onSelect, item.id, navigation]);
 
-  const handleCall = (phoneNumber) => {
+  const handleCardLongPress = useCallback(() => {
+    onLongPress(item.id);
+  }, [onLongPress, item.id]);
+
+  const handleCall = useCallback((phoneNumber) => {
     if (!phoneNumber) { Alert.alert(t('alerts.phoneNotFoundTitle'), t('alerts.phoneNotFoundBody')); return; }
     const url = `tel:${phoneNumber}`;
     Alert.alert( t('alerts.confirmCallTitle'), t('alerts.confirmCallBody', { phoneNumber }), [ { text: t('alerts.cancelButton'), style: "cancel" }, { text: t('alerts.callButton'), onPress: () => { Linking.openURL(url).catch(() => Alert.alert(t('alerts.errorTitle'), t('alerts.callFailedCheckDevice'))); } } ]);
-  };
+  }, [t]);
   
-  const handleMessage = async () => {
+  const handleMessage = useCallback(async () => {
     if (!item.accepted_driver_id || !session?.user?.id) return;
     setIsCreatingChat(true);
     try {
@@ -61,12 +67,12 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
       navigation.navigate('MessagesTab', { screen: 'IndividualChat', params: { roomId, recipientId: item.accepted_driver_id, recipientName: item.driver_name, recipientAvatar: item.driver_avatar_url } });
     } catch (error) { Alert.alert(t('alerts.errorTitle'), t('alerts.chatFailed')); console.error("Error finding or creating chat room:", error); } 
     finally { setIsCreatingChat(false); }
-  };
+  }, [item, session, navigation, t]);
 
   return (
     <TouchableOpacity
       onPress={handlePress}
-      onLongPress={onLongPress}
+      onLongPress={handleCardLongPress}
       delayLongPress={200}
       style={[ styles.card, (item.status === 'completed' || item.status === 'cancelled') && styles.archivedCard, isSelected && styles.selectedCard ]}
     >
@@ -141,7 +147,9 @@ const TransferCard = ({ item, onSelect, onLongPress, isSelected, selectionMode }
       {isSelected && (<View style={styles.selectionOverlay}><Ionicons name="checkmark-circle" size={32} color={'#fff'} /></View>)}
     </TouchableOpacity>
   );
-};
+});
+
+const keyExtractor = (item) => item.id.toString();
 
 export default function TransfersScreen() {
   const { colors } = useTheme();
@@ -156,10 +164,17 @@ export default function TransfersScreen() {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [error, setError] = useState(null);
 
-  const fetchTransfers = useCallback(async () => {
+  // ✅ ОПТИМІЗАЦІЯ: Додано ref для відстеження першого завантаження
+  const isInitialLoad = useRef(true);
+
+  // ✅ ОПТИМІЗАЦІЯ: Функція тепер приймає 'showLoading'
+  const fetchTransfers = useCallback(async (showLoading = false) => {
     if (!session?.user) { 
       setLoading(false); 
       return; 
+    }
+    if (showLoading) {
+        setLoading(true); // Вмикаємо індикатор, лише якщо це потрібно
     }
     setError(null);
     try {
@@ -170,21 +185,26 @@ export default function TransfersScreen() {
         console.error("Error fetching transfers:", err.message);
         setError(err.message);
     } finally { 
-      setLoading(false); 
+      setLoading(false); // Завжди вимикаємо індикатор
     }
-  }, [session]);
+  }, [session]); // Залежність лише від сесії
 
+  // ✅ ОПТИМІЗАЦІЯ: 'useFocusEffect' тепер не завжди показує 'setLoading(true)'
   useFocusEffect(
     useCallback(() => {
       setViewMode('active');
       if(session?.user){
-        setLoading(true);
-        fetchTransfers();
+        if (isInitialLoad.current) {
+            fetchTransfers(true); // Повний екран завантаження при першому вході
+            isInitialLoad.current = false;
+        } else {
+            fetchTransfers(false); // Тихе оновлення при поверненні на екран
+        }
       }
     }, [fetchTransfers, session])
   );
 
-  useEffect(() => {
+ useEffect(() => {
     if (!session?.user) {
         setTransfers([]);
         return;
@@ -192,14 +212,26 @@ export default function TransfersScreen() {
 
     const channel = supabase.channel(`passenger-updates-${session.user.id}`);
 
+    // 1. Ця підписка відстежує зміни У ВАШИХ трансферах
+    // (наприклад, водій прийняв замовлення, ви скасували його)
     const transfersSubscription = channel.on('postgres_changes', 
             { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
-            () => fetchTransfers()
+            (payload) => {
+              console.log('Realtime: My transfer updated!', payload);
+              fetchTransfers(false); // Тихе оновлення
+            }
         );
 
+    // ✅ 2. ПОВЕРНУТО: Ця підписка відстежує НОВІ пропозиції
+    // Ми слухаємо 'INSERT' на 'transfer_offers'. Це спрацює,
+    // коли будь-який водій зробить пропозицію на будь-який трансфер.
+    // Це необхідно, щоб ваш RPC 'get_my_transfers' перерахував лічильники.
     const offersSubscription = channel.on('postgres_changes',
-            { event: '*', schema: 'public', table: 'transfer_offers' },
-            () => fetchTransfers()
+            { event: 'INSERT', schema: 'public', table: 'transfer_offers' }, // Оптимізовано з '*' до 'INSERT'
+            (payload) => {
+              console.log('Realtime: New offer created somewhere, refetching counts...', payload);
+              fetchTransfers(false); // Тихе оновлення
+            }
         );
         
     channel.subscribe();
@@ -210,25 +242,32 @@ export default function TransfersScreen() {
   }, [session, fetchTransfers]);
 
   const { activeTransfers, archivedTransfers } = useMemo(() => {
+    // ... (код без змін)
     const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
     const archived = transfers.filter(t => t.status === 'completed' || t.status === 'cancelled');
-    
-    // ✅ ВИПРАВЛЕНО: Сортуємо активні трансфери від нових до старих
     active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
-    // Сортуємо архівні трансфери так само
     archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
-    
     return { activeTransfers: active, archivedTransfers: archived };
   }, [transfers]);
 
-  const handleToggleSelection = (id) => {
+  const handleToggleSelection = useCallback((id) => {
+    // ... (код без змін)
     const newSelection = new Set(selectedItems);
     if (newSelection.has(id)) { newSelection.delete(id); } else { newSelection.add(id); }
     setSelectedItems(newSelection);
     if (newSelection.size === 0) { setSelectionMode(false); }
-  };
+  }, [selectedItems]);
 
-  const handleDeleteSelected = () => {
+  const handleLongPress = useCallback((id) => {
+    // ... (код без змін)
+    if (viewMode === 'archived') {
+      setSelectionMode(true);
+      handleToggleSelection(id);
+    }
+  }, [viewMode, handleToggleSelection]);
+
+  const handleDeleteSelected = useCallback(() => {
+    // ... (код без змін)
     Alert.alert( t('transfersScreen.deleteConfirmTitle'), t('transfersScreen.deleteConfirmBody', { count: selectedItems.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => {
             const { error } = await supabase.from('transfers').delete().in('id', Array.from(selectedItems));
             if (error) { Alert.alert(t('common.error'), error.message); } else {
@@ -239,9 +278,10 @@ export default function TransfersScreen() {
         }}
       ]
     );
-  };
+  }, [selectedItems, t]);
   
   const Header = () => (
+    // ... (код без змін)
     <View style={styles.header}>
       <Logo width={40} height={40} />
         <Text style={styles.title}>{viewMode === 'active' ? t('transfersScreen.title') : t('transfersScreen.archiveTitle')}</Text>
@@ -250,6 +290,31 @@ export default function TransfersScreen() {
         </TouchableOpacity>
     </View>
   );
+
+  const renderItem = useCallback(({ item, index }) => (
+    // ... (код без змін)
+    <MotiView
+      from={{ opacity: 0, translateY: 50 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+    >
+      <TransferCard 
+          item={item} 
+          selectionMode={selectionMode}
+          isSelected={selectedItems.has(item.id)}
+          onSelect={handleToggleSelection}
+          onLongPress={handleLongPress} 
+      />
+    </MotiView>
+  ), [selectionMode, selectedItems, handleToggleSelection, handleLongPress]); 
+
+  const listEmptyComponent = useMemo(() => (
+    // ... (код без змін)
+    <View style={styles.emptyContainer}>
+        <Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} />
+        <Text style={styles.emptyText}>{viewMode === 'active' ? t('transfersScreen.emptyState') : t('transfersScreen.emptyArchive')}</Text>
+    </View>
+  ), [styles.emptyContainer, styles.emptyText, colors.secondaryText, viewMode, t]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -261,39 +326,19 @@ export default function TransfersScreen() {
             <Ionicons name="cloud-offline-outline" size={64} color={colors.secondaryText} />
             <Text style={styles.errorTitle}>{t('common.error')}</Text>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={fetchTransfers} style={styles.retryButton}><Text style={styles.retryButtonText}>{t('common.retry')}</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => fetchTransfers(true)} style={styles.retryButton}><Text style={styles.retryButtonText}>{t('common.retry')}</Text></TouchableOpacity> 
+            {/* ✅ Кнопка retry тепер також показує індикатор */}
         </View>
       ) : (
         <FlatList
           data={viewMode === 'active' ? activeTransfers : archivedTransfers}
-          renderItem={({ item, index }) => (
-            <MotiView
-              from={{ opacity: 0, translateY: 50 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 500, delay: index * 100 }}
-            >
-              <TransferCard 
-                  item={item} 
-                  selectionMode={selectionMode}
-                  isSelected={selectedItems.has(item.id)}
-                  onSelect={handleToggleSelection}
-                  onLongPress={() => {
-                    if (viewMode === 'archived') {
-                      setSelectionMode(true);
-                      handleToggleSelection(item.id);
-                    }
-                  }}
-              />
-            </MotiView>
-          )}
-          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem} 
+          keyExtractor={keyExtractor} 
+          ListEmptyComponent={listEmptyComponent} 
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16 }}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-                <Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} />
-                <Text style={styles.emptyText}>{viewMode === 'active' ? t('transfersScreen.emptyState') : t('transfersScreen.emptyArchive')}</Text>
-            </View>
-          }
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={10}
         />
       )}
 
@@ -308,6 +353,7 @@ export default function TransfersScreen() {
 }
 
 const getStyles = (colors) => StyleSheet.create({
+  // ... (усі стилі без змін)
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.text },

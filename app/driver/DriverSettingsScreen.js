@@ -70,7 +70,7 @@ const ChangePasswordModal = ({ visible, onClose, onSave, isSaving }) => {
 // --- Основний компонент ---
 const DriverSettingsScreen = ({ navigation }) => {
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session, signOut, profile: authProfile, switchRole } = useAuth();
   const styles = getStyles(colors);
   
@@ -90,7 +90,12 @@ const DriverSettingsScreen = ({ navigation }) => {
   const [carModel, setCarModel] = useState('');
   const [carPlate, setCarPlate] = useState('');
   const [experience, setExperience] = useState('');
-  
+  const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
+  const handleLanguageChange = useCallback((lang) => {
+    i18n.changeLanguage(lang);
+    setLanguageModalVisible(false);
+}, [i18n]);
+
   const fetchProfile = useCallback(async () => {
     if (!session?.user) return;
     try {
@@ -204,7 +209,45 @@ const DriverSettingsScreen = ({ navigation }) => {
   }, [localAvatarUri, avatarUrl]);
 
   return (
+    
     <SafeAreaView style={styles.container}>
+      <Modal
+    visible={isLanguageModalVisible}
+    onRequestClose={() => setLanguageModalVisible(false)}
+    transparent={true}
+    animationType="slide"
+>
+    <Pressable
+        style={styles.modalBackdrop}
+        onPress={() => setLanguageModalVisible(false)}
+    >
+        <View style={styles.avatarModalContent}>
+            {/* Кнопка для української */}
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => handleLanguageChange('uk')}
+            >
+                <Text style={styles.langButtonText}>Українська</Text>
+            </TouchableOpacity>
+            
+            {/* Кнопка для англійської */}
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => handleLanguageChange('en')}
+            >
+                <Text style={styles.langButtonText}>English</Text>
+            </TouchableOpacity>
+
+            {/* Кнопка для румунської */}
+            <TouchableOpacity
+                style={styles.langButton}
+                onPress={() => handleLanguageChange('ro')}
+            >
+                <Text style={styles.langButtonText}>Română</Text>
+            </TouchableOpacity>
+        </View>
+    </Pressable>
+</Modal>
       <AvatarSelectionModal visible={isAvatarModalVisible} onClose={() => setAvatarModalVisible(false)} onPickFromGallery={pickImage} onSelectPreset={handleSelectPresetAvatar} fullName={fullName} />
       <ChangePasswordModal visible={isPasswordModalVisible} onClose={() => setPasswordModalVisible(false)} onSave={handleChangePassword} isSaving={isPasswordSaving} />
       <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity><Text style={styles.headerTitle}>{t('settings.title')}</Text><Logo width={40} height={40} /></View>
@@ -239,7 +282,14 @@ const DriverSettingsScreen = ({ navigation }) => {
               <EditableField labelKey="settings.carModel" icon="car-outline" value={carModel} onChangeText={setCarModel} isEditing={editingField === 'carModel'} onToggleEdit={() => toggleEdit('carModel')} />
               <EditableField labelKey="settings.carPlate" icon="reader-outline" value={carPlate} onChangeText={setCarPlate} isEditing={editingField === 'carPlate'} onToggleEdit={() => toggleEdit('carPlate')} />
               <EditableField labelKey="settings.experience" icon="ribbon-outline" value={experience} onChangeText={setExperience} isEditing={editingField === 'experience'} onToggleEdit={() => toggleEdit('experience')} keyboardType="numeric" />
+                
               <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
+              <EditableField
+    labelKey="settings.language"
+    icon="language-outline"
+    value={t(`settings.${i18n.language}`)}
+    onToggleEdit={() => setLanguageModalVisible(true)} // <-- Ось тригер
+/>
               <ReadOnlyField labelKey="registration.emailLabel" icon="mail-outline" value={session?.user?.email} />
               <PasswordField onNavigate={() => setPasswordModalVisible(true)} />
             </View>
@@ -294,4 +344,33 @@ const getStyles = (colors) => StyleSheet.create({
     themeSwitchTrack: { width: 70, height: 34, borderRadius: 17, backgroundColor: colors.background, justifyContent: 'center', padding: 4 },
     themeSwitchThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primary, position: 'absolute', top: 4, left: 4 },
     themeIconContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 5 },
+    modalBackdrop: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)'
+    },
+    
+    // Контейнер, що висувається знизу
+    avatarModalContent: {
+        backgroundColor: colors.card, // колір з теми
+        padding: 24,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        alignItems: 'center'
+    },
+    
+    // Кнопка вибору мови
+    langButton: {
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border, // колір з теми
+        width: '100%' // Додано для стабільності
+    },
+    
+    // Текст у кнопці
+    langButtonText: {
+        color: colors.text, // колір з теми
+        fontSize: 18,
+        textAlign: 'center'
+    }
 });

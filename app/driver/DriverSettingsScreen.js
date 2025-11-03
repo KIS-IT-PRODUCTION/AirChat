@@ -4,7 +4,8 @@ import {
   TextInput, Alert, Modal, Pressable, Platform, ActivityIndicator,
   Switch
 } from 'react-native';
-import { Image } from 'expo-image';
+// Image вже імпортовано, ми використаємо його для очищення кешу
+import { Image } from 'expo-image'; 
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -33,6 +34,19 @@ const PasswordField = ({ onNavigate }) => {
     const { colors } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors);
     return (
         <View style={styles.fieldContainer}><Text style={styles.label}>{t('registration.passwordLabel')}</Text><TouchableOpacity style={styles.inputWrapper} onPress={onNavigate}><Ionicons name="lock-closed-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} /><Text style={styles.inputText}>••••••••</Text><Ionicons name="chevron-forward-outline" size={24} color={colors.secondaryText} /></TouchableOpacity></View>
+    );
+};
+const CacheField = ({ onNavigate }) => {
+    const { colors } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors);
+    return (
+        <View style={styles.fieldContainer}>
+            <Text style={styles.label}>{t('settings.cache', 'Кеш')}</Text>
+            <TouchableOpacity style={styles.inputWrapper} onPress={onNavigate}>
+                <Ionicons name="trash-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} />
+                <Text style={styles.inputText}>{t('settings.clearImageCache', 'Очистити кеш зображень')}</Text>
+                <Ionicons name="chevron-forward-outline" size={24} color={colors.secondaryText} />
+            </TouchableOpacity>
+        </View>
     );
 };
 const ThemeSwitcher = () => {
@@ -77,7 +91,7 @@ const DriverSettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
-  const [isSwitchingRole, setIsSwitchingRole] = useState(false); // Для індикатора завантаження
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false); 
   const [isAvatarModalVisible, setAvatarModalVisible] = useState(false);
   const [isPasswordModalVisible, setPasswordModalVisible] = useState(false);
   const [editingField, setEditingField] = useState(null);
@@ -91,6 +105,7 @@ const DriverSettingsScreen = ({ navigation }) => {
   const [carPlate, setCarPlate] = useState('');
   const [experience, setExperience] = useState('');
   const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
+  
   const handleLanguageChange = useCallback((lang) => {
     i18n.changeLanguage(lang);
     setLanguageModalVisible(false);
@@ -163,7 +178,6 @@ const DriverSettingsScreen = ({ navigation }) => {
     finally { setIsSaving(false); }
   }, [session, avatarUrl, localAvatarUri, fullName, phone, carMake, carModel, carPlate, experience, t]);
 
-  // ✅ ВИПРАВЛЕНО: Додано повну логіку для зміни пароля
   const handleChangePassword = useCallback(async (newPassword) => {
       setIsPasswordSaving(true);
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -176,11 +190,21 @@ const DriverSettingsScreen = ({ navigation }) => {
       }
   }, [t]);
 
-  // ✅ ВИПРАВЛЕНО: Додано повну логіку для перемикання ролі
+  // ✅ ВИПРАВЛЕНО: Функція очищення кешу тепер використовує правильні назви
+  const handleClearCache = useCallback(async () => {
+    try {
+      // Використовуємо `clearDiskCache` та `clearMemoryCache` (без `Async`)
+      await Image.clearDiskCache();
+      await Image.clearMemoryCache();
+      Alert.alert(t('common.success'), t('settings.cacheCleared', 'Кеш зображень очищено'));
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message);
+    }
+  }, [t]);
+
   const handleRoleSwitch = useCallback(async (isDriverMode) => {
     const newRole = isDriverMode ? 'driver' : 'client';
-    if (newRole === authProfile?.role) return; // Нічого не робити, якщо роль та сама
-
+    if (newRole === authProfile?.role) return; 
     setIsSwitchingRole(true);
     const { success, error } = await switchRole(newRole);
     if (!success) {
@@ -189,7 +213,6 @@ const DriverSettingsScreen = ({ navigation }) => {
     setIsSwitchingRole(false);
   }, [switchRole, authProfile, t]);
   
-  // ✅ ВИПРАВЛЕНО: Додано повну логіку для виходу з акаунту
   const handleLogout = useCallback(() => {
     Alert.alert(
         t('settings.logout'), 
@@ -222,7 +245,6 @@ const DriverSettingsScreen = ({ navigation }) => {
         onPress={() => setLanguageModalVisible(false)}
     >
         <View style={styles.avatarModalContent}>
-            {/* Кнопка для української */}
             <TouchableOpacity
                 style={styles.langButton}
                 onPress={() => handleLanguageChange('uk')}
@@ -230,7 +252,6 @@ const DriverSettingsScreen = ({ navigation }) => {
                 <Text style={styles.langButtonText}>Українська</Text>
             </TouchableOpacity>
             
-            {/* Кнопка для англійської */}
             <TouchableOpacity
                 style={styles.langButton}
                 onPress={() => handleLanguageChange('en')}
@@ -238,7 +259,6 @@ const DriverSettingsScreen = ({ navigation }) => {
                 <Text style={styles.langButtonText}>English</Text>
             </TouchableOpacity>
 
-            {/* Кнопка для румунської */}
             <TouchableOpacity
                 style={styles.langButton}
                 onPress={() => handleLanguageChange('ro')}
@@ -266,7 +286,7 @@ const DriverSettingsScreen = ({ navigation }) => {
                         thumbColor={colors.card}
                         onValueChange={handleRoleSwitch}
                         value={authProfile.role === 'driver'}
-                        disabled={isSwitchingRole} // Блокуємо під час перемикання
+                        disabled={isSwitchingRole} 
                     />
                     <Ionicons name="car-sport-outline" size={24} color={colors.secondaryText} style={{ opacity: authProfile.role === 'driver' ? 1 : 0.5 }} />
                   </View>
@@ -285,13 +305,15 @@ const DriverSettingsScreen = ({ navigation }) => {
                 
               <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
               <EditableField
-    labelKey="settings.language"
-    icon="language-outline"
-    value={t(`settings.${i18n.language}`)}
-    onToggleEdit={() => setLanguageModalVisible(true)} // <-- Ось тригер
-/>
+                labelKey="settings.language"
+                icon="language-outline"
+                value={t(`settings.${i18n.language}`)}
+                onToggleEdit={() => setLanguageModalVisible(true)} 
+              />
               <ReadOnlyField labelKey="registration.emailLabel" icon="mail-outline" value={session?.user?.email} />
               <PasswordField onNavigate={() => setPasswordModalVisible(true)} />
+              
+              <CacheField onNavigate={handleClearCache} />
             </View>
             <ThemeSwitcher />
           </>

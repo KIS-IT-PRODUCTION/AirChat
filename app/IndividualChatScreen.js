@@ -3,9 +3,9 @@ import {
     StyleSheet, Text, View, SafeAreaView, FlatList, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal,
     Pressable, Linking, RefreshControl, Clipboard, AppState, StatusBar,
-    Animated // 💡 ДОДАЙТЕ ЦЕ
+    Animated 
 } from 'react-native';
-import * as Haptics from 'expo-haptics'; // 💡 ДОДАЙТЕ ЦЕ
+import * as Haptics from 'expo-haptics'; 
 import { Image } from 'expo-image';
 import { Audio } from 'expo-av';
 import { useTheme } from './ThemeContext';
@@ -61,15 +61,14 @@ const getStyles = (colors) => StyleSheet.create({
     
     // --- Покращення Повідомлень ---
     messageContainer: { 
-        marginVertical: 1, // 💡 Збільшено відступ між повідомленнями
+        marginVertical: 1, 
         paddingHorizontal: 0
     },
     messageRow: { flexDirection: 'row', alignItems: 'center' },
     messageBubble: { 
         borderRadius: 20, 
-        paddingVertical: 5,    // 💡 Більше "повітря" всередині
-        paddingHorizontal: 15, // 💡 Більше "повітря" всередині
-        // 💡 Додаємо легку тінь для "плаваючого" ефекту
+        paddingVertical: 5,    
+        paddingHorizontal: 15, 
         elevation: 1,
         shadowColor: '#000',
         shadowOpacity: 0.05,
@@ -77,31 +76,30 @@ const getStyles = (colors) => StyleSheet.create({
         shadowOffset: { width: 0, height: 1 }
     },
     myMessageBubble: { 
-        backgroundColor: colors.primary, // 💡 Використовуємо колір теми (як у кнопки 'Send')
-        borderBottomRightRadius: 5     // 💡 Трохи м'якший "хвостик"
+        backgroundColor: colors.primary, 
+        borderBottomRightRadius: 5     
     },
     otherMessageBubble: { 
-        backgroundColor: colors.card,    // 💡 "Чужі" повідомлення мають колір картки
-        borderBottomLeftRadius: 5,       // 💡 Трохи м'якший "хвостик"
-         // 💡 Додаємо легку тінь, щоб виділити на фоні
+        backgroundColor: colors.card,    
+        borderBottomLeftRadius: 5,       
         shadowOpacity: 0.08,
         shadowRadius: 5,
     },
     messageText: { 
         color: colors.text, 
-        fontSize: 16,     // 💡 Трохи більший шрифт для читабельності
-        lineHeight: 22    // 💡 Відповідна висота рядка
+        fontSize: 16,     
+        lineHeight: 22    
     },
-    myMessageText: { color: '#FFFFFF' }, // 💡 Залишаємо білий текст на кольоровому фоні
+    myMessageText: { color: '#FFFFFF' }, 
     messageImage: { 
-        width: 220,       // 💡 Трохи ширше зображення
-        height: 180,      // 💡 Трохи вище
-        borderRadius: 16  // 💡 М'якші кути
+        width: 220,       
+        height: 180,      
+        borderRadius: 16  
     },
-    imageLoadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16 }, // 💡 Оновлено borderRadius
-    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 16 }, // 💡 Оновлено borderRadius
-    messageMap: { width: 220, height: 150, borderRadius: 16 }, // 💡 Оновлено borderRadius
-    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 5, alignItems: 'center', gap: 4 }, // 💡 Збільшено marginTop
+    imageLoadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16 }, 
+    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.3)', borderRadius: 16 }, 
+    messageMap: { width: 220, height: 150, borderRadius: 16 }, 
+    messageInfo: { flexDirection: 'row', alignSelf: 'flex-end', marginTop: 5, alignItems: 'center', gap: 4 }, 
     messageInfoOverlay: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
     messageTime: { color: colors.secondaryText, fontSize: 11 },
     myMessageTime: { color: '#FFFFFF90' },
@@ -110,37 +108,36 @@ const getStyles = (colors) => StyleSheet.create({
  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopColor: colors.border, backgroundColor: colors.card, borderRadius: 30, paddingHorizontal:10, paddingVertical:5, },
     textInput: { 
         flex: 1, 
-        backgroundColor: colors.background, // 💡 КОНТРАСТ! Поле введення "втоплене"
+        backgroundColor: colors.background, 
         borderRadius: 20, 
         paddingHorizontal: 16, 
-        paddingVertical: Platform.OS === 'ios' ? 10 : 8, // 💡 Стандартизовано
-        marginHorizontal: 8, // 💡 Трохи менший відступ
+        paddingVertical: Platform.OS === 'ios' ? 10 : 8, 
+        marginHorizontal: 8, 
         color: colors.text, 
         maxHeight: 120, 
         fontSize: 16 
     },
-    // 💡 Додано стиль для кнопки "додати"
     attachButton: {
         width: 30,
         height: 30,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Platform.OS === 'ios' ? 0 : 2 // 💡 Легке вирівнювання для Android
+        marginBottom: Platform.OS === 'ios' ? 0 : 2 
     },
     sendButton: { 
         backgroundColor: colors.primary, 
-        borderRadius: 22, // 💡 Робимо кнопку трохи меншою і круглішою
-        width: 40,        // 💡 Менший розмір
-        height: 40,       // 💡 Менший розмір
+        borderRadius: 22, 
+        width: 40,        
+        height: 40,       
         justifyContent: 'center', 
         alignItems: 'center',
-        marginBottom: Platform.OS === 'ios' ? 0 : 2 // 💡 Легке вирівнювання для Android
+        marginBottom: Platform.OS === 'ios' ? 0 : 2 
     },
     
     // --- Покращення Реакцій ---
     reactionsContainer: { 
         flexDirection: 'row', 
-        marginTop: -10, // 💡 Адаптовано під нові відступи
+        marginTop: -10, 
         marginLeft: 15, 
         marginRight: 15,
         zIndex: 10, 
@@ -263,24 +260,18 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
     const [isImageLoading, setIsImageLoading] = useState(false);
     const [isImageCached, setIsImageCached] = useState(false);
 
-    // 💡 1. Створюємо анімовану змінну для масштабування
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
-    // 💡 2. Обробник натискання (початок)
     const handlePressIn = () => {
-        // Легка вібрація
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Анімація зменшення (до 96%)
         Animated.spring(scaleAnim, {
             toValue: 0.96,
             useNativeDriver: true,
-            friction: 5, // Контролює "пружинність"
+            friction: 5, 
         }).start();
     };
 
-    // 💡 3. Обробник відпускання
     const handlePressOut = () => {
-        // Анімація повернення до 100%
         Animated.spring(scaleAnim, {
             toValue: 1,
             useNativeDriver: true,
@@ -311,7 +302,6 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
     
     const UploadingIndicator = () => (<View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#FFFFFF" /></View>);
     
-    // 💡 4. Використовуємо Animated.View замість View
     const Wrapper = Animated.View; 
 
     const aggregatedReactions = useMemo(() => {
@@ -329,15 +319,13 @@ const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress,
 
 
     return (
-        // 💡 5. Додаємо обробники до Pressable
         <Pressable 
             onLongPress={() => onLongPress(message)} 
             onPress={handlePress} 
-            onPressIn={handlePressIn}   // <-- ДОДАНО
-            onPressOut={handlePressOut} // <-- ДОДАНО
+            onPressIn={handlePressIn}   
+            onPressOut={handlePressOut} 
             style={styles.messageContainer}
         >
-            {/* 💡 6. Застосовуємо анімацію до Wrapper */}
             <Wrapper style={{ transform: [{ scale: scaleAnim }] }}>
                 <View style={[styles.messageRow, { justifyContent: isMyMessage ? 'flex-end' : 'flex-start' }]}>
                     {selectionMode && isMyMessage && <SelectionCircle isSelected={isSelected} />}
@@ -445,9 +433,9 @@ export default function IndividualChatScreen() {
     const [isActionSheetVisible, setActionSheetVisible] = useState(false);
     const [isSendingLocation, setIsSendingLocation] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // <-- Стан завантаження починається як true
     const [isRecipientOnline, setIsRecipientOnline] = useState(false);
-const [isRoomSetup, setIsRoomSetup] = useState(false);
+    const [isRoomSetup, setIsRoomSetup] = useState(false);
     const [appIsActive, setAppIsActive] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
     const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
@@ -542,10 +530,9 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
                 .order('created_at', { ascending: false });
             
             if (error) {
-                throw error; // Передаємо помилку в catch
+                throw error; 
             }
             
-            // Цей код виконається лише якщо помилки не було
             setMessages(data || []);
             setAllMessagesLoaded(true); 
             setCurrentPage(0); 
@@ -556,10 +543,7 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
         
         } catch (error) {
             console.error("Fetch Error:", error);
-            // Не показуємо Alert, щоб не дратувати користувача при поганому зв'язку
-            // Alert.alert(t('common.error'), error.message);
         } finally {
-            // 💡 Цей блок виконається ЗАВЖДИ
             setIsRefreshing(false);
             setTimeout(() => {
                 setIsLoading(false); 
@@ -580,8 +564,9 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
             recipientLastSeen: paramLastSeen 
         } = route.params;
         
+        // Встановлюємо isLoading(true) при вході на екран
+        setIsLoading(true); 
         setMessages([]);
-        setIsLoading(true);
         setSelectionMode(false);
         setSelectedMessages(new Set());
         setEditingMessage(null);
@@ -630,29 +615,21 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
         };
     }, [session, route.params]);
 
-// 💡 ОНОВЛЕНО: ЕТАП 2 - Завантаження даних та підписки
+    // ЕТАП 2 - Завантаження даних та підписки
     useEffect(() => {
         let isMounted = true;
         let profileSub;
 
-        // Отримуємо свіжий ID отримувача
         const { recipientId: paramRecipientId } = route.params;
         
         const subscribeToData = async () => {
-            // 💡 1. Додано перевірку: не підписуватись, якщо додаток у фоні або не готовий
             if (!isRoomSetup || !currentRoomId || !session || !paramRecipientId || !appIsActive) {
                 return;
             }
             
-            // 💡 2. Цей ефект тепер сам викликає fetchMessages при активації
+            // Завантажуємо повідомлення. `fetchMessages` сам встановить `isLoading(false)`
             await fetchMessages(currentRoomId, 0); 
             
-            if (channelRef.current) {
-                // Прибираємо старий (можливо, "мертвий") канал
-                supabase.removeChannel(channelRef.current);
-            }
-            
-            // Створюємо НОВИЙ канал
             const roomChannel = supabase.channel(`room-${currentRoomId}`, { 
                 config: { presence: { key: session.user.id, room: currentRoomId } } 
             });
@@ -667,21 +644,18 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
             // --- ПІДПИСКА НА ПОВІДОМЛЕННЯ ---
             roomChannel
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
-                    // Ігноруємо власні INSERT (обробляються await)
                     if (payload.new.sender_id === session.user.id) {
                         return;
                     }
-                    // Обробка вхідного повідомлення
                     setMessages(currentMessages => {
                         if (currentMessages.some(m => m.id === payload.new.id)) { return currentMessages; }
                         playSound(receivedSoundRef);
                         markAsRead(currentRoomId);
-                        const newMessage = { ...payload.new, reactions: [] }; // Додаємо 'reactions'
+                        const newMessage = { ...payload.new, reactions: [] }; 
                         return [newMessage, ...currentMessages];
                     });
                 })
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
-                    // Оновлюємо повідомлення, зберігаючи 'reactions', якщо вони є
                     setMessages(currentMessages => 
                         currentMessages.map(m => 
                             m.id === payload.new.id ? { ...m, ...payload.new, reactions: payload.new.reactions || m.reactions } : m
@@ -692,7 +666,7 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
                     setMessages(currentMessages => currentMessages.filter(m => m.id !== payload.old.id));
                 })
                 
-                // --- ПІДПИСКА НА РЕАКЦІЇ (з функціональним setMessages) ---
+                // --- ПІДПИСКА НА РЕАКЦІЇ (Виправлено) ---
                 .on('postgres_changes', { 
                     event: '*', 
                     schema: 'public', 
@@ -701,51 +675,55 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
                 (payload) => {
                     let reactionData;
                     let messageId;
+                    const myUserId = session?.user?.id; 
 
                     if (payload.eventType === 'DELETE') {
                         reactionData = payload.old;
                         if (!reactionData || !reactionData.id) return; 
-                        messageId = reactionData.message_id;
-                        if (!messageId) return; 
                     } else {
                         // INSERT or UPDATE
                         reactionData = payload.new;
                         if (!reactionData || !reactionData.id) return;
-                        messageId = reactionData.message_id;
                     }
                     
-                    // Використовуємо функціональне оновлення setMessages
+                    messageId = reactionData.message_id;
+                    if (!messageId) return;
+                    
                     setMessages(currentMessages => {
-                        // Перевіряємо, чи є таке повідомлення в поточному стані
                         if (!currentMessages.some(m => m.id === messageId)) {
-                            return currentMessages; // Немає повідомлення, нічого не змінюємо
+                            return currentMessages; 
                         }
 
-                        // Якщо є, оновлюємо його
                         return currentMessages.map(msg => {
                             if (msg.id === messageId) {
-                                // Це наше повідомлення
                                 let updatedReactions = [...(msg.reactions || [])];
 
                                 if (payload.eventType === 'INSERT') {
-                                    // Додаємо, тільки якщо її ще немає
-                                    if (!updatedReactions.some(r => r.id === reactionData.id)) {
+                                    if (reactionData.user_id === myUserId) {
+                                        const optimisticIndex = updatedReactions.findIndex(
+                                            r => r.emoji === reactionData.emoji && r.user_id === myUserId
+                                        );
+                                        
+                                        if (optimisticIndex > -1) {
+                                            updatedReactions[optimisticIndex] = reactionData;
+                                        } else {
+                                            updatedReactions.push(reactionData);
+                                        }
+                                    } else {
                                         updatedReactions.push(reactionData);
                                     }
                                 } 
                                 else if (payload.eventType === 'DELETE') {
-                                    // Видаляємо за ID
                                     updatedReactions = updatedReactions.filter(r => r.id !== reactionData.id);
                                 }
                                 else if (payload.eventType === 'UPDATE') {
-                                    // Оновлюємо за ID
                                     updatedReactions = updatedReactions.map(r => 
                                         r.id === reactionData.id ? reactionData : r
                                     );
                                 }
                                 return { ...msg, reactions: updatedReactions };
                             }
-                            return msg; // Інше повідомлення
+                            return msg; 
                         });
                     });
                 })
@@ -786,7 +764,6 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
             }).subscribe();
         };
         
-        // Викликаємо функцію підписки
         if (isRoomSetup) {
             subscribeToData();
         }
@@ -801,8 +778,8 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
                  channelRef.current = null;
             }
         };
-    // 💡 3. 'appIsActive' тепер є в масиві залежностей
     }, [isRoomSetup, currentRoomId, session, route.params.recipientId, fetchMessages, markAsRead, playSound, appIsActive]);
+    
     useFocusEffect(useCallback(() => {
         const enterChat = async () => {
              if (session) {
@@ -823,22 +800,17 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
 useEffect(() => {
         const subscription = AppState.addEventListener('change', async (nextAppState) => {
             
-            // Коли програма повернулась у фокус
             if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
                 if (session) {
                     supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
                 }
-                
-                // 💡 1. Просто повідомляємо, що додаток активний
                 setAppIsActive(true);
             }
             
-            // Коли програма згорнулась
             if (nextAppState.match(/inactive|background/)) {
                  if (session) {
                      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then();
                  }
-                 // 💡 2. Повідомляємо, що додаток неактивний
                  setAppIsActive(false); 
             }
             
@@ -848,9 +820,8 @@ useEffect(() => {
         return () => {
             subscription.remove();
         };
-    // 💡 3. Залишаємо лише 'session', щоб ефект не перезапускався без потреби
     }, [session]);
-    // (sendMessage - обробка відповіді)
+
     const sendMessage = useCallback(async (messageData) => {
         if (!currentRoomId || !session) return { data: null, error: { message: 'Not connected' } };
         
@@ -869,7 +840,6 @@ useEffect(() => {
         }
     }, [currentRoomId, session, t, route.params.recipientId, profile]);
 
-    // (handleSendText - обробка відповіді)
     const handleSendText = useCallback(async () => {
         if (editingMessage) { handleEditMessage(); return; }
         const textToSend = inputText.trim();
@@ -900,7 +870,6 @@ useEffect(() => {
         }
     }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound, handleEditMessage]);
 
-    // (uploadAndSendImage - обробка відповіді)
     const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, room_id: currentRoomId, sender_id: session.user.id, image_url: asset.uri, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
@@ -930,7 +899,6 @@ useEffect(() => {
         } catch (e) { Alert.alert(t('common.error'), e.message); setMessages(prev => prev.filter(m => m.client_id !== clientId)); }
     }, [session, sendMessage, t, currentRoomId, playSound]);
 
-    // (handleSendLocation - обробка відповіді)
     const handleSendLocation = useCallback(async () => {
         setAttachmentModalVisible(false);
         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -967,7 +935,6 @@ useEffect(() => {
     
     const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); const originalContent = editingMessage.content; setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); } }, [editingMessage, inputText, t]);
     
-    // (handleReaction - оптимістичне оновлення, БЕЗ 'select')
     const handleReaction = useCallback(async (emoji, message) => {
         const target = message || selectedMessageForAction;
         if (!target) return;
@@ -985,7 +952,7 @@ useEffect(() => {
             updatedReactions.splice(existingIndex, 1);
         } else {
             updatedReactions.push({ 
-                id: uuidv4(), 
+                id: uuidv4(), // Тимчасовий ID
                 message_id: target.id,
                 user_id: myUserId,
                 emoji: emoji,
@@ -1007,7 +974,7 @@ useEffect(() => {
             p_emoji: emoji 
         });
 
-        // 3. Обробка помилки (якщо є)
+        // 3. Обробка помилки (відкат)
         if (rpcErrorToggle) {
             Alert.alert(t('common.error'), rpcErrorToggle.message);
             setMessages(currentMessages =>
@@ -1018,7 +985,8 @@ useEffect(() => {
             return;
         }
         
-        // 4. Успіх - нічого не робимо, оптимістичний стан вірний.
+        // 4. Успіх. Наш слухач (який ми виправили) зловить 'INSERT' або 'DELETE'
+        // і оновить тимчасову реакцію на справжню.
         
     }, [selectedMessageForAction, t, session]);
 
@@ -1086,22 +1054,13 @@ useEffect(() => {
 
     const handleTyping = useCallback((text) => { setInputText(text); if (channelRef.current && channelRef.current.state === 'joined') { try { channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }); } catch (e) { console.error("Broadcast failed:", e); } } }, [session]);
 
-    // Пагінація/refresh більше не потрібні, оскільки завантажуємо все
-    // const handleRefresh = ...
-
     const lastMessage = useMemo(() => messages[0], [messages]); 
     const canLikeLastMessage = lastMessage && lastMessage.sender_id !== session?.user?.id && !inputText;
 
-    // РЕНДЕР: Повний екран завантаження
-    if (!isRoomSetup) {
-        return (
-            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <StatusBar barStyle={colors.dark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-                <ActivityIndicator size="large" color={colors.primary} />
-            </SafeAreaView>
-        );
-    }
-    
+    // --- ✅ FIX 3: ВИДАЛЕНО БЛОК `if (!isRoomSetup)` ---
+    // Початковий рендер тепер одразу перейде до основного UI,
+    // де `isLoading` (який все ще `true`) покаже єдиний індикатор завантаження.
+
     // РЕНДЕР: Основний UI
     return (
         <View style={styles.container}> 
@@ -1138,7 +1097,8 @@ useEffect(() => {
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
                 >
                     
-                    {isLoading && messages.length === 0 ? (
+                    {/* Цей блок тепер єдиний, що відповідає за завантаження */}
+                    {isLoading ? ( // <-- Змінено (прибрано messages.length === 0)
                          <View style={[styles.flatList, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
                              <ActivityIndicator size="large" color={colors.primary} />
                              <Text style={{color: colors.secondaryText, marginTop: 10}}>{t('common.loadingMessages')}</Text>
@@ -1155,7 +1115,7 @@ useEffect(() => {
                                     currentUserId={session?.user?.id} 
                                     onImagePress={setViewingImageUri} 
                                     onLongPress={handleLongPress} 
-                                    onDoubleTap={m => handleReaction('👍', m)} // Спрощено DoubleTap
+                                    onDoubleTap={m => handleReaction('👍', m)} 
                                     onSelect={handleToggleSelection} 
                                     selectionMode={selectionMode} 
                                     isSelected={selectedMessages.has(item.id)}
@@ -1196,3 +1156,4 @@ useEffect(() => {
         </View> 
     );
 }
+

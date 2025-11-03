@@ -12,6 +12,7 @@ import {
   Keyboard,
   ActivityIndicator,
   TextInput,
+  Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,12 +21,25 @@ import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
 
+// Валідація email
 const validateEmail = (email) => {
   const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(email).toLowerCase());
 };
 
-// --- ЗМІНА: Компонент InputWithIcon тепер визначений тут з новим функціоналом ---
+// 2. ФІЛЬТР НЕПРИЙНЯТНОГО КОНТЕНТУ (Вимога 2)
+// 🚩 Обов'язково додайте сюди ваші слова
+const BANNED_WORDS = ['admin', 'moderator', 'fuck', 'shit', 'bitch']; 
+
+const containsBannedWords = (text) => {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return BANNED_WORDS.some(word => lowerText.includes(word));
+};
+
+const TERMS_URL = "https://air-chat.github.io/airchat/#/terms";
+const PRIVACY_URL = "https://air-chat.github.io/airchat/#/privacy"; 
+
 const InputWithIcon = ({ icon, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry, onToggleVisibility, isPassword, containerStyle }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors, {}); // insets не потрібні для цього компонента
@@ -68,14 +82,16 @@ export default function RegistrationScreen({ navigation, route }) {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
-
-  // --- ЗМІНА: Додано стан для видимості пароля ---
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // 4. СТАН ДЛЯ ЧЕКБОКСУ (Вимога 1)
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isEmailAvailable, setIsEmailAvailable] = useState(true);
   const debounceTimeout = useRef(null);
 
+  // Ефект для перевірки email (без змін)
   useEffect(() => {
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     if (!email.trim() || !validateEmail(email)) {
@@ -106,6 +122,12 @@ export default function RegistrationScreen({ navigation, route }) {
     Keyboard.dismiss();
     setErrorText('');
 
+    // 5. ПЕРЕВІРКИ ПЕРЕД РЕЄСТРАЦІЄЮ
+    if (containsBannedWords(fullName.trim())) {
+      setErrorText(t('registration.bannedName', "Це ім'я містить неприпустимі слова."));
+      return;
+    }
+
     if (!email || !password || !fullName) {
       setErrorText(t('registration.fillAllFields', 'Будь ласка, заповніть ім\'я, пошту та пароль.'));
       return;
@@ -121,6 +143,12 @@ export default function RegistrationScreen({ navigation, route }) {
     if (!isEmailAvailable) {
         setErrorText(t('registration.emailExists', 'Користувач з такою поштою вже існує.'));
         return;
+    }
+
+    // 6. ПЕРЕВІРКА ЧЕКБОКСУ (Вимога 1)
+    if (!agreedToTerms) {
+      setErrorText(t('registration.mustAgreeToTerms', 'Ви повинні погодитись з Умовами Користування.'));
+      return;
     }
 
     setLoading(true);
@@ -153,11 +181,22 @@ export default function RegistrationScreen({ navigation, route }) {
   
   const title = role === 'driver' ? t('registration.driverTitle') : t('registration.title');
   const clearError = () => { if (errorText) setErrorText(''); };
+  const togglePasswordVisibility = useCallback(() => setIsPasswordVisible(prev => !prev), []);
+  
+  // 7. ФУНКЦІЯ ДЛЯ ЧЕКБОКСУ (Вимога 1)
+  const toggleAgreedToTerms = () => {
+    setAgreedToTerms(!agreedToTerms);
+    clearError();
+  };
 
-  // --- ЗМІНА: Функція для перемикання видимості пароля ---
-  const togglePasswordVisibility = useCallback(() => {
-    setIsPasswordVisible(prev => !prev);
-  }, []);
+  // 8. ФУНКЦІЯ ДЛЯ ВІДКРИТТЯ ПОСИЛАНЬ (Вимога 1)
+  const handleOpenURL = async (url) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert(t('common.error', 'Помилка'), t('registration.cannotOpenLink', 'Не вдалося відкрити посилання.'));
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -201,7 +240,6 @@ export default function RegistrationScreen({ navigation, route }) {
                       ) : null}
                   </View>
               </View>
-              {/* --- ЗМІНА: Оновлений компонент для пароля --- */}
               <InputWithIcon
                 icon="lock-closed-outline"
                 placeholder={t('registration.passwordPlaceholder', 'Пароль')}
@@ -220,10 +258,49 @@ export default function RegistrationScreen({ navigation, route }) {
               />
             </View>
             
+            {/* 9. ЧЕКБОКС ТА ПОСИЛАННЯ НА УМОВИ (Вимога 1) */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity 
+                style={styles.checkbox}
+                onPress={toggleAgreedToTerms}
+              >
+                <Ionicons 
+                  name={agreedToTerms ? 'checkbox' : 'square-outline'}
+                  size={24} 
+                  color={agreedToTerms ? colors.primary : colors.secondaryText} 
+                />
+              </TouchableOpacity>
+              <Text style={styles.termsText} onMoveShouldSetResponder={() => true}>
+                {t('registration.iAgree', 'Я погоджуюсь з ')}
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => handleOpenURL(TERMS_URL)} 
+                >
+                  {t('registration.termsLink', 'Умовами Користування')}
+                </Text>
+                {t('registration.and', ' та ')}
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => handleOpenURL(PRIVACY_URL)} 
+                >
+                  {t('registration.privacyLink', 'Політикою Конфіденційності')}
+                </Text>
+                <Text style={styles.termsText}>.</Text>
+              </Text>
+            </View>
+            
             {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
             <View style={styles.footer}>
-              <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading || isCheckingEmail}>
+              {/* 10. КНОПКА НЕАКТИВНА БЕЗ ПОГОДЖЕННЯ (Вимога 1) */}
+              <TouchableOpacity 
+                style={[
+                  styles.registerButton, 
+                  (!agreedToTerms || loading || isCheckingEmail) && styles.disabledButton
+                ]} 
+                onPress={handleRegister} 
+                disabled={!agreedToTerms || loading || isCheckingEmail}
+              >
                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.registerButtonText}>{t('registration.registerButton', 'Зареєструватись')}</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')} disabled={loading}>
@@ -240,6 +317,7 @@ export default function RegistrationScreen({ navigation, route }) {
   );
 }
 
+// --- СТИЛІ ---
 const getStyles = (colors, insets) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -260,12 +338,38 @@ const getStyles = (colors, insets) =>
         right: 10,
         top: 0,
     },
+    // Стилі для Умов
+    termsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingHorizontal: 5,
+    },
+    checkbox: {
+        marginRight: 10,
+        padding: 5,
+    },
+    termsText: {
+        color: colors.secondaryText,
+        fontSize: 14,
+        flex: 1, // Дозволяє тексту переноситися
+    },
+    termsLink: {
+        color: colors.primary,
+        fontWeight: 'bold',
+        textDecorationLine: 'underline',
+    },
+    //
     errorText: { color: '#D32F2F', textAlign: 'center', marginBottom: 20, fontSize: 14, fontWeight: '500' },
     footer: { alignItems: 'center', marginTop: 20 },
     registerButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center' },
+    // Стиль для неактивної кнопки
+    disabledButton: {
+      backgroundColor: colors.border, // Або будь-який сірий колір
+    },
     registerButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     loginLink: { color: colors.secondaryText, fontSize: 14, marginTop: 24 },
-    // --- ЗМІНА: Нові стилі для InputWithIcon ---
+    // Стилі для InputWithIcon
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',

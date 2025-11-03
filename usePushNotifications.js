@@ -1,5 +1,3 @@
-// usePushNotifications.js (ОНОВЛЕНО)
-
 import { useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
@@ -18,10 +16,21 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ✨ 1. КЛЮЧОВЕ ВИПРАВЛЕННЯ: Спрощена та надійна функція навігації (винесена для чистоти)
+// Прапорець, щоб уникнути подвійних натискань
+let isNavigating = false;
+
+// ✨ 1. Функція навігації з прапорцем isNavigating
 const handleChatNavigation = (navigationRef, data) => {
+  // Перевіряємо, чи ми вже не в процесі переходу
+  if (isNavigating) {
+    console.log('[PUSH_NAV] Навігація вже в процесі, пропускаємо.');
+    return;
+  }
+
+  // Перевіряємо, чи навігація готова і чи є дані
   if (navigationRef.current?.isReady() && data?.roomId) {
-    console.log('Navigating directly to IndividualChat with data:', data);
+    console.log('[PUSH_NAV] Навігація готова. Перехід до IndividualChat:', data.roomId);
+    isNavigating = true; // Встановлюємо прапорець
     
     navigationRef.current.navigate('IndividualChat', {
       roomId: data.roomId,
@@ -30,12 +39,24 @@ const handleChatNavigation = (navigationRef, data) => {
       recipientAvatar: data.recipientAvatar,
       recipientLastSeen: data.recipientLastSeen,
     });
+    
+    // Скидаємо прапорець через 1.5 секунди, щоб дозволити новий перехід
+    setTimeout(() => { 
+      isNavigating = false; 
+      console.log('[PUSH_NAV] Прапорець навігації скинуто.');
+    }, 1500); 
+
   } else if (!navigationRef.current?.isReady()) {
+    // Якщо навігація не готова (холодний старт), пробуємо ще раз
+    console.log('[PUSH_NAV] Навігація не готова, повторна спроба через 200мс...');
     setTimeout(() => handleChatNavigation(navigationRef, data), 200);
+  } else {
+    // Якщо дані неповні
+    console.warn('[PUSH_NAV] Не вдалося перейти: відсутній roomId або ref.', data);
   }
 };
 
-
+// ✨ 2. Хук тепер приймає navigationRef
 export const usePushNotifications = (navigationRef) => {
   const { session, profile } = useAuth();
   const { fetchUnreadCount } = useUnreadCount();
@@ -45,7 +66,6 @@ export const usePushNotifications = (navigationRef) => {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  // 💡 ОНОВЛЕНО: Видалення проблемного projectId
   const registerForPushNotificationsAsync = useCallback(async () => {
     let token;
     if (Device.isDevice) {
@@ -60,9 +80,8 @@ export const usePushNotifications = (navigationRef) => {
         return;
       }
       
-      // 💡 КРИТИЧНЕ ВИПРАВЛЕННЯ: Видаляємо projectId. 
-      // Дозволяємо Expo автоматично визначити ID з конфігурації EAS Build.
       try {
+        // Видалено projectId, Expo визначить його автоматично
         const tokenResponse = await Notifications.getExpoPushTokenAsync({}); 
         token = tokenResponse.data;
       } catch (e) {
@@ -86,16 +105,17 @@ export const usePushNotifications = (navigationRef) => {
   }, []);
 
   useEffect(() => {
-    if (session?.user?.id && profile) {
-      // 💡 ОНОВЛЕНО: Обов'язково чистимо старий токен, якщо реєстрація була успішною, але токен не отримано
+    // ✨ 3. Додано перевірку наявності navigationRef
+    if (session?.user?.id && profile && navigationRef) {
       registerForPushNotificationsAsync().then(async (token) => {
         if (token) {
+          console.log('[PUSH_TOKEN] Отримано токен, оновлюємо профіль:', token.substring(0, 20) + '...');
           await supabase
             .from('profiles')
             .update({ expo_push_token: token })
             .eq('id', session.user.id);
         } else {
-             // 💡 ДОДАТКОВА НАДІЙНІСТЬ: Якщо токен не отримано (через помилку), чистимо старий токен в БД.
+             console.warn('[PUSH_TOKEN] Не вдалося отримати токен. Очищуємо старий токен в БД.');
              await supabase
                 .from('profiles')
                 .update({ expo_push_token: null })
@@ -103,8 +123,9 @@ export const usePushNotifications = (navigationRef) => {
         }
       });
 
+      // Слухач для сповіщень, отриманих УВІМКНЕНИМ додатком
       notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-        console.log('[PUSH_NOTIF] Отримано сповіщення, поки додаток відкритий. Оновлюємо лічильники...');
+        console.log('[PUSH_FG] Отримано сповіщення у відкритому додатку. Оновлюємо лічильники...');
         const type = notification.request.content.data?.type;
         if (fetchUnreadCount) {
           fetchUnreadCount();
@@ -117,21 +138,25 @@ export const usePushNotifications = (navigationRef) => {
         }
       });
 
+      // Слухач для НАТИСКАННЯ на сповіщення (коли додаток у фоні або відкритий)
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('Користувач натиснув на сповіщення:', response);
+        console.log('[PUSH_TAP] Користувач натиснув на сповіщення.');
         const notificationData = response.notification.request.content.data;
+        // ✨ 4. Викликаємо навігацію з ref, який тепер існує
         handleChatNavigation(navigationRef, notificationData);
       });
       
-      // 💡 ПЕРЕВІРКА ХОЛОДНОГО СТАРТУ: Виконується один раз при завантаженні застосунку
+      // Перевірка, чи додаток був відкритий з "холодного старту" натисканням на сповіщення
       Notifications.getLastNotificationResponseAsync().then(response => {
         if (response) {
-            console.log('Додаток відкрито з холодного старту через сповіщення');
+            console.log('[PUSH_COLD_START] Додаток відкрито натисканням на сповіщення.');
             const notificationData = response.notification.request.content.data;
+            // ✨ 5. Викликаємо навігацію з ref
             handleChatNavigation(navigationRef, notificationData);
         }
       });
 
+      // Очищення слухачів
       return () => {
         if (notificationListener.current) {
           Notifications.removeNotificationSubscription(notificationListener.current);
@@ -143,5 +168,6 @@ export const usePushNotifications = (navigationRef) => {
     }
   }, [session, profile, fetchUnreadCount, fetchNewOffersCount, fetchNewTripsCount, navigationRef, registerForPushNotificationsAsync]);
 
+  // Цей хук лише налаштовує слухачів і нічого не повертає
   return {};
 };

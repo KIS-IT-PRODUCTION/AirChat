@@ -1,23 +1,32 @@
 import 'react-native-google-places-autocomplete';
 import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
-import './i18n';
+import './i18n'; // Переконайтеся, що цей файл існує
 
-import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect, memo, useRef } from 'react';
+import { 
+    NavigationContainer, 
+    useNavigationContainerRef, 
+    DefaultTheme,
+    DarkTheme     
+} from '@react-navigation/native'; 
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, StyleSheet, Text, AppState, Platform, Animated, Easing, StatusBar } from 'react-native';
+import { 
+    View, StyleSheet, Text, AppState, Platform, Animated, Easing, StatusBar,
+    Modal, TouchableOpacity 
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Linking from 'expo-linking';
+import * as Linking from 'expo-linking'; 
 import { LogBox } from 'react-native';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
 
+// Провайдери
 import { ThemeProvider, useTheme } from './app/ThemeContext';
 import { AuthProvider, useAuth } from './provider/AuthContext';
 import { UnreadCountProvider, useUnreadCount } from './provider/Unread Count Context';
@@ -27,7 +36,7 @@ import HomeScreen, { FormProvider } from './app/HomeScreen';
 import { usePushNotifications } from './usePushNotifications.js';
 import { supabase } from './config/supabase';
 
-// Імпорти екранів
+// Екрани
 import OnboardingScreen from './app/OnboardingScreen';
 import AuthScreen from './app/AuthScreen';
 import RegistrationScreen from './app/RegistrationScreen';
@@ -87,34 +96,130 @@ function DriverAppStack() {
     );
 }
 
-// --- Deep Linking Config (без змін) ---
+// --- Deep Linking (без змін) ---
 const linkingConfig = {
   prefixes: [Linking.createURL('/'), 'airchat://'],
   config: { screens: { ResetPasswordScreen: 'reset-password', IndividualChat: 'chat/:roomId' } },
 };
 
-// ✅ ВИПРАВЛЕНО: Створено новий компонент, який буде всередині NavigationContainer
-// Вся логіка з RootNavigator тепер тут.
-function AppContent() {
+// --- Модальне вікно для забанених (без змін) ---
+const BannedUserModal = () => {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
+
+  const handleContactSupport = () => {
+    const adminEmail = 'airchat.app25@gmail.com'; 
+    const subject = t('bannedModal.emailSubject', 'Мій акаунт заблоковано');
+    Linking.openURL(`mailto:${adminEmail}?subject=${subject}`);
+  };
+
+  const styles = getBannedModalStyles(colors);
+
+  return (
+    <Modal visible={true} transparent={true} animationType="fade">
+      <View style={styles.backdrop}>
+        <View style={styles.modalContainer}>
+          <Ionicons name="ban-outline" size={80} color={colors.danger} />
+          <Text style={styles.title}>{t('bannedModal.title', 'Акаунт заблоковано')}</Text>
+          <Text style={styles.message}>
+            {t('bannedModal.message', 'Ваш акаунт було заблоковано адміністратором через порушення правил спільноти. Ви не можете користуватися додатком.')}
+          </Text>
+          <Text style={styles.message}>
+            {t('bannedModal.contact', 'Якщо ви вважаєте, що це помилка, будь ласка, зв\'яжіться з підтримкою airchat.app25@gmail.com.')}
+          </Text>
+
+          <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
+            <Text style={styles.buttonText}>{t('bannedModal.contactButton', "Зв'язатися з підтримкою")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
+            <Text style={styles.logoutText}>{t('bannedModal.logout', 'Вийти')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+// Стилі для модального вікна (без змін)
+const getBannedModalStyles = (colors) => StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.danger,
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 16,
+    color: colors.secondaryText,
+    textAlign: 'center',
+    marginBottom: 15,
+    lineHeight: 22,
+  },
+  contactButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  logoutButton: {
+    marginTop: 20,
+    padding: 10,
+  },
+  logoutText: {
+    color: colors.secondaryText,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
+
+
+// --- AppContent (без змін) ---
+function AppContent({ navigationRef }) {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
-    const { colors } = useTheme(); // Додано для статус-бару
-
-    // Хуки для сповіщень та лічильників
-    usePushNotifications(); // Тепер він може безпечно використовувати useNavigation всередині
+    const { colors } = useTheme(); 
+    usePushNotifications(navigationRef); 
     const { unreadCount, fetchUnreadCount } = useUnreadCount();
     const { newOffersCount } = useNewOffers();
     const { newTripsCount } = useNewTrips();
-
-    // Логіка інтернет-з'єднання
     const netInfo = useNetInfo();
     const [isNetworkDown, setIsNetworkDown] = useState(false);
+
+    // Ефекти (без змін)
     useEffect(() => {
         const isConnected = netInfo.isConnected === true && netInfo.isInternetReachable === true;
         if (netInfo.type !== 'unknown') { setIsNetworkDown(!isConnected); }
     }, [netInfo.isConnected, netInfo.isInternetReachable, netInfo.type]);
-
-    // Логіка онбордінгу
     useEffect(() => {
         const checkOnboarding = async () => {
             const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
@@ -122,15 +227,11 @@ function AppContent() {
         };
         checkOnboarding();
     }, []);
-
-    // Приховування сплеш-скріна
     useEffect(() => {
         if (!isAuthLoading && isFirstLaunch !== null) {
             SplashScreen.hideAsync();
         }
     }, [isAuthLoading, isFirstLaunch]);
-
-    // Логіка AppState та оновлення статусу "онлайн"
     useEffect(() => {
         const handleAppStateChange = (nextAppState) => {
             if (session?.user && nextAppState === 'active') {
@@ -141,8 +242,6 @@ function AppContent() {
         const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
         return () => { appStateSubscription.remove(); };
     }, [session, fetchUnreadCount]);
-
-    // Оновлення бейджа на іконці додатку
     useEffect(() => {
         const updateTotalBadgeCount = async () => {
             if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -153,33 +252,138 @@ function AppContent() {
         updateTotalBadgeCount();
     }, [unreadCount, newOffersCount, newTripsCount]);
 
-    // Поки дані завантажуються, показуємо null (пустий екран, поки сплеш-скрін активний)
+    // Відображаємо null, поки йде перше завантаження
     if (isAuthLoading || isFirstLaunch === null) {
         return null;
     }
 
+    // Перевірка на бан (без змін)
+    if (profile && profile.is_banned) {
+        return (
+            <View style={{ flex: 1, backgroundColor: colors.background }}>
+                <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
+                <BannedUserModal />
+            </View>
+        );
+    }
+    // --- Кінець перевірки на бан ---
+
     return (
         <View style={{ flex: 1 }}>
-            {/* Встановлюємо стиль статус-бару */}
             <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
             {session && profile ? (
                 profile.role === 'driver' ? <DriverAppStack /> : <UserAppStack />
             ) : (
                 <AuthNavigator isFirstLaunch={isFirstLaunch} />
             )}
+            {/* 👇 Переконайтеся, що NoInternetBanner рендериться тут */}
             <NoInternetBanner visible={isNetworkDown} />
         </View>
     );
 }
 
-// --- Компонент банера (без змін) ---
-const NoInternetBanner = memo(({ visible }) => { /* ... */ });
-const getBannerStyles = (colors, totalHeight, topInset, contentHeight) => StyleSheet.create({ /* ... */ });
+// --- 👇 ОНОВЛЕНИЙ КОМПОНЕНТ БАНЕРА ---
+const NoInternetBanner = memo(({ visible }) => {
+    const { colors } = useTheme();
+    const { t } = useTranslation();
+    const topInset = useSafeAreaInsets().top;
 
-// --- Головний компонент Додатку ---
+    // Визначаємо висоту контенту та позиції
+    const contentHeight = 50;
+    const visibleY = topInset + 10; // 10px відступу від статус-бару
+    const hiddenY = -(contentHeight + topInset + 20); // Повністю сховано за екраном
+
+    // Починаємо зі схованої позиції
+    const animation = useRef(new Animated.Value(hiddenY)).current;
+
+    useEffect(() => {
+        Animated.timing(animation, {
+            toValue: visible ? visibleY : hiddenY, // Анімуємо до видимої або схованої позиції
+            duration: 300,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true, // Використовуємо transform
+        }).start();
+    }, [visible, animation, visibleY, hiddenY]);
+    
+    // 👇 Передаємо тільки 'colors' у функцію стилів
+    const styles = getBannerStyles(colors); 
+
+    return (
+        <Animated.View style={[styles.bannerContainer, { transform: [{ translateY: animation }] }]}>
+            {/* 'contentContainer' тепер має всі стилі (тінь, колір, заокруглення) */}
+            <View style={styles.contentContainer}>
+                <Ionicons name="cloud-offline-outline" size={22} color={colors.white} />
+                <Text style={styles.bannerText}>{t('errors.noInternetTitle', 'Немає з\'єднання з Інтернетом')}</Text>
+            </View>
+        </Animated.View>
+    );
+});
+
+// --- 👇 ОНОВЛЕНІ СТИЛІ БАНЕРА ---
+const getBannerStyles = (colors) => StyleSheet.create({
+    bannerContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 16, // Відступ зліва
+        right: 16, // Відступ справа
+        zIndex: 1000,
+    },
+    contentContainer: {
+        height: 50, // Фіксована висота
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        backgroundColor: '#e14932ff', // Червоний колір
+        borderRadius: 12, // Заокруглені кути
+        // Красива тінь
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 8,
+    },
+    bannerText: {
+        color: colors.white, // Білий текст
+        marginLeft: 10,
+        fontWeight: 'bold',
+        fontSize: 15,
+    },
+});
+
+// --- ThemedNavigationContainer (без змін) ---
+function ThemedNavigationContainer() {
+  const navigationRef = useNavigationContainerRef();
+  const { colors, isDark } = useTheme(); 
+
+  const navigationTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.card,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.primary,
+    },
+  };
+
+  return (
+    <NavigationContainer 
+        linking={linkingConfig} 
+        ref={navigationRef}
+        theme={navigationTheme} 
+    >
+        <AppContent navigationRef={navigationRef} />
+    </NavigationContainer>
+  );
+}
+
+
+// --- Головний компонент Додатку (без змін) ---
 export default function App() {
   return (
-    // ✅ ВИПРАВЛЕНО: Головний компонент тепер лише надає контекст та навігацію
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
@@ -187,9 +391,7 @@ export default function App() {
             <NewOffersProvider>
               <NewTripsProvider>
                   <FormProvider>
-                      <NavigationContainer linking={linkingConfig}>
-                          <AppContent />
-                      </NavigationContainer>
+                      <ThemedNavigationContainer />
                   </FormProvider>
               </NewTripsProvider>
             </NewOffersProvider>

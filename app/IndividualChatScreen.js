@@ -34,6 +34,53 @@ import ImageViewing from 'react-native-image-viewing';
 const LOADING_FADE_DELAY = 300; 
 const PAGE_SIZE = 25;
 
+// --- 👇 ДОДАНО: ФІЛЬТР НЕПРИЙНЯТНОГО КОНТЕНТУ (Вимога 1.2) ---
+// 🚩 Ви можете додати сюди будь-які слова
+const BANNED_WORDS = [
+  // EN
+  'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'faggot', 'asshole', 'dick',
+  // UA/RU (Кирилиця)
+  'хуй', 'хуя', 'хуе', 'хуи', 'хую', 'хуё',
+  'пизда', 'пізда', 'пизди', 'пізди',
+  'блять', 'блядь', 'блят',
+  'сука', 'суки', 'суче',
+  'їбати', 'ебать', 'їбу', 'ебу', 'ебал', 'їбав',
+  'йобаний', 'ебаный',
+  'гівно', 'говно', 'гавно',
+  'курва', 'курви',
+  'чорт', 'черт',
+  'мразь',
+  'уебок', 'уёбок',
+  'шлюха',
+  // UA/RU (Трансліт)
+  'hui', 'huy', 'huj',
+  'pizda', 'pisda',
+  'blyat', 'blyad',
+  'suka',
+  'ebat', 'jebat',
+  'govno', 'givno',
+  'kurva',
+];
+
+/**
+ * Перевіряє текст на наявність заборонених слів.
+ * Ігнорує регістр та пробіли (напр, "f u c k" буде знайдено).
+ */
+const containsBannedWords = (text) => {
+  if (!text) return false;
+  // Перетворюємо текст в нижній регістр та видаляємо пробіли для перевірки
+  const textToCompare = text.toLowerCase().replace(/[\s\-_.,!?]/g, '');
+
+  for (const word of BANNED_WORDS) {
+    if (textToCompare.includes(word)) {
+      return true;
+    }
+  }
+  return false;
+};
+// --- 👆 КІНЕЦЬ ФІЛЬТРУ ---
+
+
 // --- СТИЛІ ---
 const getStyles = (colors) => StyleSheet.create({
     selectionCircleContainer: { width: 40, justifyContent: 'center', alignItems: 'center' },
@@ -250,6 +297,7 @@ const MessageActionSheet = memo(({ visible, onClose, message, isMyMessage, onCop
         </Modal>
     );
 });
+
 const MessageBubble = memo(({ message, currentUserId, onImagePress, onLongPress, onDoubleTap, onSelect, selectionMode, isSelected }) => {
     const { colors } = useTheme(); 
     const styles = getStyles(colors); 
@@ -462,7 +510,6 @@ export default function IndividualChatScreen() {
     
     const userStatus = useMemo(() => {
         return formatUserStatus(isRecipientOnline, lastSeenRef.current);
-
     }, [isRecipientOnline, formatUserStatus]);
     
     useEffect(() => {
@@ -641,7 +688,6 @@ const fetchMessages = useCallback(async (roomId, page = 0) => {
                 setIsRecipientOnline(isOnline);
             };
 
-            // --- ПІДПИСКА НА ПОВІДОМЛЕННЯ ---
             roomChannel
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoomId}` }, (payload) => {
                     if (payload.new.sender_id === session.user.id) {
@@ -840,11 +886,56 @@ useEffect(() => {
         }
     }, [currentRoomId, session, t, route.params.recipientId, profile]);
 
+    // --- 👇 ОНОВЛЕНО: handleEditMessage (з перевіркою) ---
+    const handleEditMessage = useCallback(async () => { 
+        if (!editingMessage || !inputText.trim()) return; 
+        
+        const newContent = inputText.trim(); 
+        const originalContent = editingMessage.content; 
+
+        // --- 👇 ДОДАНО: Перевірка на заборонені слова при редагуванні ---
+        if (containsBannedWords(newContent)) {
+            Alert.alert(
+                t('common.error'),
+                // 🚩 Додайте цей ключ у ваші файли перекладу
+                t('chat.bannedMessage', 'Ваше повідомлення містить неприпустиму лексику.')
+            );
+            return; // Не зберігати зміни
+        }
+        // --- 👆 КІНЕЦЬ ПЕРЕВІРКИ ---
+
+        setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); 
+        setEditingMessage(null); 
+        setInputText(''); 
+        
+        const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); 
+        
+        if (error) { 
+            Alert.alert(t('common.error'), error.message); 
+            setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); 
+        } 
+    }, [editingMessage, inputText, t]); // Додано 't' у залежності
+
+    // --- 👇 ОНОВЛЕНО: handleSendText (з перевіркою) ---
     const handleSendText = useCallback(async () => {
-        if (editingMessage) { handleEditMessage(); return; }
+        if (editingMessage) { 
+            handleEditMessage(); // Викликаємо оновлену функцію редагування
+            return; 
+        }
+        
         const textToSend = inputText.trim();
         if (textToSend.length === 0) return;
         
+        // --- 👇 ДОДАНО: Перевірка на заборонені слова ---
+        if (containsBannedWords(textToSend)) {
+            Alert.alert(
+                t('common.error'),
+                t('chat.bannedMessage', 'Ваше повідомлення містить неприпустиму лексику.')
+            );
+            return; // Не відправляти
+        }
+        // --- 👆 КІНЕЦЬ ПЕРЕВІРКИ ---
+
         const clientId = uuidv4();
         const optimisticMessage = { id: clientId, client_id: clientId, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, content: textToSend, status: 'sending', reactions: [] };
         
@@ -868,7 +959,7 @@ useEffect(() => {
                 )
             );
         }
-    }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound, handleEditMessage]);
+    }, [editingMessage, inputText, sendMessage, session, currentRoomId, playSound, handleEditMessage, t]); // Додано 't' та 'handleEditMessage' у залежності
 
     const uploadAndSendImage = useCallback(async (asset) => {
         const clientId = uuidv4();
@@ -932,8 +1023,6 @@ useEffect(() => {
         }
         finally { setIsSendingLocation(false); }
     }, [sendMessage, t, session, currentRoomId, playSound]);
-    
-    const handleEditMessage = useCallback(async () => { if (!editingMessage || !inputText.trim()) return; const newContent = inputText.trim(); const originalContent = editingMessage.content; setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: newContent } : msg)); setEditingMessage(null); setInputText(''); const { error } = await supabase.from('messages').update({ content: newContent }).eq('id', editingMessage.id); if (error) { Alert.alert(t('common.error'), error.message); setMessages(prev => prev.map(msg => msg.id === editingMessage.id ? { ...msg, content: originalContent } : msg)); } }, [editingMessage, inputText, t]);
     
     const handleReaction = useCallback(async (emoji, message) => {
         const target = message || selectedMessageForAction;
@@ -1156,4 +1245,3 @@ useEffect(() => {
         </View> 
     );
 }
-

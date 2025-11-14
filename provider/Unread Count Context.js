@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import * as Notifications from 'expo-notifications'; // ✨ 1. Імпортуємо Notifications
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 
@@ -9,10 +9,12 @@ export const UnreadCountProvider = ({ children }) => {
   const { session } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ✨ 2. Створюємо єдину функцію для оновлення стану та бейджа
   const updateCountAndBadge = useCallback(async (count) => {
-    setUnreadCount(count);
-    console.log(`[BADGE_SYNC] Встановлено бейдж на іконці: ${count}`);
+    const numericCount = count > 0 ? count : 0;
+    setUnreadCount(numericCount);
+    // ✨ FIX: Додано команду для оновлення бейджа на іконці додатку
+    await Notifications.setBadgeCountAsync(numericCount);
+    console.log(`[BADGE_SYNC] Встановлено бейдж на іконці: ${numericCount}`);
   }, []);
 
   const fetchUnreadCount = useCallback(async () => {
@@ -25,7 +27,6 @@ export const UnreadCountProvider = ({ children }) => {
       const { data, error } = await supabase.rpc('get_total_unread_count');
       if (error) throw error;
       
-      // ✨ 3. Використовуємо нашу нову функцію для синхронізації
       await updateCountAndBadge(data);
       
     } catch (error) {
@@ -35,7 +36,7 @@ export const UnreadCountProvider = ({ children }) => {
 
   useEffect(() => {
     if (!session) {
-      updateCountAndBadge(0); // Очищуємо бейдж при виході з акаунту
+      updateCountAndBadge(0);
       return;
     }
 
@@ -57,7 +58,6 @@ export const UnreadCountProvider = ({ children }) => {
     };
   }, [session, fetchUnreadCount, updateCountAndBadge]);
 
-  // Передаємо тільки `unreadCount` та `fetchUnreadCount`
   const value = { unreadCount, fetchUnreadCount };
 
   return (
@@ -70,4 +70,3 @@ export const UnreadCountProvider = ({ children }) => {
 export const useUnreadCount = () => {
   return useContext(UnreadCountContext);
 };
-

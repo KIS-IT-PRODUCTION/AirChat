@@ -4,7 +4,7 @@ import Swiper from 'react-native-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../app/ThemeContext';
-import { useTranslation } from 'react-i18next'; // ✨ Імпорт
+import { useTranslation } from 'react-i18next';
 
 // Компонент слайду
 const Slide = ({ icon, title, text, colors }) => {
@@ -21,7 +21,7 @@ const Slide = ({ icon, title, text, colors }) => {
 
 export default function OnboardingScreen({ navigation }) {
   const { colors } = useTheme();
-  const { t } = useTranslation(); // ✨
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   const onDone = async () => {
@@ -40,6 +40,7 @@ export default function OnboardingScreen({ navigation }) {
         loop={false}
         dot={<View style={styles.dot} />}
         activeDot={<View style={styles.activeDot} />}
+        showsButtons={false} 
       >
         <Slide
           icon="airplane-outline"

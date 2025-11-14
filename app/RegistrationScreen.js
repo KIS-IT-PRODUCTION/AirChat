@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Platform,
   Keyboard,
   ActivityIndicator,
+  TextInput,
+  Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +20,99 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
-import InputWithIcon from './components/InputWithIcon';
 
+// Валідація email
 const validateEmail = (email) => {
   const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(email).toLowerCase());
 };
+
+// --- 👇 ОНОВЛЕНО: РОЗШИРЕНИЙ ФІЛЬТР НЕПРИЙНЯТНОГО КОНТЕНТУ (Вимога 2) ---
+// 🚩 Додано набагато більше слів (EN, UA, RU, Translit)
+const BANNED_WORDS = [
+  // Cпеціальні/Адмін
+  'admin', 'moderator', 'administrator', 'адмін', 'модератор', 'airchat',
+
+  // EN
+  'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'faggot', 'asshole', 'dick', 
+  'pussy', 'bastard', 'damn', 'hell', 'cocksucker',
+
+  // UA/RU (Кирилиця)
+  'хуй', 'хуя', 'хуе', 'хуи', 'хую', 'хуё',
+  'пизда', 'пізда', 'пизди', 'пізди', 'пиздец', 'піздєц',
+  'блять', 'блядь', 'блят',
+  'сука', 'суки', 'суче',
+  'їбати', 'ебать', 'їбу', 'ебу', 'ебал', 'їбав', 'еблан', 'долбоеб', 'долбоёб',
+  'йобаний', 'ебаный',
+  'гівно', 'говно', 'гавно',
+  'курва', 'курви',
+  'чорт', 'черт',
+  'мразь',
+  'уебок', 'уёбок',
+  'шлюха',
+  'дрочить', 'дрочу',
+  'пидор', 'підор', 'пидарас',
+  'мудак',
+
+  // UA/RU (Трансліт)
+  'hui', 'huy', 'huj',
+  'pizda', 'pisda',
+  'blyat', 'blyad',
+  'suka',
+  'ebat', 'jebat', 'ibat',
+  'govno', 'hivno', 'givno',
+  'kurva',
+  'pidor', 'pidar',
+  'mudak'
+]; 
+
+// --- 👇 ОНОВЛЕНО: Покращена функція перевірки, яка ігнорує пробіли та символи ---
+const containsBannedWords = (text) => {
+  if (!text) return false;
+  
+  // Перетворюємо текст в нижній регістр та видаляємо всі не-буквені символи
+  const textToCompare = text.toLowerCase().replace(/[\s\-_.,!?*@0-9]/g, '');
+
+  for (const word of BANNED_WORDS) {
+    // Перевіряємо, чи очищений текст містить заборонене слово
+    if (textToCompare.includes(word)) {
+      return true;
+    }
+  }
+  return false;
+};
+// --- 👆 КІНЕЦЬ ОНОВЛЕННЯ ФІЛЬТРУ ---
+
+
+const TERMS_URL = "https://air-chat.github.io/airchat/#/terms";
+const PRIVACY_URL = "https://air-chat.github.io/airchat/#/privacy"; 
+
+const InputWithIcon = ({ icon, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry, onToggleVisibility, isPassword, containerStyle }) => {
+    const { colors } = useTheme();
+    const styles = getStyles(colors, {}); // insets не потрібні для цього компонента
+
+    return (
+        <View style={[styles.inputWrapper, containerStyle]}>
+            <Ionicons name={icon} size={22} color={colors.secondaryText} style={styles.inputIcon} />
+            <TextInput
+                style={styles.textInput}
+                placeholder={placeholder}
+                placeholderTextColor={colors.secondaryText}
+                value={value}
+                onChangeText={onChangeText}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+                secureTextEntry={secureTextEntry}
+            />
+            {isPassword && (
+                <TouchableOpacity onPress={onToggleVisibility} style={styles.eyeIcon}>
+                    <Ionicons name={secureTextEntry ? 'eye-outline' : 'eye-off-outline'} size={24} color={colors.secondaryText} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+};
+
 
 export default function RegistrationScreen({ navigation, route }) {
   const { colors } = useTheme();
@@ -40,11 +129,16 @@ export default function RegistrationScreen({ navigation, route }) {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // 4. СТАН ДЛЯ ЧЕКБОКСУ (Вимога 1)
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isEmailAvailable, setIsEmailAvailable] = useState(true);
   const debounceTimeout = useRef(null);
 
+  // Ефект для перевірки email (без змін)
   useEffect(() => {
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     if (!email.trim() || !validateEmail(email)) {
@@ -75,6 +169,12 @@ export default function RegistrationScreen({ navigation, route }) {
     Keyboard.dismiss();
     setErrorText('');
 
+    // 5. ПЕРЕВІРКИ ПЕРЕД РЕЄСТРАЦІЄЮ
+    if (containsBannedWords(fullName.trim())) {
+      setErrorText(t('registration.bannedName', "Це ім'я містить неприпустимі слова."));
+      return;
+    }
+
     if (!email || !password || !fullName) {
       setErrorText(t('registration.fillAllFields', 'Будь ласка, заповніть ім\'я, пошту та пароль.'));
       return;
@@ -92,8 +192,13 @@ export default function RegistrationScreen({ navigation, route }) {
         return;
     }
 
+    // 6. ПЕРЕВІРКА ЧЕКБОКСУ (Вимога 1)
+    if (!agreedToTerms) {
+      setErrorText(t('registration.mustAgreeToTerms', 'Ви повинні погодитись з Умовами Користування.'));
+      return;
+    }
+
     setLoading(true);
-    // Цей блок коду є правильним. Він надсилає всі необхідні дані в метадані.
     const { error } = await signUp({
       email: email.trim(),
       password: password,
@@ -123,6 +228,22 @@ export default function RegistrationScreen({ navigation, route }) {
   
   const title = role === 'driver' ? t('registration.driverTitle') : t('registration.title');
   const clearError = () => { if (errorText) setErrorText(''); };
+  const togglePasswordVisibility = useCallback(() => setIsPasswordVisible(prev => !prev), []);
+  
+  // 7. ФУНКЦІЯ ДЛЯ ЧЕКБОКСУ (Вимога 1)
+  const toggleAgreedToTerms = () => {
+    setAgreedToTerms(!agreedToTerms);
+    clearError();
+  };
+
+  // 8. ФУНКЦІЯ ДЛЯ ВІДКРИТТЯ ПОСИЛАНЬ (Вимога 1)
+  const handleOpenURL = async (url) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert(t('common.error', 'Помилка'), t('registration.cannotOpenLink', 'Не вдалося відкрити посилання.'));
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -144,7 +265,7 @@ export default function RegistrationScreen({ navigation, route }) {
                 value={fullName}
                 onChangeText={(text) => { setFullName(text); clearError(); }}
               />
-              <View style={styles.inputContainer}>
+              <View style={styles.emailValidationContainer}>
                   <InputWithIcon
                     icon="mail-outline"
                     placeholder={t('registration.emailPlaceholder', 'Електронна пошта')}
@@ -171,7 +292,9 @@ export default function RegistrationScreen({ navigation, route }) {
                 placeholder={t('registration.passwordPlaceholder', 'Пароль')}
                 value={password}
                 onChangeText={(text) => { setPassword(text); clearError(); }}
-                secureTextEntry
+                secureTextEntry={!isPasswordVisible}
+                isPassword={true}
+                onToggleVisibility={togglePasswordVisibility}
               />
               <InputWithIcon
                 icon="call-outline"
@@ -182,10 +305,49 @@ export default function RegistrationScreen({ navigation, route }) {
               />
             </View>
             
+            {/* 9. ЧЕКБОКС ТА ПОСИЛАННЯ НА УМОВИ (Вимога 1) */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity 
+                style={styles.checkbox}
+                onPress={toggleAgreedToTerms}
+              >
+                <Ionicons 
+                  name={agreedToTerms ? 'checkbox' : 'square-outline'}
+                  size={24} 
+                  color={agreedToTerms ? colors.primary : colors.secondaryText} 
+                />
+              </TouchableOpacity>
+              <Text style={styles.termsText} onMoveShouldSetResponder={() => true}>
+                {t('registration.iAgree', 'Я погоджуюсь з ')}
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => handleOpenURL(TERMS_URL)} 
+                >
+                  {t('registration.termsLink', 'Умовами Користування')}
+                </Text>
+                {t('registration.and', ' та ')}
+                <Text 
+                  style={styles.termsLink} 
+                  onPress={() => handleOpenURL(PRIVACY_URL)} 
+                >
+                  {t('registration.privacyLink', 'Політикою Конфіденційності')}
+                </Text>
+                <Text style={styles.termsText}>.</Text>
+              </Text>
+            </View>
+            
             {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
             <View style={styles.footer}>
-              <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading || isCheckingEmail}>
+              {/* 10. КНОПКА НЕАКТИВНА БЕЗ ПОГОДЖЕННЯ (Вимога 1) */}
+              <TouchableOpacity 
+                style={[
+                  styles.registerButton, 
+                  (!agreedToTerms || loading || isCheckingEmail) && styles.disabledButton
+                ]} 
+                onPress={handleRegister} 
+                disabled={!agreedToTerms || loading || isCheckingEmail}
+              >
                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.registerButtonText}>{t('registration.registerButton', 'Зареєструватись')}</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')} disabled={loading}>
@@ -202,6 +364,7 @@ export default function RegistrationScreen({ navigation, route }) {
   );
 }
 
+// --- СТИЛІ ---
 const getStyles = (colors, insets) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -212,7 +375,7 @@ const getStyles = (colors, insets) =>
     title: { color: colors.text, fontSize: 32, fontWeight: 'bold' },
     subtitle: { color: colors.secondaryText, fontSize: 16, marginTop: 8 },
     form: {},
-    inputContainer: { flexDirection: 'row', alignItems: 'center' },
+    emailValidationContainer: { flexDirection: 'row', alignItems: 'center' },
     validationIndicator: {
         width: 40,
         height: 50,
@@ -220,11 +383,60 @@ const getStyles = (colors, insets) =>
         alignItems: 'center',
         position: 'absolute',
         right: 10,
-        top: 8,
+        top: 0,
     },
+    // Стилі для Умов
+    termsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingHorizontal: 5,
+    },
+    checkbox: {
+        marginRight: 10,
+        padding: 5,
+    },
+    termsText: {
+        color: colors.secondaryText,
+        fontSize: 14,
+        flex: 1, // Дозволяє тексту переноситися
+    },
+    termsLink: {
+        color: colors.primary,
+        fontWeight: 'bold',
+        textDecorationLine: 'underline',
+    },
+    //
     errorText: { color: '#D32F2F', textAlign: 'center', marginBottom: 20, fontSize: 14, fontWeight: '500' },
     footer: { alignItems: 'center', marginTop: 20 },
     registerButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center' },
+    // Стиль для неактивної кнопки
+    disabledButton: {
+      backgroundColor: colors.border, // Або будь-який сірий колір
+    },
     registerButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     loginLink: { color: colors.secondaryText, fontSize: 14, marginTop: 24 },
+    // Стилі для InputWithIcon
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.card,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        marginBottom: 16,
+        paddingHorizontal: 15,
+    },
+    inputIcon: {
+        marginRight: 10,
+    },
+    textInput: {
+        flex: 1,
+        height: 50,
+        color: colors.text,
+        fontSize: 16,
+    },
+    eyeIcon: {
+        padding: 5,
+    },
   });

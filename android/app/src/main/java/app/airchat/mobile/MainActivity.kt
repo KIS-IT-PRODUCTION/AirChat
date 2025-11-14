@@ -1,4 +1,4 @@
-package com.airchat.app
+package app.airchat.mobile
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

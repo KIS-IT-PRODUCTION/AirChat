@@ -15,6 +15,7 @@ import 'moment/locale/ro';
 import 'moment/locale/en-gb';
 import { MotiView } from 'moti';
 
+// --- Допоміжні компоненти (без змін) ---
 const TripCard = memo(({ item, t, onDelete, onPress }) => {
     const { colors, theme } = useTheme();
     const styles = getStyles(colors, theme);
@@ -128,16 +129,17 @@ const MyTripsScreen = () => {
     const fetchTrips = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
+            // ✅ ВИПРАВЛЕНО 1: Використовуємо 'accepted_driver_id' замість 'driver_id'
             const { data, error } = await supabase
                 .from('transfers')
                 .select('*, passenger:passenger_id(id, full_name, phone, avatar_url, last_seen)')
-                .eq('driver_id', session.user.id)
+                .eq('accepted_driver_id', session.user.id) 
                 .in('status', ['accepted', 'completed'])
                 .order('transfer_datetime', { ascending: true });
 
             if (error) throw error;
             setAllTrips(data || []);
-        } catch (e) { console.error("Error fetching trips:", e); } 
+        } catch (e) { console.error("Error fetching trips:", e.message); } 
     }, [session]);
 
     useEffect(() => {
@@ -145,10 +147,11 @@ const MyTripsScreen = () => {
             setIsLoading(true);
             fetchTrips().finally(() => setIsLoading(false));
 
+            // ✅ ВИПРАВЛЕНО 2: Використовуємо 'accepted_driver_id' у фільтрі підписки
             const tripsSubscription = supabase
                 .channel('public:transfers:driver_trips')
                 .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'transfers', filter: `driver_id=eq.${session.user.id}` },
+                    { event: '*', schema: 'public', table: 'transfers', filter: `accepted_driver_id=eq.${session.user.id}` },
                     () => fetchTrips()
                 )
                 .subscribe();
@@ -168,13 +171,15 @@ const MyTripsScreen = () => {
         setRefreshing(false);
     }, [fetchTrips]);
 
-    const { activeTrips, archivedTrips } = useMemo(() => {
-        const now = moment();
+  const { activeTrips, archivedTrips } = useMemo(() => {
+        const twoDaysAgo = moment().subtract(2, 'days');
+        
         return allTrips.reduce((acc, trip) => {
-            (moment(trip.transfer_datetime).isBefore(now.clone().subtract(1, 'day')) 
-                ? acc.archivedTrips.push(trip) 
-                : acc.activeTrips.push(trip)
-            );
+            if (trip.status === 'completed' || moment(trip.transfer_datetime).isBefore(twoDaysAgo)) {
+                acc.archivedTrips.push(trip);
+            } else {
+                acc.activeTrips.push(trip);
+            }
             return acc;
         }, { activeTrips: [], archivedTrips: [] });
     }, [allTrips]);
@@ -203,9 +208,9 @@ const MyTripsScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerContainer}>
-                <View style={styles.headerTopRow}>
+                <View style={styles.headerTopRow}><Logo width={40} height={40} />
                     <Text style={styles.title}>{t('myTrips.title')}</Text>
-                    <Logo width={40} height={40} />
+                    <View style={{ width: 40 }} /> 
                 </View>
                 <View 
                     style={styles.tabContainer}
@@ -213,9 +218,8 @@ const MyTripsScreen = () => {
                 >
                     {tabWidth > 0 && (
                         <MotiView
-                            // ✨ 1. ВИПРАВЛЕНО ШИРИНУ ТА ЗМІЩЕННЯ ДЛЯ КОРЕКТНОЇ АНІМАЦІЇ
                             style={[styles.animatedThumb, { width: (tabWidth - 8) / 2 }]}
-                            animate={{ translateX: viewMode === 'active' ? 0 : tabWidth / 2 }}
+                            animate={{ translateX: viewMode === 'active' ? 0 : (tabWidth / 2) - 2 }}
                             transition={{ type: 'timing', duration: 250 }}
                         />
                     )}
@@ -233,16 +237,11 @@ const MyTripsScreen = () => {
             ) : (
                 <FlatList
                     data={tripsToDisplay}
-                    // ✨ 2. ДОДАНО АНІМАЦІЮ ДЛЯ КОЖНОЇ КАРТКИ
                     renderItem={({ item, index }) => (
                         <MotiView
                             from={{ opacity: 0, translateY: 50 }}
                             animate={{ opacity: 1, translateY: 0 }}
-                            transition={{
-                                type: 'timing',
-                                duration: 500,
-                                delay: index * 150,
-                            }}
+                            transition={{ type: 'timing', duration: 500, delay: index * 150 }}
                         >
                             <TripCard 
                                 item={item} 
@@ -269,60 +268,17 @@ const MyTripsScreen = () => {
 
 export default memo(MyTripsScreen);
 
+// --- Стилі (без змін) ---
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    headerContainer: {
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    headerTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    title: { 
-        fontSize: 28, 
-        fontWeight: 'bold', 
-        color: colors.text 
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: colors.background,
-        borderRadius: 25,
-        padding: 4,
-        position: 'relative',
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    animatedThumb: {
-        position: 'absolute',
-        // ✨ 3. ВИПРАВЛЕНО ПОЗИЦІОНУВАННЯ ТА ВИСОТУ
-        top: 4,
-        left: 2, // <-- Враховуємо padding: 4 батьківського елемента
-        bottom: 4, // <-- Замість height: '100%' для точного прилягання
-        backgroundColor: colors.primary,
-        borderRadius: 21,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 21,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1, // ✨ Додано, щоб текст завжди був над анімованою плашкою
-    },
-    activeTabText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    inactiveTabText: {
-        color: colors.secondaryText,
-        fontWeight: '600',
-        fontSize: 14,
-    },
+    headerContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1 },
+    tabContainer: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 25, padding: 4, position: 'relative', borderWidth: 1, borderColor: colors.border },
+    animatedThumb: { position: 'absolute', top: 4, left: 4, bottom: 4, backgroundColor: colors.primary, borderRadius: 21 },
+    tabButton: { flex: 1, paddingVertical: 10, borderRadius: 21, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
+    activeTabText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+    inactiveTabText: { color: colors.secondaryText, fontWeight: '600', fontSize: 14 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     emptyText: { marginTop: 16, fontSize: 18, textAlign: 'center', color: colors.secondaryText },
     card: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 20, marginVertical: 8, padding: 16, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme === 'light' ? 0.05 : 0.1, shadowRadius: 8, elevation: 3 },
@@ -344,4 +300,4 @@ const getStyles = (colors, theme) => StyleSheet.create({
     actionButtonText: { marginLeft: 8, fontSize: 14, fontWeight: 'bold' },
     deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10, borderTopWidth: 1, borderColor: colors.border },
     deleteButtonText: { marginLeft: 8, color: '#D32F2F', fontWeight: 'bold' },
-});
+}); 

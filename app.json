@@ -3,7 +3,7 @@
     "name": "AirChat",
     "slug": "AirChat",
     "scheme": "airchat",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,14 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.airchat.app",
+      "bundleIdentifier": "app.airchat.mobile",
       "config": {
         "googleMapsApiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Додатку потрібен доступ до вашої геолокації для відображення маршрутів на карті.",
-        "NSCameraUsageDescription": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото.",
-        "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "tel",
@@ -31,24 +28,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/apdative-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.airchat.app",
+      "package": "app.airchat.mobile",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
         }
       },
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.CAMERA"
-      ],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-localization",
@@ -69,7 +61,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/icon2.png",
           "color": "#ffffff"
         }
       ],

@@ -171,13 +171,15 @@ const MyTripsScreen = () => {
         setRefreshing(false);
     }, [fetchTrips]);
 
-    const { activeTrips, archivedTrips } = useMemo(() => {
-        const now = moment();
+  const { activeTrips, archivedTrips } = useMemo(() => {
+        const twoDaysAgo = moment().subtract(2, 'days');
+        
         return allTrips.reduce((acc, trip) => {
-            (moment(trip.transfer_datetime).isBefore(now.clone().subtract(1, 'day')) 
-                ? acc.archivedTrips.push(trip) 
-                : acc.activeTrips.push(trip)
-            );
+            if (trip.status === 'completed' || moment(trip.transfer_datetime).isBefore(twoDaysAgo)) {
+                acc.archivedTrips.push(trip);
+            } else {
+                acc.activeTrips.push(trip);
+            }
             return acc;
         }, { activeTrips: [], archivedTrips: [] });
     }, [allTrips]);

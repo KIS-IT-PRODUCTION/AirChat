@@ -13,11 +13,45 @@ import { useNavigation } from '@react-navigation/native';
 import { MotiView } from 'moti';
 
 // ---
-// ✅ ОПТИМІЗАЦІЯ: Усі допоміжні компоненти винесені за межі основного
-// та обгорнуті в React.memo для запобігання зайвим рендерам.
+// ✅ 1. ОНОВЛЕНО: getDisplayStatus тепер враховує правило "2 дні"
 // ---
+const getDisplayStatus = (item, t) => {
+  // Додано перевірку на null, щоб уникнути помилок при першому рендері
+  if (!item) return { title: '', text: '', color: '#8A8A8A', icon: 'help-circle-outline', key: 'loading' };
+
+  // --- 👇 НОВА ЛОГІКА (2-денне правило) 👇 ---
+  const twoDaysAgo = moment().subtract(2, 'days');
+  if (item.status === 'accepted' && moment(item.transfer_datetime).isBefore(twoDaysAgo)) {
+    // Якщо 'accepted' але старше 2 днів, показуємо як 'completed'
+    return { 
+      title: t('transferStatus.completed.title'), 
+      text: t('transferStatus.completed.text'), 
+      color: '#4CAF50', 
+      icon: 'checkmark-done-outline',
+      key: 'completed' // 👈 Додаємо ключ
+    };
+  }
+  // --- 👆 Кінець нової логіки 👆 ---
+
+  switch (item.status) {
+    case 'pending':
+      if (item.offers_count > 0) {
+        return { title: t('transferStatus.offersAvailable.title'), text: t('transferStatus.offersAvailable.text'), color: '#FFA000', icon: 'notifications-circle-outline', key: 'pending' };
+      }
+      return { title: t('transferStatus.pending.title'), text: t('transferStatus.pending.text'), color: '#0288D1', icon: 'hourglass-outline', key: 'pending' };
+    case 'accepted':
+      return { title: t('transferStatus.accepted.title'), text: t('transferStatus.accepted.text'), color: '#2E7D32', icon: 'shield-checkmark-outline', key: 'accepted' };
+    case 'completed':
+      return { title: t('transferStatus.completed.title'), text: t('transferStatus.completed.text'), color: '#4CAF50', icon: 'checkmark-done-outline', key: 'completed' };
+    case 'cancelled':
+      return { title: t('transferStatus.cancelled.title'), text: t('transferStatus.cancelled.text'), color: '#8A8A8A', icon: 'ban-outline', key: 'cancelled' };
+    default:
+      return { title: '', text: '', color: '#8A8A8A', icon: 'help-circle-outline', key: item.status };
+  }
+};
 
 const InfoRow = React.memo(({ icon, label, value, colors, valueStyle }) => {
+  // ... (код без змін)
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
   return (
@@ -32,6 +66,7 @@ const InfoRow = React.memo(({ icon, label, value, colors, valueStyle }) => {
 });
 
 const DetailItem = React.memo(({ icon, value, label, colors }) => {
+  // ... (код без змін)
   const styles = getStyles(colors);
   if (!value) return null;
   return (
@@ -44,13 +79,13 @@ const DetailItem = React.memo(({ icon, value, label, colors }) => {
 });
 
 const DriverOfferCard = React.memo(({ offer, onAccept, isAccepting }) => {
+    // ... (код без змін)
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
     const navigation = useNavigation();
     const displayPrice = `${offer.price} ${offer.currency || t('common.currency_uah', 'UAH')}`;
 
-    // ✅ ОПТИМІЗАЦІЯ: Використовуємо useCallback, щоб не створювати функцію при кожному рендері
     const handlePress = useCallback(() => {
         navigation.navigate('PublicDriverProfile', { 
             driverId: offer.driver_id,
@@ -89,6 +124,7 @@ const DriverOfferCard = React.memo(({ offer, onAccept, isAccepting }) => {
 });
 
 const ConfirmedDriverCard = React.memo(({ driver, onChangeDriver }) => {
+    // ... (код без змін)
     const { colors } = useTheme();
     const styles = getStyles(colors);
     const { t } = useTranslation();
@@ -122,8 +158,6 @@ export default function TransferDetailScreen({ navigation, route }) {
   const styles = getStyles(colors);
   const { t, i18n } = useTranslation();
   const mapViewRef = useRef(null);
-  
-  // ✅ ОПТИМІЗАЦІЯ: Додано useRef для запобігання циклічному виклику "mark_as_read"
   const hasMarkedAsRead = useRef(false);
 
   const [transferData, setTransferData] = useState(null);
@@ -133,9 +167,12 @@ export default function TransferDetailScreen({ navigation, route }) {
   const [routeInfo, setRouteInfo] = useState(null);
   const [hiddenDriverId, setHiddenDriverId] = useState(null);
 
+  // --- ✅ 2. ДОДАНО: Обчислюємо "display status" ОДИН РАЗ ---
+  const displayStatus = useMemo(() => getDisplayStatus(transferData, t), [transferData, t]);
+
   const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
 
-  // Карта (без змін, логіка коректна)
+  // ... (useEffect для карти, fetchRoute, fetchData, useEffect для mark_as_read - без змін) ...
   useEffect(() => {
     let timerId = null; 
     if (routeCoordinates.length > 1 && mapViewRef.current) {
@@ -148,7 +185,6 @@ export default function TransferDetailScreen({ navigation, route }) {
     return () => { if (timerId) clearTimeout(timerId); };
   }, [routeCoordinates]);
 
-  // ✅ ОПТИМІЗАЦІЯ: fetchRoute обгорнуто в useCallback
   const fetchRoute = useCallback(async (origin, destination) => {
     if (!origin || !destination) return;
     try {
@@ -163,9 +199,8 @@ export default function TransferDetailScreen({ navigation, route }) {
         if (route.legs?.length > 0) { setRouteInfo({ distance: route.legs[0].distance.text, duration: route.legs[0].duration.text }); }
       }
     } catch (error) { console.error("Error fetching route:", error); }
-  }, [MAPS_API_KEY, i18n.language]); // Залежить від мови
+  }, [MAPS_API_KEY, i18n.language]);
 
-  // ✅ ОПТИМІЗАЦІЯ: fetchData обгорнуто в useCallback та винесено логіку "mark_as_read"
   const fetchData = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -186,29 +221,25 @@ export default function TransferDetailScreen({ navigation, route }) {
         }
     } 
     finally { setLoading(false); }
-  }, [transferId, t, fetchRoute]); // 't' потрібен для Alert, fetchRoute - для маршруту
+  }, [transferId, t, fetchRoute]); 
 
-  // ✅ ВИПРАВЛЕНО: "mark_as_read" винесено в окремий useEffect,
-  // який спрацьовує один раз при завантаженні даних, розриваючи цикл.
   useEffect(() => {
     if (transferData && transferData.status === 'pending' && !hasMarkedAsRead.current) {
-        // Перевіряємо, чи є взагалі якісь пропозиції, щоб не робити зайвий виклик
         if (transferData.all_offers && transferData.all_offers.length > 0) {
-            hasMarkedAsRead.current = true; // Встановлюємо прапорець ДО виклику
+            hasMarkedAsRead.current = true; 
             supabase.rpc('mark_offers_as_read', { p_transfer_id: transferId }).then(({ error: markError }) => {
                 if (markError) {
                     console.error("Failed to mark offers as read:", markError.message);
-                    hasMarkedAsRead.current = false; // Скидаємо, щоб спробувати ще раз
+                    hasMarkedAsRead.current = false; 
                 }
             });
         }
     }
-  }, [transferData, transferId]); // Цей hook спрацює, коли 'transferData' завантажиться
+  }, [transferData, transferId]); 
 
-  // Основний useEffect для завантаження даних та підписки
   useEffect(() => {
     setLoading(true);
-    fetchData(); // Початкове завантаження
+    fetchData(); 
 
     const channel = supabase
       .channel(`transfer-details-${transferId}`)
@@ -229,21 +260,20 @@ export default function TransferDetailScreen({ navigation, route }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [transferId, fetchData]); // Залежність від fetchData тут коректна
+  }, [transferId, fetchData]);
 
-  // ✅ ОПТИМІЗАЦІЯ: Усі обробники обгорнуті в useCallback
+  // ... (handleAcceptOffer, handleChangeDriver, handleCancelTransfer - без змін) ...
   const handleAcceptOffer = useCallback(async (offer) => {
       setIsAccepting(true);
       try {
           const { error } = await supabase.functions.invoke('accept-offer-and-notify', { body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } });
           if (error) throw error;
           Alert.alert(t('common.success'), t('transferDetail.driverConfirmed'));
-          // fetchData() буде викликано автоматично через real-time підписку
       } catch (error) { Alert.alert(t('common.error'), error.message); } 
       finally { setIsAccepting(false); }
   }, [transferId, t]);
   
-const handleChangeDriver = useCallback(async () => {
+  const handleChangeDriver = useCallback(async () => {
       Alert.alert(
         t('transferDetail.changeDriverConfirmTitle'),
         t('transferDetail.changeDriverConfirmText'),
@@ -255,50 +285,37 @@ const handleChangeDriver = useCallback(async () => {
                 onPress: async () => {
                     let driverToHideId = null;
                     try {
-                        // Зберігаємо ID водія для тимчасового приховування
                         driverToHideId = transferData?.accepted_driver_details?.driver_id;
 
-                        // 1. Викликаємо RPC для скидання статусу та прийнятого водія
                         const { error: resetError } = await supabase.rpc('reset_transfer_to_pending', {
                             p_transfer_id: transferId
                         });
-                        // Якщо RPC не вдалося, викидаємо помилку і не продовжуємо
                         if (resetError) throw new Error(`Помилка скидання трансферу: ${resetError.message}`);
-
-                        // 2. ЗАВЖДИ скидаємо прапорець is_admin_assigned на false
-                        // Це гарантує, що трансфер знову стане видимим для водіїв,
-                        // навіть якщо попередній скидання прапорця не вдалося або водій не був адміном.
+                        
                         console.log("Ensuring is_admin_assigned is false...");
                         const { error: updateError } = await supabase
                             .from('transfers')
-                            .update({ is_admin_assigned: false }) // <-- Встановлюємо false
+                            .update({ is_admin_assigned: false }) 
                             .eq('id', transferId);
 
                         if (updateError) {
-                            // Помилка скидання прапорця не є критичною для основного функціоналу,
-                            // але може призвести до того, що трансфер залишиться прихованим. Логуємо помилку.
                             console.error("Failed to ensure is_admin_assigned is false:", updateError.message);
-                            // Можна додати Alert, якщо це важливо
-                            // Alert.alert(t('common.warning'), 'Не вдалося оновити видимість трансферу для водіїв.');
                         } else {
                             console.log("is_admin_assigned flag ensured to be false.");
                         }
 
-                        // 3. Тимчасово приховуємо картку щойно відхиленого водія
                         if (driverToHideId) {
                             setHiddenDriverId(driverToHideId);
                         }
-                        // Дані оновляться автоматично через Realtime підписку
-
                     } catch (error) {
-                        // Обробляємо помилки з RPC або оновлення прапорця
                         Alert.alert(t('common.error'), error.message);
                     }
                 }
             }
         ]
       );
-  }, [t, transferId, transferData?.accepted_driver_details?.driver_id]); // Залежності залишаються ті самі
+  }, [t, transferId, transferData?.accepted_driver_details?.driver_id]);
+  
   const handleCancelTransfer = useCallback(async () => { 
     Alert.alert(
         t('transferDetail.cancelConfirmTitle'), 
@@ -316,7 +333,7 @@ const handleChangeDriver = useCallback(async () => {
         }]); 
   }, [t, transferId, navigation]);
 
-  // useMemo для фільтрації пропозицій (без змін, логіка коректна)
+  // useMemo для фільтрації пропозицій (без змін)
   const visibleOffers = useMemo(() => {
     if (!transferData?.all_offers) return [];
     return transferData.all_offers.filter(offer => {
@@ -328,6 +345,7 @@ const handleChangeDriver = useCallback(async () => {
 
   // --- Рендер ---
   if (loading) {
+    // ... (код завантаження без змін)
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
@@ -337,7 +355,8 @@ const handleChangeDriver = useCallback(async () => {
   }
 
   if (!transferData) {
-    return (
+    // ... (код "не знайдено" без змін)
+     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
             <View style={styles.centeredContainer}><Text style={styles.sectionTitle}>{t('transferDetail.notFound')}</Text></View>
@@ -351,19 +370,51 @@ const handleChangeDriver = useCallback(async () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>{t('transferDetail.title')}</Text><Logo width={40} height={40} /></View>
-      {(transferData?.status === 'completed' || transferData?.status === 'cancelled') && (<View style={[styles.statusBanner, transferData.status === 'completed' ? styles.completedBanner : styles.cancelledBanner]}><Ionicons name={transferData.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'} size={24} color={transferData.status === 'completed' ? '#2E7D32' : '#D32F2F'} /><Text style={[styles.statusBannerText, transferData.status === 'completed' ? styles.completedBannerText : styles.cancelledBannerText]}>{t(`transferDetail.${transferData.status}`)}</Text></View>)}
+      
+      {/* --- ✅ 3. ОНОВЛЕНО: Використовуємо displayStatus.key --- */}
+      {(displayStatus.key === 'completed' || displayStatus.key === 'cancelled') && (
+        <View style={[styles.statusBanner, displayStatus.key === 'completed' ? styles.completedBanner : styles.cancelledBanner]}>
+            <Ionicons 
+                name={displayStatus.icon} // 👈 Використовуємо іконку з об'єкта
+                size={24} 
+                color={displayStatus.color} // 👈 Використовуємо колір з об'єкта
+            />
+            <Text style={[styles.statusBannerText, displayStatus.key === 'completed' ? styles.completedBannerText : styles.cancelledBannerText]}>
+                {displayStatus.title} {/* 👈 Використовуємо заголовок з об'єкта */}
+            </Text>
+        </View>
+      )}
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
+            {/* ... (код userInfoSection, infoCard з маршрутом, infoCard з деталями - без змін) ... */}
             <View style={styles.userInfoSection}><Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../assets/default-avatar.png')} style={styles.userAvatar} contentFit="cover" transition={300} cachePolicy="disk" /><Text style={styles.userName}>{transferData?.passenger_name}</Text></View>
             <View style={styles.infoCard}><InfoRow icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} /></View>
             <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text><View style={styles.detailsGrid}><DetailItem icon="calendar-outline" value={moment(transferData?.transfer_datetime).format('D MMM')} colors={colors} /><DetailItem icon="time-outline" value={moment(transferData?.transfer_datetime).format('HH:mm')} colors={colors} /><DetailItem icon="barcode-outline" value={transferData?.flight_number} label={t('transferDetail.flightNumber')} colors={colors} /></View><View style={styles.divider} /><View style={styles.passengerDetailsContainer}>{transferData.adults_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="people-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.adults_count}`} {t('transferData.adults_count')}</Text></View>)}{transferData.children_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="person-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.children_count}`} {t('transferData.children_count')}</Text></View>)}{transferData.infants_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="happy-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.infants_count}`} {t('transferData.infants_count')}</Text></View>)}</View><View style={styles.divider} /><View style={styles.detailsGrid}><DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} /><DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} /><DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} /><DetailItem icon="car-sport-outline" value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} label={t('transferDetail.transferType')} colors={colors} /></View>{(transferData.status === 'accepted' || transferData.status === 'completed') && finalPrice && (<><View style={styles.divider} /><InfoRow icon="cash-outline" label={t('transferDetail.finalPrice')} value={`${finalPrice} ${finalCurrency || t('common.currency_uah')}`} colors={colors} valueStyle={{ color: colors.primary, fontWeight: 'bold' }} /></>)}</View>
             {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
             <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.route')}</Text><View style={styles.mapContainer}><MapView ref={mapViewRef} style={StyleSheet.absoluteFill} provider={PROVIDER_GOOGLE}>{routeCoordinates.length > 0 && (<><Marker coordinate={routeCoordinates[0]} title={t('transferDetail.from')} pinColor={colors.primary} /><Marker coordinate={routeCoordinates[routeCoordinates.length - 1]} title={t('transferDetail.to')} /><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></>)}</MapView></View>{routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.duration}</Text></View></View>)}</View>
-            {transferData?.status === 'accepted' && transferData?.accepted_driver_details && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{t('transferDetail.chosenDriver')}</Text><ConfirmedDriverCard driver={transferData.accepted_driver_details} onChangeDriver={handleChangeDriver} /></View>)}
+            
+            {/* --- ✅ 4. ОНОВЛЕНО: 'transferData.status' залишається тут, це правильно --- */}
+            {/* Ми показуємо "Ваш водій" ТІЛЬКИ якщо статус в БД 'accepted' */}
+            {transferData?.status === 'accepted' && transferData?.accepted_driver_details && (
+                <View style={styles.offersSection}>
+                    <Text style={styles.sectionTitle}>{t('transferDetail.chosenDriver')}</Text>
+                    <ConfirmedDriverCard driver={transferData.accepted_driver_details} onChangeDriver={handleChangeDriver} />
+                </View>
+            )}
+            
+            {/* ... (код visibleOffers без змін) ... */}
             {visibleOffers.length > 0 && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{transferData.status === 'pending' ? t('transferDetail.driverOffers') : t('transferDetail.otherOffers')}</Text>{visibleOffers.map(offer => ( <DriverOfferCard key={offer.offer_id} offer={offer} onAccept={() => handleAcceptOffer(offer)} isAccepting={isAccepting} /> ))}</View>)}
             {transferData?.status === 'pending' && visibleOffers.length === 0 && (<View style={styles.offersSection}><Text style={styles.sectionTitle}>{t('transferDetail.driverOffers')}</Text><Text style={styles.noOffersText}>{t('transferDetail.noOffers')}</Text></View>)}
-            {transferData?.status !== 'completed' && transferData?.status !== 'cancelled' && (<TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransfer}><Text style={styles.cancelButtonText}>{t('transferDetail.cancelTransfer')}</Text><Ionicons name="close-circle-outline" size={20} color="#fff" /></TouchableOpacity>)}
+            
+            {/* --- ✅ 5. ОНОВЛЕНО: Використовуємо displayStatus.key --- */}
+            {/* Кнопка "Скасувати" ховається, якщо поїздка вже завершена (за будь-яким правилом) */}
+            {displayStatus.key !== 'completed' && displayStatus.key !== 'cancelled' && (
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTransfer}>
+                    <Text style={styles.cancelButtonText}>{t('transferDetail.cancelTransfer')}</Text>
+                    <Ionicons name="close-circle-outline" size={20} color="#fff" />
+                </TouchableOpacity>
+            )}
         </MotiView>
       </ScrollView>
     </SafeAreaView>

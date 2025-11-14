@@ -241,12 +241,48 @@ export default function TransfersScreen() {
     };
   }, [session, fetchTransfers]);
 
-  const { activeTransfers, archivedTransfers } = useMemo(() => {
-    // ... (код без змін)
-    const active = transfers.filter(t => t.status === 'pending' || t.status === 'accepted');
-    const archived = transfers.filter(t => t.status === 'completed' || t.status === 'cancelled');
+const { activeTransfers, archivedTransfers } = useMemo(() => {
+    // Встановлюємо поріг - 2 дні тому
+    const twoDaysAgo = moment().subtract(2, 'days');
+    
+    const active = [];
+    const archived = [];
+
+    for (const trip of transfers) {
+      // Створюємо копію, щоб безпечно змінити статус для UI
+      const tripCopy = { ...trip }; 
+
+      // --- Нова логіка сортування ---
+
+      // 1. Спочатку перевіряємо умови архіву
+      if (
+        trip.status === 'completed' ||
+        trip.status === 'cancelled'
+      ) {
+        archived.push(tripCopy);
+      }
+      // 2. Ось ваше нове правило:
+      // Якщо поїздка 'accepted' І вона старша за 2 дні...
+      else if (
+        trip.status === 'accepted' && 
+        moment(trip.transfer_datetime).isBefore(twoDaysAgo)
+      ) {
+        // ...ми штучно міняємо її статус на 'completed' для UI...
+        tripCopy.status = 'completed'; 
+        // ...і відправляємо в архів.
+        archived.push(tripCopy);
+      }
+      // 3. Все інше - це активні поїздки
+      else {
+        // (Це 'pending' та 'accepted', які ще не застаріли)
+        active.push(tripCopy);
+      }
+    }
+
+    // Сортуємо списки, як і раніше
     active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
     archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
+    
     return { activeTransfers: active, archivedTransfers: archived };
   }, [transfers]);
 

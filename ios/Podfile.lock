@@ -1723,7 +1723,7 @@ PODS:
     - Google-Maps-iOS-Utils (= 5.0.0)
     - GoogleMaps (= 8.4.0)
     - React-Core
-  - react-native-keyboard-controller (1.19.2):
+  - react-native-keyboard-controller (1.19.4):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1738,7 +1738,7 @@ PODS:
     - React-hermes
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.19.2)
+    - react-native-keyboard-controller/common (= 1.19.4)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1748,7 +1748,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller/common (1.19.2):
+  - react-native-keyboard-controller/common (1.19.4):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2909,7 +2909,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: ff05e894231c44c21135d1d23a82b87656d98eeb
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-google-maps: c4f5c5b2dda17e7cb2cb2b37a81f140b039b3e7e
-  react-native-keyboard-controller: 8ebdf2c2e33ecf33c97913deff87ee77ac2386db
+  react-native-keyboard-controller: 539fff83c9767d1bed6d9142a0460c9d4928c9ac
   react-native-maps: 9febd31278b35cd21e4fad2cf6fa708993be5dab
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 562163222d999b79a51577eda2ea8ad2c32b4d06

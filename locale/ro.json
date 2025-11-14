@@ -178,7 +178,13 @@
     "serviceRegions": "Regiunile din Ucraina din care plecați",
     "destinationCountries": "Țările UE către care călătoriți",
     "selectRegions": "Selectați regiunile",
-    "selectCountries": "Selectați țările"
+    "selectCountries": "Selectați țările",
+    "deleteAccountTitle": "Ștergeți contul?",
+    "deleteAccountBody": "Această acțiune este ireversibilă. Toate datele, chaturile și transferurile dvs. vor fi șterse permanent. Sunteți sigur?",
+    "deleteAccount": "Ștergeți contul permanent",
+    "deleteSuccessTitle": "Cont șters",
+    "deleteSuccessBody": "Contul dvs. a fost șters cu succes.",
+    "deleteError": "Eroare la ștergerea contului: "
   },
   "tabs": {
     "home": "Acasă",

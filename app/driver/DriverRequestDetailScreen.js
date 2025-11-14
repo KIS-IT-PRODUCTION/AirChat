@@ -13,11 +13,6 @@ import Logo from '../../assets/icon.svg';
 import { useNavigation } from '@react-navigation/native';
 import { MotiView } from 'moti';
 
-// ---
-// ✅ ОПТИМІЗАЦІЯ: Усі допоміжні компоненти винесені за межі основного
-// та обгорнуті в React.memo для запобігання зайвим рендерам.
-// ---
-
 const InfoRow = memo(({ icon, label, value, colors, valueStyle }) => {
   const styles = getStyles(colors);
   if (!value && value !== 0) return null;
@@ -49,7 +44,6 @@ const OtherDriverOffer = memo(({ offer, isChosen, onPress }) => {
     const styles = getStyles(colors);
     const displayPrice = `${offer.price} ${offer.currency || 'UAH'}`;
 
-    // ✅ ОПТИМІЗАЦІЯ: Створюємо стабільний обробник
     const handlePress = useCallback(() => {
         onPress(offer.driver_id);
     }, [onPress, offer.driver_id]);
@@ -70,7 +64,6 @@ const OtherDriverOffer = memo(({ offer, isChosen, onPress }) => {
     );
 });
 
-// ✅ ОПТИМІЗАЦІЯ: Константи винесено за межі компонента
 const CURRENCIES = ['UAH', 'USD', 'EUR'];
 const HEADER_HEIGHT = Platform.select({ ios: 85, android: 100 });
 
@@ -126,7 +119,6 @@ const SubmitOfferModal = memo(({ visible, onClose, onSubmit, isSubmitting }) => 
     );
 });
 
-// --- ОСНОВНИЙ КОМПОНЕНТ ЕКРАНА ---
 export default function DriverRequestDetailScreen({ navigation, route }) {
   const { transferId } = route.params;
   const { colors } = useTheme();
@@ -144,9 +136,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   const [routeInfo, setRouteInfo] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo'; // Замініть на ваш ключ
+  const MAPS_API_KEY = 'AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo';
 
-  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
   const fetchRoute = useCallback(async (origin, destination) => {
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&key=${MAPS_API_KEY}&language=${i18n.language}`;
@@ -183,10 +174,9 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [transferId, session, t, fetchRoute]); // Додано fetchRoute в залежності
+  }, [transferId, session, t, fetchRoute]);
 
   useEffect(() => {
-    // "Fire-and-forget" запит, не блокує завантаження
     supabase.rpc('mark_transfer_as_viewed', { p_transfer_id: transferId }).then(({ error }) => {
         if(error) console.error("Error marking as viewed:", error.message);
     });
@@ -207,7 +197,6 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
     }
   }, [routeCoordinates]);
 
-  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
    const handleSubmitOffer = useCallback(async ({ price, comment, currency }) => {
     setIsSubmitting(true);
     try {
@@ -216,15 +205,14 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         
         setIsModalVisible(false);
         Alert.alert(t('common.success'), t('driverOffer.offerSent'));
-        fetchData(); // Оновлюємо дані після успішної відправки
+        fetchData(); 
     } catch (error) {
         Alert.alert(t('common.error'), error.message);
     } finally {
         setIsSubmitting(false);
     }
-  }, [transferId, t, fetchData]); // Додано fetchData
+  }, [transferId, t, fetchData]);
 
-  // ✅ ОПТИМІЗАЦІЯ: обгорнуто в useCallback
   const handleOtherDriverPress = useCallback((driverId) => {
       navigation.navigate('PublicDriverProfile', { driverId });
   }, [navigation]);
@@ -248,7 +236,8 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   }
 
   const isRequestClosed = transferData?.status === 'accepted' || transferData?.status === 'completed' || transferData?.status === 'cancelled';
-  
+  const isOldAndAccepted = transferData?.status === 'accepted' && moment(transferData.transfer_datetime).isBefore(moment().subtract(2, 'days'));
+
   return (
     <SafeAreaView style={styles.container}>
       <SubmitOfferModal visible={isModalVisible} onClose={() => setIsModalVisible(false)} onSubmit={handleSubmitOffer} isSubmitting={isSubmitting} />
@@ -257,6 +246,33 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
         <Text style={styles.title}>{t('driverOffer.requestDetails')}</Text>
         <Logo width={40} height={40} />
       </View>
+      
+      {(transferData?.status === 'completed' || transferData?.status === 'cancelled') && (
+        <View style={[styles.statusBanner, transferData.status === 'completed' ? styles.completedBanner : styles.cancelledBanner]}>
+          <Ionicons 
+              name={transferData.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'} 
+              size={24} 
+              color={transferData.status === 'completed' ? '#2E7D32' : '#D32F2F'} 
+          />
+          <Text style={[styles.statusBannerText, transferData.status === 'completed' ? styles.completedBannerText : styles.cancelledBannerText]}>
+            {t(`transferDetail.${transferData.status}`)}
+          </Text>
+        </View>
+      )}
+
+      {isOldAndAccepted && (
+         <View style={[styles.statusBanner, styles.completedBanner]}>
+          <Ionicons 
+              name={'checkmark-circle-outline'} 
+              size={24} 
+              color={'#2E7D32'} 
+          />
+          <Text style={[styles.statusBannerText, styles.completedBannerText]}>
+            {t(`transferDetail.completed`)} 
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={HEADER_HEIGHT}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
@@ -310,13 +326,13 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
                                 key={offer.driver_id} 
                                 offer={offer} 
                                 isChosen={offer.driver_id === transferData?.accepted_driver_id}
-                                onPress={handleOtherDriverPress} // ✅ Використання стабільної функції
+                                onPress={handleOtherDriverPress}
                             />
                         ))}
                     </View>
                 )}
 
-                {!isRequestClosed && (
+                {!isRequestClosed && !isOldAndAccepted && (
                     <View style={styles.offerSection}>
                         <Text style={styles.sectionTitle}>{hasAlreadyOffered ? t('driverOffer.alreadyOffered') : t('driverOffer.yourOffer')}</Text>
                         {hasAlreadyOffered ? (
@@ -335,7 +351,6 @@ export default function DriverRequestDetailScreen({ navigation, route }) {
   );
 }
 
-// --- Стилі (без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -388,4 +403,33 @@ const getStyles = (colors) => StyleSheet.create({
     currencyButton: { paddingVertical: 10, paddingHorizontal: 30, borderRadius: 20, borderWidth: 1 },
     currencyButtonText: { fontSize: 16, fontWeight: 'bold' },
     commentInput: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', color: colors.text, fontSize: 16, marginBottom: 16 },
+    statusBanner: { 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      paddingVertical: 12, 
+      marginHorizontal: 16, 
+      marginTop: 16, 
+      borderRadius: 12, 
+      borderWidth: 1, 
+      gap: 8 
+    },
+    completedBanner: { 
+      backgroundColor: '#E8F5E9', 
+      borderColor: '#A5D6A7' 
+    },
+    cancelledBanner: { 
+      backgroundColor: '#FFEBEE', 
+      borderColor: '#EF9A9A' 
+    },
+    statusBannerText: { 
+      fontSize: 16, 
+      fontWeight: 'bold' 
+    },
+    completedBannerText: { 
+      color: '#2E7D32' 
+    },
+    cancelledBannerText: { 
+      color: '#D32F2F' 
+    },
 });

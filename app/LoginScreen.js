@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
-// ✅ 1. ІМПОРТ ДЛЯ АНІМАЦІЇ
 import { MotiView, AnimatePresence } from 'moti';
 
 const validateEmail = (email) => {
@@ -30,7 +29,6 @@ const InputWithIcon = ({ icon, placeholder, value, onChangeText, keyboardType, a
                 autoCapitalize={autoCapitalize}
                 secureTextEntry={secureTextEntry}
             />
-            {/* ✅ 2. ВИПРАВЛЕННЯ "СМИКАННЯ": Додано заглушку для стабільного лейауту */}
             {isPassword ? (
                 <TouchableOpacity onPress={onToggleVisibility} style={styles.eyeIcon}>
                     <Ionicons name={secureTextEntry ? 'eye-outline' : 'eye-off-outline'} size={24} color={colors.secondaryText} />
@@ -166,10 +164,16 @@ const LoginScreen = ({ navigation }) => {
 export default React.memo(LoginScreen);
 
 const getStyles = (colors, insets, theme) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background},
   keyboardAvoidingContainer: { flex: 1 },
   closeButton: { position: 'absolute', top: insets.top + 10, right: 20, zIndex: 10, padding: 5 },
-  scrollContainer: { flexGrow: 1, padding: 24 },
+  // --- 👇 ОНОВЛЕНО: Додано 'justifyContent' для центрування ---
+  scrollContainer: { 
+    flexGrow: 1, 
+    padding: 24, 
+    justifyContent: 'center' // Це центрує форму по вертикалі
+  },
+  // ---
   header: { alignItems: 'center', marginBottom: 40 },
   title: { color: colors.text, fontSize: 32, fontWeight: 'bold' },
   subtitle: { color: colors.secondaryText, fontSize: 16, marginTop: 8 },
@@ -183,13 +187,12 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
     alignItems: 'center',
   },
   eyeIconPlaceholder: {
-    padding: 5, // ✅ ДОДАНО: Це робить заглушку ідентичною іконці
+    padding: 5, 
     width: 34, 
   },
   forgotPasswordText: { color: colors.primary, textAlign: 'center', fontWeight: '600', margin: 10 },
   errorText: { color: '#D32F2F', textAlign: 'center', marginBottom: 20, fontSize: 14, fontWeight: '500' },
   footer: { width: '100%', alignItems: 'center' },
-  // ✅ 1. ОНОВЛЕННЯ СТИЛІВ: Додано фіксовану висоту для стабільності анімації
   button: {
     backgroundColor: colors.primary,
     borderRadius: 12,

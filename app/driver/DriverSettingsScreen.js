@@ -190,10 +190,8 @@ const DriverSettingsScreen = ({ navigation }) => {
       }
   }, [t]);
 
-  // ✅ ВИПРАВЛЕНО: Функція очищення кешу тепер використовує правильні назви
   const handleClearCache = useCallback(async () => {
     try {
-      // Використовуємо `clearDiskCache` та `clearMemoryCache` (без `Async`)
       await Image.clearDiskCache();
       await Image.clearMemoryCache();
       Alert.alert(t('common.success'), t('settings.cacheCleared', 'Кеш зображень очищено'));
@@ -224,6 +222,47 @@ const DriverSettingsScreen = ({ navigation }) => {
     );
   }, [signOut, t]);
 
+  // --- 👇 НОВА ФУНКЦІЯ ВИДАЛЕННЯ АКАУНТУ (Вимога Apple 5.1.1) 👇 ---
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+        t('settings.deleteAccountTitle', 'Видалити акаунт?'),
+        t('settings.deleteAccountBody', 'Ця дія є незворотною. Всі ваші дані, чати та трансфери будуть назавжди видалені. Ви впевнені?'),
+        [
+            { text: t('common.cancel', 'Скасувати'), style: 'cancel' },
+            {
+                text: t('common.delete', 'Видалити'),
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        // 1. Викликаємо SQL-функцію, яку ви створили в Supabase
+                        const { error } = await supabase.rpc('delete_my_account');
+                        
+                        if (error) {
+                          throw error;
+                        }
+                        
+                        // 2. Повідомляємо про успіх
+                        Alert.alert(
+                          t('settings.deleteSuccessTitle', 'Акаунт видалено'),
+                          t('settings.deleteSuccessBody', 'Ваш акаунт було успішно видалено.')
+                        );
+                        
+                        // 3. Виходимо з системи
+                        await signOut();
+                        
+                    } catch (error) {
+                      Alert.alert(
+                        t('common.error', 'Помилка'), 
+                        t('settings.deleteError', 'Не вдалося видалити акаунт: ') + error.message
+                      );
+                    }
+                },
+            },
+        ]
+    );
+  }, [signOut, t]); // Додаємо signOut і t в залежності
+  // --- 👆 КІНЕЦЬ НОВОЇ ФУНКЦІЇ 👆 ---
+
   const toggleEdit = (fieldName) => setEditingField(prev => (prev === fieldName ? null : fieldName));
   const getDisplayAvatar = useCallback(() => {
     if (localAvatarUri) return { uri: localAvatarUri };
@@ -234,42 +273,44 @@ const DriverSettingsScreen = ({ navigation }) => {
   return (
     
     <SafeAreaView style={styles.container}>
+      {/* ... (код модальних вікон без змін) ... */}
       <Modal
-    visible={isLanguageModalVisible}
-    onRequestClose={() => setLanguageModalVisible(false)}
-    transparent={true}
-    animationType="slide"
->
-    <Pressable
-        style={styles.modalBackdrop}
-        onPress={() => setLanguageModalVisible(false)}
+        visible={isLanguageModalVisible}
+        onRequestClose={() => setLanguageModalVisible(false)}
+        transparent={true}
+        animationType="slide"
     >
-        <View style={styles.avatarModalContent}>
-            <TouchableOpacity
-                style={styles.langButton}
-                onPress={() => handleLanguageChange('uk')}
-            >
-                <Text style={styles.langButtonText}>Українська</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-                style={styles.langButton}
-                onPress={() => handleLanguageChange('en')}
-            >
-                <Text style={styles.langButtonText}>English</Text>
-            </TouchableOpacity>
+        <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setLanguageModalVisible(false)}
+        >
+            <View style={styles.avatarModalContent}>
+                <TouchableOpacity
+                    style={styles.langButton}
+                    onPress={() => handleLanguageChange('uk')}
+                >
+                    <Text style={styles.langButtonText}>Українська</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                    style={styles.langButton}
+                    onPress={() => handleLanguageChange('en')}
+                >
+                    <Text style={styles.langButtonText}>English</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-                style={styles.langButton}
-                onPress={() => handleLanguageChange('ro')}
-            >
-                <Text style={styles.langButtonText}>Română</Text>
-            </TouchableOpacity>
-        </View>
-    </Pressable>
-</Modal>
+                <TouchableOpacity
+                    style={styles.langButton}
+                    onPress={() => handleLanguageChange('ro')}
+                >
+                    <Text style={styles.langButtonText}>Română</Text>
+                </TouchableOpacity>
+            </View>
+        </Pressable>
+    </Modal>
       <AvatarSelectionModal visible={isAvatarModalVisible} onClose={() => setAvatarModalVisible(false)} onPickFromGallery={pickImage} onSelectPreset={handleSelectPresetAvatar} fullName={fullName} />
       <ChangePasswordModal visible={isPasswordModalVisible} onClose={() => setPasswordModalVisible(false)} onSave={handleChangePassword} isSaving={isPasswordSaving} />
+      
       <View style={styles.header}><TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity><Text style={styles.headerTitle}>{t('settings.title')}</Text><Logo width={40} height={40} /></View>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {loading ? ( <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 50 }}/> ) : (
@@ -297,11 +338,17 @@ const DriverSettingsScreen = ({ navigation }) => {
               <Text style={styles.sectionTitle}>{t('settings.personalInfo')}</Text>
               <EditableField labelKey="registration.fullNameLabel" icon="person-outline" value={fullName} onChangeText={setFullName} isEditing={editingField === 'fullName'} onToggleEdit={() => toggleEdit('fullName')} />
               <EditableField labelKey="registration.phoneLabel" icon="call-outline" value={phone} onChangeText={setPhone} isEditing={editingField === 'phone'} onToggleEdit={() => toggleEdit('phone')} keyboardType="phone-pad" />
-              <Text style={styles.sectionTitle}>{t('settings.carInfo')}</Text>
-              <EditableField labelKey="settings.carMake" icon="car-sport-outline" value={carMake} onChangeText={setCarMake} isEditing={editingField === 'carMake'} onToggleEdit={() => toggleEdit('carMake')} />
-              <EditableField labelKey="settings.carModel" icon="car-outline" value={carModel} onChangeText={setCarModel} isEditing={editingField === 'carModel'} onToggleEdit={() => toggleEdit('carModel')} />
-              <EditableField labelKey="settings.carPlate" icon="reader-outline" value={carPlate} onChangeText={setCarPlate} isEditing={editingField === 'carPlate'} onToggleEdit={() => toggleEdit('carPlate')} />
-              <EditableField labelKey="settings.experience" icon="ribbon-outline" value={experience} onChangeText={setExperience} isEditing={editingField === 'experience'} onToggleEdit={() => toggleEdit('experience')} keyboardType="numeric" />
+              
+              {/* Секція Водія (показуємо тільки в режимі водія) */}
+              {authProfile.role === 'driver' && (
+                <>
+                  <Text style={styles.sectionTitle}>{t('settings.carInfo')}</Text>
+                  <EditableField labelKey="settings.carMake" icon="car-sport-outline" value={carMake} onChangeText={setCarMake} isEditing={editingField === 'carMake'} onToggleEdit={() => toggleEdit('carMake')} />
+                  <EditableField labelKey="settings.carModel" icon="car-outline" value={carModel} onChangeText={setCarModel} isEditing={editingField === 'carModel'} onToggleEdit={() => toggleEdit('carModel')} />
+                  <EditableField labelKey="settings.carPlate" icon="reader-outline" value={carPlate} onChangeText={setCarPlate} isEditing={editingField === 'carPlate'} onToggleEdit={() => toggleEdit('carPlate')} />
+                  <EditableField labelKey="settings.experience" icon="ribbon-outline" value={experience} onChangeText={setExperience} isEditing={editingField === 'experience'} onToggleEdit={() => toggleEdit('experience')} keyboardType="numeric" />
+                </>
+              )}
                 
               <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
               <EditableField
@@ -316,6 +363,10 @@ const DriverSettingsScreen = ({ navigation }) => {
               <CacheField onNavigate={handleClearCache} />
             </View>
             <ThemeSwitcher />
+                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-bin-outline" size={22} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>{t('settings.deleteAccount', 'Видалити акаунт назавжди')}</Text>
+        </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -353,6 +404,26 @@ const getStyles = (colors) => StyleSheet.create({
     saveButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     logoutButton: { flexDirection: 'row', backgroundColor: 'transparent', borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
     logoutButtonText: { color: colors.primary, fontSize: 18, fontWeight: 'bold' },
+    
+    // --- 👇 НОВІ СТИЛІ ДЛЯ КНОПКИ ВИДАЛЕННЯ 👇 ---
+    deleteButton: {
+        flexDirection: 'row',
+        backgroundColor: 'transparent', // Прозорий фон
+        borderRadius: 12,
+        paddingVertical: 14, // Трохи менше, ніж у кнопки "Вийти"
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 8, // Невеликий відступ від кнопки "Вийти"
+    },
+    deleteButtonText: {
+        color: colors.danger, // Червоний колір з вашої теми
+        fontSize: 16, // Трохи менший шрифт
+        fontWeight: 'bold',
+    },
+    // --- 👆 КІНЕЦЬ НОВИХ СТИЛІВ 👆 ---
+    
     modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     avatarModalContent: { backgroundColor: colors.card, padding: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, alignItems: 'center' },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 24 },
@@ -366,32 +437,15 @@ const getStyles = (colors) => StyleSheet.create({
     themeSwitchTrack: { width: 70, height: 34, borderRadius: 17, backgroundColor: colors.background, justifyContent: 'center', padding: 4 },
     themeSwitchThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primary, position: 'absolute', top: 4, left: 4 },
     themeIconContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 5 },
-    modalBackdrop: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)'
-    },
     
-    // Контейнер, що висувається знизу
-    avatarModalContent: {
-        backgroundColor: colors.card, // колір з теми
-        padding: 24,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        alignItems: 'center'
-    },
-    
-    // Кнопка вибору мови
     langButton: {
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border, // колір з теми
-        width: '100%' // Додано для стабільності
+        borderBottomColor: colors.border, 
+        width: '100%'
     },
-    
-    // Текст у кнопці
     langButtonText: {
-        color: colors.text, // колір з теми
+        color: colors.text, 
         fontSize: 18,
         textAlign: 'center'
     }

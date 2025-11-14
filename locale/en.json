@@ -178,7 +178,13 @@
     "serviceRegions": "Regions of Ukraine you depart from",
     "destinationCountries": "EU countries you drive to",
     "selectRegions": "Select regions",
-    "selectCountries": "Select countries"
+    "selectCountries": "Select countries",
+    "deleteAccountTitle": "Delete Account?",
+    "deleteAccountBody": "This action is irreversible. All your data, chats, and transfers will be permanently deleted. Are you sure?",
+    "deleteAccount": "Delete Account Permanently",
+    "deleteSuccessTitle": "Account Deleted",
+    "deleteSuccessBody": "Your account has been successfully deleted.",
+    "deleteError": "Failed to delete account: "
   },
   "tabs": {
     "home": "Home",

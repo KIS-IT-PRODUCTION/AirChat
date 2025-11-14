@@ -176,7 +176,6 @@ const SettingsScreen = ({ navigation }) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   
-  // ✨ 3. Додаємо стани для функціоналу кешу
   const [cacheSize, setCacheSize] = useState(null);
   const [isClearingCache, setIsClearingCache] = useState(false);
 
@@ -189,7 +188,6 @@ const SettingsScreen = ({ navigation }) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
-  // ✨ 4. Функція для надійного розрахунку розміру кешу
   const calculateCacheSize = useCallback(async () => {
     try {
       const cacheDir = `${FileSystem.cacheDirectory}expo-image/`;
@@ -209,7 +207,6 @@ const SettingsScreen = ({ navigation }) => {
     }
   }, []);
   
-  // ✨ 5. Розраховуємо розмір кешу при завантаженні екрану
   useEffect(() => {
     calculateCacheSize();
   }, [calculateCacheSize]);
@@ -221,7 +218,6 @@ const SettingsScreen = ({ navigation }) => {
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
   
-  // ✨ 6. Функція для очищення кешу
   const handleClearCache = useCallback(() => {
     Alert.alert(
       t('settings.clearCacheTitle'),
@@ -325,6 +321,48 @@ const SettingsScreen = ({ navigation }) => {
   const handleLanguageChange = useCallback((lang) => { i18n.changeLanguage(lang); setLanguageModalVisible(false); }, [i18n]);
   const toggleEdit = useCallback((fieldName) => { setEditingField(prev => (prev === fieldName ? null : fieldName)); }, []);
   const handleLogout = useCallback(() => { Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), onPress: signOut, style: 'destructive' }]); }, [signOut, t]);
+  
+  // --- 👇 НОВА ФУНКЦІЯ ВИДАЛЕННЯ АКАУНТУ (Вимога Apple 5.1.1) 👇 ---
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+        t('settings.deleteAccountTitle', 'Видалити акаунт?'),
+        t('settings.deleteAccountBody', 'Ця дія є незворотною. Всі ваші дані, чати та трансфери будуть назавжди видалені. Ви впевнені?'),
+        [
+            { text: t('common.cancel', 'Скасувати'), style: 'cancel' },
+            {
+                text: t('common.delete', 'Видалити'),
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        // 1. Викликаємо SQL-функцію, яку ви створили в Supabase
+                        const { error } = await supabase.rpc('delete_my_account');
+                        
+                        if (error) {
+                          throw error;
+                        }
+                        
+                        // 2. Повідомляємо про успіх
+                        Alert.alert(
+                          t('settings.deleteSuccessTitle', 'Акаунт видалено'),
+                          t('settings.deleteSuccessBody', 'Ваш акаунт було успішно видалено.')
+                        );
+                        
+                        // 3. Виходимо з системи
+                        await signOut();
+                        
+                    } catch (error) {
+                      Alert.alert(
+                        t('common.error', 'Помилка'), 
+                        t('settings.deleteError', 'Не вдалося видалити акаунт: ') + error.message
+                      );
+                    }
+                },
+            },
+        ]
+    );
+  }, [signOut, t]); // Додаємо signOut і t в залежності
+  // --- 👆 КІНЕЦЬ НОВОЇ ФУНКЦІЇ 👆 ---
+
   const getDisplayAvatar = useCallback(() => {
     if (localAvatar) return { uri: localAvatar.uri };
     if (avatarUrl) return { uri: avatarUrl };
@@ -352,7 +390,6 @@ const SettingsScreen = ({ navigation }) => {
           <>
             <View style={styles.avatarContainer}>
               <TouchableOpacity onPress={() => setAvatarModalVisible(true)}>
-                 {/* ✨ 7. Використовуємо оптимізований Image */}
                 <Image 
                     source={getDisplayAvatar()} 
                     style={styles.avatar} 
@@ -372,7 +409,6 @@ const SettingsScreen = ({ navigation }) => {
               <ReadOnlyField labelKey="registration.emailLabel" icon="mail-outline" value={session?.user?.email} />
               <PasswordField labelKey="registration.passwordLabel" icon="lock-closed-outline" onNavigate={() => setPasswordModalVisible(true)} />
               
-              {/* ✨ 8. Додаємо кнопку очищення кешу */}
               <TouchableOpacity style={styles.actionButton} onPress={handleClearCache} disabled={isClearingCache}>
                   {isClearingCache ? <ActivityIndicator size="small" color={colors.secondaryText} /> : <Ionicons name="trash-bin-outline" size={20} color={colors.secondaryText} />}
                   <Text style={styles.actionButtonText}>
@@ -393,12 +429,18 @@ const SettingsScreen = ({ navigation }) => {
           <Ionicons name="log-out-outline" size={24} color={colors.primary} />
           <Text style={styles.logoutButtonText}>{t('settings.logout')}</Text>
         </TouchableOpacity>
+
+        {/* --- 👇 НОВА КНОПКА ВИДАЛЕННЯ АКАУНТУ 👇 --- */}
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-bin-outline" size={22} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>{t('settings.deleteAccount', 'Видалити акаунт назавжди')}</Text>
+        </TouchableOpacity>
+        {/* --- 👆 КІНЕЦЬ НОВОЇ КНОПКИ 👆 --- */}
       </View>
     </SafeAreaView>
   );
 }
 
-// ✨ 9. Огортаємо експорт в memo для оптимізації
 export default memo(SettingsScreen);
 
 const getStyles = (colors) => StyleSheet.create({
@@ -424,6 +466,26 @@ const getStyles = (colors) => StyleSheet.create({
     saveButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     logoutButton: { flexDirection: 'row', backgroundColor: 'transparent', borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
     logoutButtonText: { color: colors.primary, fontSize: 18, fontWeight: 'bold' },
+    
+    // --- 👇 НОВІ СТИЛІ ДЛЯ КНОПКИ ВИДАЛЕННЯ 👇 ---
+    deleteButton: {
+        flexDirection: 'row',
+        backgroundColor: 'transparent',
+        borderRadius: 12,
+        paddingVertical: 14,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 8,
+    },
+    deleteButtonText: {
+        color: colors.danger,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    // --- 👆 КІНЕЦЬ НОВИХ СТИЛІВ 👆 ---
+    
     modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     avatarModalContent: { backgroundColor: colors.card, padding: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, alignItems: 'center' },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 24 },
@@ -432,9 +494,8 @@ const getStyles = (colors) => StyleSheet.create({
     galleryButton: { flexDirection: 'row', backgroundColor: `${colors.primary}20`, borderRadius: 12, paddingVertical: 14, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 },
     galleryButtonText: { color: colors.primary, fontSize: 16, fontWeight: 'bold' },
     modalInput: { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: '100%', padding: 14, fontSize: 16, color: colors.text, marginBottom: 16 },
-    langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border, width: '100%' }, // Додано 'width' для стабільності
     langButtonText: { color: colors.text, fontSize: 18, textAlign: 'center' },
-    // ✨ 10. Нові стилі для перемикача теми
     themeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',

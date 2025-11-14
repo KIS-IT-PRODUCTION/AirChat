@@ -1180,10 +1180,10 @@ useEffect(() => {
                     </View>
                 )}
 
-                <KeyboardAvoidingView 
-                    style={{ flex: 1, backgroundColor: 'colors.background' }} 
-                    behavior={Platform.OS === "ios" ? "padding" : "height"} 
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+              <KeyboardAvoidingView 
+                    style={{ flex: 1, backgroundColor: colors.background }} // 👈 Я також виправив 'colors.background' на colors.background
+                    behavior={Platform.OS === "ios" ? "padding" : undefined} // 👈 ОСНОВНЕ ВИПРАВЛЕННЯ
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 65 : 0} // Тепер '0' для Android не має значення
                 >
                     
                     {/* Цей блок тепер єдиний, що відповідає за завантаження */}

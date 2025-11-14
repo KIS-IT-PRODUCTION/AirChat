@@ -178,7 +178,13 @@
     "serviceRegions": "Області України, з яких виїжджаєте",
     "destinationCountries": "Країни ЄС, до яких їздете",
     "selectRegions": "Виберіть області",
-    "selectCountries": "Виберіть країни"
+    "selectCountries": "Виберіть країни",
+    "deleteAccountTitle": "Видалити акаунт?",
+    "deleteAccountBody": "Ця дія є незворотною. Всі ваші дані, чати та трансфери будуть назавжди видалені. Ви впевнені?",
+    "deleteAccount": "Видалити акаунт назавжди",
+    "deleteSuccessTitle": "Акаунт видалено",
+    "deleteSuccessBody": "Ваш акаунт було успішно видалено.",
+    "deleteError": "Не вдалося видалити акаунт: "
   },
   "tabs": {
     "home": "Головна",

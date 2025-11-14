@@ -9,7 +9,7 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../config/supabase';
 import moment from 'moment';
 
-// --- Компоненти StatCard, InfoRow, PassengerProfileInfo (без змін) ---
+// --- Компоненти (без змін) ---
 const StatCard = memo(({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return ( <View style={styles.statItem}><Ionicons name={icon} size={28} color={colors.primary} /><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View> );
@@ -22,13 +22,10 @@ const PassengerProfileInfo = ({ onGoBack }) => {
     const { colors } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors);
     return ( <SafeAreaView style={styles.container}><View style={styles.header}><TouchableOpacity onPress={onGoBack}><Ionicons name="arrow-back-circle" size={40} color={colors.primary} /></TouchableOpacity><Text style={styles.headerTitle}>{t('profile.passengerProfileTitle')}</Text><View style={{ width: 40 }} /></View><View style={styles.content}><Ionicons name="people-outline" size={80} color={colors.secondaryText} style={{ marginBottom: 20 }} /><Text style={styles.infoTitle}>{t('profile.passengerInfoTitle')}</Text><Text style={styles.infoText}>{t('profile.passengerInfoBody')}</Text><TouchableOpacity style={styles.backButton} onPress={onGoBack}><Text style={styles.backButtonText}>{t('common.back')}</Text></TouchableOpacity></View></SafeAreaView> );
 };
-
-// ✅ --- НОВИЙ КОМПОНЕНТ ДЛЯ АДМІНА ---
 const AdminProfileInfo = ({ profile, onGoBack }) => {
     const { colors } = useTheme(); 
     const { t } = useTranslation(); 
     const styles = getStyles(colors);
-    
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -40,7 +37,6 @@ const AdminProfileInfo = ({ profile, onGoBack }) => {
             </View>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={[styles.profileCard, { borderColor: colors.primary, borderWidth: 1.5 }]}>
-                    
                     <Image 
                         source={profile.avatar_url ? { uri: profile.avatar_url } : require('../../assets/default-avatar.png')} 
                         style={styles.avatar} 
@@ -48,7 +44,6 @@ const AdminProfileInfo = ({ profile, onGoBack }) => {
                         transition={300}
                         cachePolicy="disk" 
                     />
-                    
                     <Text style={styles.fullName}>{profile.full_name}</Text>
                     <View style={styles.adminBadge}>
                         <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
@@ -56,7 +51,6 @@ const AdminProfileInfo = ({ profile, onGoBack }) => {
                     </View>
                     <Text style={styles.adminInfoText}>{t('profile.adminInfoBody', 'Це офіційний акаунт адміністрації. Зв\'яжіться з нами, якщо у вас виникли проблеми.')}</Text>
                 </View>
-                
             </ScrollView>
         </SafeAreaView>
     );
@@ -76,7 +70,6 @@ export default function PublicDriverProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [isPassenger, setIsPassenger] = useState(false);
-  // ✅ ДОДАНО: Новий стан для адміна
   const [isAdmin, setIsAdmin] = useState(false);
 
   const isMyProfile = useMemo(() => session?.user?.id === driverId, [session, driverId]);
@@ -90,16 +83,17 @@ export default function PublicDriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
-  // ✅ ВИПРАВЛЕНО: Функція тепер обробляє 3 ролі: client, driver, admin
+  // --- 👇 ФУНКЦІЯ FETCHPROFILE DATA ТЕПЕР ВИКЛИКАЄ RPC 👇 ---
   const fetchProfileData = useCallback(async () => {
     if (!driverId) { setLoading(false); return; }
     
     setLoading(true);
     setIsPassenger(false);
-    setIsAdmin(false); // ✅ Скидаємо прапорець адміна
+    setIsAdmin(false); 
     setProfile(null);
 
     try {
+      // ЗАПИТ 1: Отримуємо основні дані профілю
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -116,16 +110,23 @@ export default function PublicDriverProfileScreen() {
       } else if (data.role === 'client') {
         setIsPassenger(true); // Це пасажир
       } else if (data.role === 'admin') {
-        // ✅ ЦЕ АДМІН: Встановлюємо прапорець та зберігаємо базові дані
         setIsAdmin(true);
         setProfile({
             id: data.id,
             full_name: data.full_name,
             avatar_url: data.avatar_url,
-            // (Інші дані не потрібні для кастомного інтерфейсу адміна)
         });
       } else if (data.role === 'driver') {
-        // Це водій, збираємо повні дані
+        
+        // ✅ ЗАПИТ 2: Отримуємо статистику (кількість поїздок)
+        // Викликаємо нову SQL-функцію, яку ми створили у Кроці 1
+        const { data: stats, error: statsError } = await supabase
+          .rpc('get_public_driver_stats', { p_driver_id: driverId })
+          .single();
+
+        if (statsError) throw statsError;
+
+        // Збираємо повні дані
         setProfile({
             id: data.id,
             full_name: data.full_name,
@@ -136,7 +137,8 @@ export default function PublicDriverProfileScreen() {
             car_model: data.driver_profiles?.car_model,
             car_plate: data.driver_profiles?.car_plate,
             experience_years: data.driver_profiles?.experience_years,
-            completed_trips: await fetchCompletedTripsCount(driverId)
+            // Використовуємо пораховане значення з RPC-дзвінка
+            completed_trips: stats.completed_trips_count 
         });
       } else {
         setProfile(null); // Невідома роль
@@ -148,23 +150,14 @@ export default function PublicDriverProfileScreen() {
     }
   }, [driverId, t]);
 
-  const fetchCompletedTripsCount = async (id) => {
-      try {
-          const { count, error } = await supabase
-              .from('transfers')
-              .select('*', { count: 'exact', head: true })
-              .eq('accepted_driver_id', id)
-              .eq('status', 'completed');
-          if (error) throw error;
-          return count || 0;
-      } catch (error) {
-          console.error("Failed to fetch completed trips count:", error);
-          return 0;
-      }
-  };
+  // ❗️ МИ ПОВНІСТЮ ВИДАЛИЛИ СТАРУ ФУНКЦІЮ 'fetchCompletedTripsCount',
+  // тому що вона більше не потрібна. 
+  // Вся логіка тепер на сервері.
 
   useFocusEffect(useCallback(() => { fetchProfileData(); }, [fetchProfileData]));
 
+ // --- (Решта файлу: handleCall, handleMessage, рендеринг - БЕЗ ЗМІН) ---
+ 
  const handleCall = () => {
     if (!profile?.phone) {
         Alert.alert(t('common.error'), t('profile.noPhoneDriver'));
@@ -200,6 +193,7 @@ export default function PublicDriverProfileScreen() {
         Alert.alert(t('common.error'), error.message); 
     }
   };
+  
   if (loading) {
     return (
         <SafeAreaView style={styles.container}>
@@ -213,17 +207,14 @@ export default function PublicDriverProfileScreen() {
     );
   }
   
-  // ✅ ПЕРЕВІРКА 1: Пасажир
   if (isPassenger) {
     return <PassengerProfileInfo onGoBack={() => navigation.goBack()} />;
   }
   
-  // ✅ ПЕРЕВІРКА 2: Адмін
   if (isAdmin && profile) {
     return <AdminProfileInfo profile={profile} onGoBack={() => navigation.goBack()} />;
   }
 
-  // ✅ ПЕРЕВІРКА 3: Не знайдено
   if (!profile) {
     return (
         <SafeAreaView style={styles.container}>
@@ -240,7 +231,6 @@ export default function PublicDriverProfileScreen() {
     );
   }
 
-  // ✅ ПЕРЕВІРКА 4: Залишився лише Водій
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -275,7 +265,7 @@ export default function PublicDriverProfileScreen() {
   );
 }
 
-// --- Стилі ---
+// --- Стилі (без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -300,13 +290,10 @@ const getStyles = (colors) => StyleSheet.create({
     actionsContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border },
     actionButton: { alignItems: 'center', flex: 1 },
     actionButtonText: { color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 6 },
-    // Стилі для PassengerProfileInfo
     infoTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 8 },
     infoText: { fontSize: 16, color: colors.secondaryText, textAlign: 'center', lineHeight: 24 },
     backButton: { marginTop: 24, backgroundColor: colors.primary, paddingHorizontal: 32, paddingVertical: 12, borderRadius: 12 },
     backButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
-    
-    // ✅ ДОДАНО: Стилі для AdminProfileInfo
     adminBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -315,8 +302,6 @@ const getStyles = (colors) => StyleSheet.create({
         borderRadius: 16,
         paddingVertical: 6,
         paddingHorizontal: 12,
-  
-
     },
     adminBadgeText: {
         color: colors.primary,

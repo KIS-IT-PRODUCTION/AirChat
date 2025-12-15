@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import * as Notifications from 'expo-notifications';
+// import * as Notifications from 'expo-notifications'; // Можна прибрати, якщо не використовується тут
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 
@@ -9,34 +9,34 @@ export const UnreadCountProvider = ({ children }) => {
   const { session } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const updateCountAndBadge = useCallback(async (count) => {
+  // ✨ FIX: Прибрали встановлення бейджа тут. 
+  // Бейдж тепер керується централізовано в App.js, який сумує всі лічильники.
+  const updateCount = useCallback((count) => {
     const numericCount = count > 0 ? count : 0;
     setUnreadCount(numericCount);
-    // ✨ FIX: Додано команду для оновлення бейджа на іконці додатку
-    await Notifications.setBadgeCountAsync(numericCount);
-    console.log(`[BADGE_SYNC] Встановлено бейдж на іконці: ${numericCount}`);
+    // console.log(`[UNREAD_CONTEXT] Оновлено стейт: ${numericCount}`);
   }, []);
 
   const fetchUnreadCount = useCallback(async () => {
     if (!session) {
-      await updateCountAndBadge(0);
+      updateCount(0);
       return;
     }
     try {
-      console.log("[UNREAD_CONTEXT] Завантаження загальної кількості непрочитаних...");
+      // console.log("[UNREAD_CONTEXT] Завантаження загальної кількості непрочитаних...");
       const { data, error } = await supabase.rpc('get_total_unread_count');
       if (error) throw error;
       
-      await updateCountAndBadge(data);
+      updateCount(data);
       
     } catch (error) {
       console.error("[UNREAD_CONTEXT] Помилка завантаження кількості:", error.message);
     }
-  }, [session, updateCountAndBadge]);
+  }, [session, updateCount]);
 
   useEffect(() => {
     if (!session) {
-      updateCountAndBadge(0);
+      updateCount(0);
       return;
     }
 
@@ -48,6 +48,7 @@ export const UnreadCountProvider = ({ children }) => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
         () => {
+          // Невелика затримка, щоб тригер в БД встиг оновити статус
           setTimeout(fetchUnreadCount, 500); 
         }
       )
@@ -56,7 +57,7 @@ export const UnreadCountProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, fetchUnreadCount, updateCountAndBadge]);
+  }, [session, fetchUnreadCount, updateCount]);
 
   const value = { unreadCount, fetchUnreadCount };
 

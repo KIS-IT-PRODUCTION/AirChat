@@ -226,7 +226,8 @@
     "call": "Подзвонити",
     "back": "Назад",
     "block": "Заблокувати",
-    "blockAndReport": "Заблокувати та Надіслати"
+    "blockAndReport": "Заблокувати та Надіслати",
+    "info": "Інфо"
   },
   "bannedModal": {
     "emailSubject": "Мій акаунт заблоковано",
@@ -430,10 +431,21 @@
     "deleteMultipleConfirmBody": "Цю дію не можна буде повернути.",
     "noMessages": "Ще немає повідомлень. Напишіть перше!",
     "reply": "Відповісти",
+    "save": "Зберегти",
+    "saveImage": "Зберегти зображення",
+    "pin": "Закріпити",
     "photo": "Фото",
     "location": "Геолокація",
     "locationFetchError": "Не вдалося отримати вашу геолокацію.",
     "fetchingLocation": "Отримання точної локації...",
+    "replyTo": "Відповідь на",
+    "pinnedMessage": "Закріплене повідомлення",
+    "attachment": "Вкладення",
+    "messagePinned": "Повідомлення закріплено",
+    "messageNotFound": "Повідомлення занадто старе, прогортайте вгору",
+    "permissionDeniedTitle": "Доступ заборонено",
+    "imageSaved": "Збережено в галерею",
+    "bannedMessage": "Повідомлення містить неприпустиму лексику.",
     "lastSeen": {
       "justNow": "був(ла) щойно",
       "minutesAgo": "був(ла) {{count}} хвилину тому",

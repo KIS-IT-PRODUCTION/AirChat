@@ -3,7 +3,7 @@
     "name": "AirChat",
     "slug": "AirChat",
     "scheme": "airchat",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,8 +23,11 @@
         "LSApplicationQueriesSchemes": [
           "tel",
           "sms"
-        ]
-      }
+        ],
+        "NSPhotoLibraryAddUsageDescription": "Додатку потрібен дозвіл зберігати фотографії з чату у вашу галерею.",
+        "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до галереї для вибору фото."
+      },
+      "appleTeamId": "TX8D8AZ8N5"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +40,15 @@
           "apiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
         }
       },
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -53,6 +64,14 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Дозволити доступ до ваших фото.",
+          "savePhotosPermission": "Дозволити зберігати фото з чату.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Цей застосунок потребує доступу до вашої геолокації, щоб ділитися нею з друзями."
@@ -61,7 +80,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon2.png",
+          "icon": "./assets/notification.png",
           "color": "#ffffff"
         }
       ],

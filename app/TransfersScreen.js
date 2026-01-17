@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'; // ✅ Додано useRef
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, Linking, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,6 @@ import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
 
 const getDisplayStatus = (item, t) => {
-  // ... (код без змін)
   switch (item.status) {
     case 'pending':
       if (item.offers_count > 0) {
@@ -32,7 +31,6 @@ const getDisplayStatus = (item, t) => {
 };
 
 const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, selectionMode }) => {
-  // ... (увесь компонент TransferCard без змін)
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const navigation = useNavigation();
@@ -164,17 +162,15 @@ export default function TransfersScreen() {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [error, setError] = useState(null);
 
-  // ✅ ОПТИМІЗАЦІЯ: Додано ref для відстеження першого завантаження
   const isInitialLoad = useRef(true);
 
-  // ✅ ОПТИМІЗАЦІЯ: Функція тепер приймає 'showLoading'
   const fetchTransfers = useCallback(async (showLoading = false) => {
     if (!session?.user) { 
       setLoading(false); 
       return; 
     }
     if (showLoading) {
-        setLoading(true); // Вмикаємо індикатор, лише якщо це потрібно
+        setLoading(true);
     }
     setError(null);
     try {
@@ -185,20 +181,19 @@ export default function TransfersScreen() {
         console.error("Error fetching transfers:", err.message);
         setError(err.message);
     } finally { 
-      setLoading(false); // Завжди вимикаємо індикатор
+      setLoading(false);
     }
-  }, [session]); // Залежність лише від сесії
+  }, [session]);
 
-  // ✅ ОПТИМІЗАЦІЯ: 'useFocusEffect' тепер не завжди показує 'setLoading(true)'
   useFocusEffect(
     useCallback(() => {
       setViewMode('active');
       if(session?.user){
         if (isInitialLoad.current) {
-            fetchTransfers(true); // Повний екран завантаження при першому вході
+            fetchTransfers(true);
             isInitialLoad.current = false;
         } else {
-            fetchTransfers(false); // Тихе оновлення при поверненні на екран
+            fetchTransfers(false);
         }
       }
     }, [fetchTransfers, session])
@@ -212,25 +207,19 @@ export default function TransfersScreen() {
 
     const channel = supabase.channel(`passenger-updates-${session.user.id}`);
 
-    // 1. Ця підписка відстежує зміни У ВАШИХ трансферах
-    // (наприклад, водій прийняв замовлення, ви скасували його)
     const transfersSubscription = channel.on('postgres_changes', 
             { event: '*', schema: 'public', table: 'transfers', filter: `passenger_id=eq.${session.user.id}` },
             (payload) => {
               console.log('Realtime: My transfer updated!', payload);
-              fetchTransfers(false); // Тихе оновлення
+              fetchTransfers(false);
             }
         );
 
-    // ✅ 2. ПОВЕРНУТО: Ця підписка відстежує НОВІ пропозиції
-    // Ми слухаємо 'INSERT' на 'transfer_offers'. Це спрацює,
-    // коли будь-який водій зробить пропозицію на будь-який трансфер.
-    // Це необхідно, щоб ваш RPC 'get_my_transfers' перерахував лічильники.
     const offersSubscription = channel.on('postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'transfer_offers' }, // Оптимізовано з '*' до 'INSERT'
+            { event: 'INSERT', schema: 'public', table: 'transfer_offers' },
             (payload) => {
               console.log('Realtime: New offer created somewhere, refetching counts...', payload);
-              fetchTransfers(false); // Тихе оновлення
+              fetchTransfers(false);
             }
         );
         
@@ -242,44 +231,32 @@ export default function TransfersScreen() {
   }, [session, fetchTransfers]);
 
 const { activeTransfers, archivedTransfers } = useMemo(() => {
-    // Встановлюємо поріг - 2 дні тому
     const twoDaysAgo = moment().subtract(2, 'days');
     
     const active = [];
     const archived = [];
 
     for (const trip of transfers) {
-      // Створюємо копію, щоб безпечно змінити статус для UI
       const tripCopy = { ...trip }; 
 
-      // --- Нова логіка сортування ---
-
-      // 1. Спочатку перевіряємо умови архіву
       if (
         trip.status === 'completed' ||
         trip.status === 'cancelled'
       ) {
         archived.push(tripCopy);
       }
-      // 2. Ось ваше нове правило:
-      // Якщо поїздка 'accepted' І вона старша за 2 дні...
       else if (
         trip.status === 'accepted' && 
         moment(trip.transfer_datetime).isBefore(twoDaysAgo)
       ) {
-        // ...ми штучно міняємо її статус на 'completed' для UI...
         tripCopy.status = 'completed'; 
-        // ...і відправляємо в архів.
         archived.push(tripCopy);
       }
-      // 3. Все інше - це активні поїздки
       else {
-        // (Це 'pending' та 'accepted', які ще не застаріли)
         active.push(tripCopy);
       }
     }
 
-    // Сортуємо списки, як і раніше
     active.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
     archived.sort((a, b) => moment(b.transfer_datetime).diff(moment(a.transfer_datetime)));
     
@@ -287,7 +264,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   }, [transfers]);
 
   const handleToggleSelection = useCallback((id) => {
-    // ... (код без змін)
     const newSelection = new Set(selectedItems);
     if (newSelection.has(id)) { newSelection.delete(id); } else { newSelection.add(id); }
     setSelectedItems(newSelection);
@@ -295,7 +271,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   }, [selectedItems]);
 
   const handleLongPress = useCallback((id) => {
-    // ... (код без змін)
     if (viewMode === 'archived') {
       setSelectionMode(true);
       handleToggleSelection(id);
@@ -303,7 +278,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   }, [viewMode, handleToggleSelection]);
 
   const handleDeleteSelected = useCallback(() => {
-    // ... (код без змін)
     Alert.alert( t('transfersScreen.deleteConfirmTitle'), t('transfersScreen.deleteConfirmBody', { count: selectedItems.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => {
             const { error } = await supabase.from('transfers').delete().in('id', Array.from(selectedItems));
             if (error) { Alert.alert(t('common.error'), error.message); } else {
@@ -317,7 +291,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   }, [selectedItems, t]);
   
   const Header = () => (
-    // ... (код без змін)
     <View style={styles.header}>
       <Logo width={40} height={40} />
         <Text style={styles.title}>{viewMode === 'active' ? t('transfersScreen.title') : t('transfersScreen.archiveTitle')}</Text>
@@ -328,7 +301,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   );
 
   const renderItem = useCallback(({ item, index }) => (
-    // ... (код без змін)
     <MotiView
       from={{ opacity: 0, translateY: 50 }}
       animate={{ opacity: 1, translateY: 0 }}
@@ -345,7 +317,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
   ), [selectionMode, selectedItems, handleToggleSelection, handleLongPress]); 
 
   const listEmptyComponent = useMemo(() => (
-    // ... (код без змін)
     <View style={styles.emptyContainer}>
         <Ionicons name="file-tray-outline" size={64} color={colors.secondaryText} />
         <Text style={styles.emptyText}>{viewMode === 'active' ? t('transfersScreen.emptyState') : t('transfersScreen.emptyArchive')}</Text>
@@ -363,7 +334,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
             <Text style={styles.errorTitle}>{t('common.error')}</Text>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity onPress={() => fetchTransfers(true)} style={styles.retryButton}><Text style={styles.retryButtonText}>{t('common.retry')}</Text></TouchableOpacity> 
-            {/* ✅ Кнопка retry тепер також показує індикатор */}
         </View>
       ) : (
         <FlatList
@@ -389,7 +359,6 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
 }
 
 const getStyles = (colors) => StyleSheet.create({
-  // ... (усі стилі без змін)
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.text },

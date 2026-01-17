@@ -1,4 +1,3 @@
-// FlightScheduleScreen.js
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, FlatList, SafeAreaView, Platform, Modal, TouchableOpacity } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -91,7 +90,6 @@ const FlightScheduleScreen = () => {
         try {
             const flightDate = moment(selectedDate).format('YYYY-MM-DD');
             
-            // ✨ FIX: Додано обгортку 'body'
             const { data, error: funcError } = await supabase.functions.invoke('flight-schedule', {
                 body: {
                     originIata: origin.iata_code,

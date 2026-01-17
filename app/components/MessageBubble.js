@@ -18,19 +18,16 @@ const arePropsEqual = (prev, next) => {
         prev.isSelected === next.isSelected && 
         prev.selectionMode === next.selectionMode &&
         prev.highlighted === next.highlighted &&
-        // Додаємо перевірку на зміну replyMessage
         prev.replyMessage?.id === next.replyMessage?.id &&
         JSON.stringify(prev.message.reactions) === JSON.stringify(next.message.reactions)
     );
 };
 
-// ДОДАНО: replyMessage та onReplyPress у пропси
 const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSelect, onDoubleTap, selectionMode, isSelected, colors, highlighted, replyMessage, onReplyPress }) => {
     const styles = useMemo(() => getStyles(colors), [colors]);
     const isMyMessage = message.sender_id === currentUserId;
     const [isImageLoading, setIsImageLoading] = useState(false);
     
-    // Анімація та рефи для Double Tap
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const lastTap = useRef(0);
     
@@ -49,7 +46,6 @@ const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSe
         }));
     }, [message.reactions, currentUserId]);
 
-    // --- ЛОГІКА DOUBLE TAP ---
     const handlePress = () => { 
         if (selectionMode) {
             onSelect(message.id);
@@ -82,30 +78,24 @@ const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSe
         Linking.openURL(`${scheme}${latLng}`);
     };
 
-    // --- ВИПРАВЛЕНО: Відображення контенту відповіді ---
     const renderReplyPreview = () => {
-        // Якщо немає replyMessage (наприклад, воно ще не завантажене або видалене), не рендеримо або показуємо заглушку
         if (!message.reply_to_message_id) return null;
 
         const borderColor = isMyMessage ? 'rgba(255,255,255,0.6)' : colors.primary;
         const textColor = isMyMessage ? '#FFFFFF' : colors.text;
         const subTextColor = isMyMessage ? 'rgba(255,255,255,0.8)' : colors.secondaryText;
 
-        // Визначаємо текст для прев'ю
         let previewText = 'Повідомлення недоступне';
         let previewName = 'Користувач';
 
         if (replyMessage) {
-            // Якщо повідомлення є у списку
             if (replyMessage.content) previewText = replyMessage.content;
             else if (replyMessage.image_url) previewText = '📷 Фото';
             else if (replyMessage.location) previewText = '📍 Геолокація';
             
-            // Якщо є можливість дістати ім'я (в ідеалі воно має бути в об'єкті replyMessage, або можна писати просто "У відповідь")
-            // Тут ми просто пишемо ім'я або заглушку, якщо його немає в об'єкті повідомлення
             previewName = replyMessage.sender_id === currentUserId ? 'Ви' : (replyMessage.sender_name || 'У відповідь');
         } else {
-            previewText = 'Завантаження...'; // Якщо replyMessage null (не знайдено в поточному списку)
+            previewText = 'Завантаження...';
         }
 
         return (

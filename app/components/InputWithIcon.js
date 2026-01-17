@@ -1,16 +1,14 @@
-// app/components/InputWithIcon.js
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../ThemeContext'; // Шлях до ThemeContext
+import { useTheme } from '../ThemeContext';
 
 const InputWithIcon = ({ icon, placeholder, value, onChangeText, secureTextEntry = false, autoCapitalize = 'sentences', placeholderKey }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = getStyles(colors);
 
-  // Використовуємо або прямий плейсхолдер, або ключ для перекладу
   const finalPlaceholder = placeholderKey ? t(placeholderKey) : placeholder;
 
   return (

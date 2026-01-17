@@ -25,10 +25,8 @@ import GroupTransferIcon from '../assets/group.svg';
 import IndividualTransferIcon from '../assets/induvidual.svg';
 import Pet from '../assets/pets.png';
 
-// --- Constants ---
 const UKRAINE_REGIONS = [ "Вінницька область", "Волинська область", "Дніпропетровська область", "Донецька область", "Житомирська область", "Закарпатська область", "Запорізька область", "Івано-Франківська область", "Київська область", "Кіровоградська область", "Луганська область", "Львівська область", "Миколаївська область", "Одеська область", "Полтавська область", "Рівненська область", "Сумська область", "Тернопільська область", "Харківська область", "Херсонська область", "Хмельницька область", "Черкаська область", "Чернівецька область", "Чернігівська область" ];
 
-// --- FormContext та Provider ---
 const FormContext = createContext();
 
 export const FormProvider = ({ children }) => {
@@ -37,7 +35,6 @@ export const FormProvider = ({ children }) => {
     const [flightNumber, setFlightNumber] = useState('');
     const [luggageInfo, setLuggageInfo] = useState('');
     const [activeTab, setActiveTab] = useState('to');
-    // ✅ ЗМІНА №1: Встановлюємо 'group' як тип трансферу за замовчуванням
     const [transferType, setTransferType] = useState('group');
     const [withPet, setWithPet] = useState(false);
     const [meetWithSign, setMeetWithSign] = useState(false);
@@ -56,7 +53,6 @@ export const FormProvider = ({ children }) => {
 
 export const useFormState = () => useContext(FormContext);
 
-// --- СТИЛІ ---
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
@@ -121,7 +117,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
     passengerCountText: { color: colors.text, fontSize: 22, fontWeight: 'bold', minWidth: 30, textAlign: 'center' },
 });
 
-// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 const RoleSwitcher = ({ role, onSwitch, isSwitching }) => { const { colors } = useTheme(); const styles = getStyles(colors); const isDriver = role === 'driver'; const switchValue = useSharedValue(isDriver ? 1 : 0); useEffect(() => { switchValue.value = withSpring(isDriver ? 1 : 0, { damping: 15, stiffness: 120 }); }, [isDriver]); const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: switchValue.value * 48 }] })); const passengerIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], ['#FFFFFF', colors.secondaryText]) })); const driverIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], [colors.secondaryText, '#FFFFFF']) })); if (isSwitching) { return ( <View style={[styles.roleSwitcher, { paddingHorizontal: 28, paddingVertical: 12 }]}><ActivityIndicator size="small" color={colors.primary} /></View> ); } return ( <View style={styles.roleSwitcher}><Animated.View style={[styles.rolePill, pillStyle]} /><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(false)} disabled={!isDriver}><Animated.View><Ionicons name="person-outline" size={20} style={passengerIconStyle} /></Animated.View></TouchableOpacity><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(true)} disabled={isDriver}><Animated.View><Ionicons name="car-sport-outline" size={20} style={driverIconStyle} /></Animated.View></TouchableOpacity></View> ); };
 const AnimatedBlock = ({ children, delay }) => ( <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay }} >{children}</MotiView> );
 const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>); };
@@ -131,7 +126,6 @@ const PassengerSelectorModal = ({ visible, onClose, passengerCounts, setPassenge
 const GradientCard = ({ children, style }) => { const { colors, theme } = useTheme(); const styles = getStyles(colors, theme); const gradientColors = theme === 'light' ? ['#FFFFFF', '#F7F7F7'] : [colors.card, '#2C2C2E']; return (<LinearGradient colors={gradientColors} style={[styles.card, style]}>{children}</LinearGradient>); };
 const InputRow = forwardRef(({ icon, placeholderKey, value, onChangeText, onClear, style, keyboardType, hasError, errorMessage }, ref) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); const shake = useSharedValue(0); const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] })); useImperativeHandle(ref, () => ({ shake: () => { shake.value = withSequence( withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(0, { duration: 50 }) ); }, })); return ( <View style={style}><Animated.View style={[styles.inputRow, hasError && styles.errorHighlight, animatedStyle]}><Ionicons name={icon} size={20} color={colors.secondaryText} /><TextInput placeholder={t(placeholderKey)} placeholderTextColor={colors.secondaryText} style={styles.textInput} value={value} onChangeText={onChangeText} keyboardType={keyboardType || 'default'} />{value?.length > 0 && ( <TouchableOpacity onPress={onClear} style={styles.clearIcon}><Ionicons name="close-circle" size={20} color={colors.secondaryText} /></TouchableOpacity> )}</Animated.View>{errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}</View> ); });
 
-// --- ОСНОВНИЙ КОМПОНЕНТ ---
 export default function HomeScreen({ navigation }) {
     const { session, profile, switchRole } = useAuth();
     const { t, i18n } = useTranslation();
@@ -173,7 +167,6 @@ export default function HomeScreen({ navigation }) {
         } catch (error) { console.error("Error fetching profile:", error.message); } finally { setLoadingProfile(false); }
     }, [session]);
 
-    // ✅ ЗМІНА №2: Розширюємо функцію очищення форми
     const clearForm = useCallback(() => {
         setFromLocation({ fullText: '', city: '', region: '', country: '' });
         setToLocation({ fullText: '', city: '', region: '', country: '' });
@@ -181,8 +174,8 @@ export default function HomeScreen({ navigation }) {
         setLuggageInfo('');
         setWithPet(false);
         setMeetWithSign(false);
-        setSelectedDate(new Date()); // Скидаємо дату
-        setTransferType('group'); // Скидаємо тип трансферу до дефолтного
+        setSelectedDate(new Date());
+        setTransferType('group');
         setPassengerCounts({ adults: 1, children: 0, infants: 0 });
         setErrors({});
     }, [setFromLocation, setToLocation, setFlightNumber, setLuggageInfo, setWithPet, setMeetWithSign, setPassengerCounts, setSelectedDate, setTransferType]);
@@ -259,14 +252,13 @@ export default function HomeScreen({ navigation }) {
             
             <TransferSuccessModal 
                 visible={isSuccessModalVisible} 
-                // ✅ ЗМІНА №3: Додаємо очищення форми при закритті вікна
                 onClose={() => { 
                     setSuccessModalVisible(false); 
                     clearForm(); 
                 }} 
                 onViewTransfers={() => {
                     setSuccessModalVisible(false);
-                    clearForm(); // І при переході
+                    clearForm();
                     navigation.navigate('TransfersTab');
                 }} 
             />

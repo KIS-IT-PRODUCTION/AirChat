@@ -3,7 +3,7 @@
     "name": "AirChat",
     "slug": "AirChat",
     "scheme": "airchat",
-    "version": "1.0.3",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.airchat.mobile",
       "config": {
-        "googleMapsApiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
+        "googleMapsApiKey": "********************************"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -24,30 +24,33 @@
           "tel",
           "sms"
         ],
-        "NSPhotoLibraryAddUsageDescription": "Додатку потрібен дозвіл зберігати фотографії з чату у вашу галерею.",
         "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до галереї для вибору фото."
       },
       "appleTeamId": "TX8D8AZ8N5"
     },
-    "android": {
+  "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/apdative-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "app.airchat.mobile",
+      "versionCode": 3,  
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
+          "apiKey": "********************************"
         }
       },
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.ACCESS_MEDIA_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
       ]
     },
     "web": {
@@ -61,14 +64,6 @@
         {
           "photosPermission": "Додатку потрібен доступ до вашої галереї, щоб ви могли надсилати фото.",
           "cameraPermission": "Додатку потрібен доступ до вашої камери, щоб ви могли робити та надсилати фото."
-        }
-      ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Дозволити доступ до ваших фото.",
-          "savePhotosPermission": "Дозволити зберігати фото з чату.",
-          "isAccessMediaLocationEnabled": true
         }
       ],
       [

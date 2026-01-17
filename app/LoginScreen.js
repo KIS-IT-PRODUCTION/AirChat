@@ -124,7 +124,6 @@ const LoginScreen = ({ navigation }) => {
             {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
             <View style={styles.footer}>
-              {/* ✅ 1. ОНОВЛЕННЯ КНОПКИ: Додано анімацію завантаження */}
               <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
                 <AnimatePresence exitBeforeEnter>
                   {loading ? (
@@ -167,13 +166,11 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background},
   keyboardAvoidingContainer: { flex: 1 },
   closeButton: { position: 'absolute', top: insets.top + 10, right: 20, zIndex: 10, padding: 5 },
-  // --- 👇 ОНОВЛЕНО: Додано 'justifyContent' для центрування ---
   scrollContainer: { 
     flexGrow: 1, 
     padding: 24, 
-    justifyContent: 'center' // Це центрує форму по вертикалі
+    justifyContent: 'center'
   },
-  // ---
   header: { alignItems: 'center', marginBottom: 40 },
   title: { color: colors.text, fontSize: 32, fontWeight: 'bold' },
   subtitle: { color: colors.secondaryText, fontSize: 16, marginTop: 8 },
@@ -197,8 +194,8 @@ const getStyles = (colors, insets, theme) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 12,
     width: '100%',
-    height: 55, // Фіксована висота
-    justifyContent: 'center', // Центрування контенту
+    height: 55,
+    justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
         ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },

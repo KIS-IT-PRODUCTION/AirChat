@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import moment from 'moment';
 
-// ✨ 1. Створюємо функцію для перетворення коду країни в емодзі прапора
 function countryCodeToEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '🏳️';
     const codePoints = countryCode
@@ -16,12 +15,10 @@ function countryCodeToEmoji(countryCode) {
     return String.fromCodePoint(...codePoints);
 }
 
-// ✨ 2. CitySelector тепер отримує повний об'єкт аеропорту
 const CitySelector = memo(({ airport, onPress }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
     
-    // Якщо дані ще завантажуються, показуємо заглушку
     if (!airport) {
         return (
             <View style={styles.selectorButton}>
@@ -41,7 +38,6 @@ const CitySelector = memo(({ airport, onPress }) => {
     );
 });
 
-// ✨ 3. Основний компонент тепер також отримує об'єкти origin та destination
 const SearchFilters = ({
     origin,
     destination,

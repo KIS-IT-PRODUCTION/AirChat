@@ -21,23 +21,17 @@ import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
 
-// Валідація email
 const validateEmail = (email) => {
   const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(String(email).toLowerCase());
 };
 
-// --- 👇 ОНОВЛЕНО: РОЗШИРЕНИЙ ФІЛЬТР НЕПРИЙНЯТНОГО КОНТЕНТУ (Вимога 2) ---
-// 🚩 Додано набагато більше слів (EN, UA, RU, Translit)
 const BANNED_WORDS = [
-  // Cпеціальні/Адмін
   'admin', 'moderator', 'administrator', 'адмін', 'модератор', 'airchat',
 
-  // EN
   'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'faggot', 'asshole', 'dick', 
   'pussy', 'bastard', 'damn', 'hell', 'cocksucker',
 
-  // UA/RU (Кирилиця)
   'хуй', 'хуя', 'хуе', 'хуи', 'хую', 'хуё',
   'пизда', 'пізда', 'пизди', 'пізди', 'пиздец', 'піздєц',
   'блять', 'блядь', 'блят',
@@ -54,7 +48,6 @@ const BANNED_WORDS = [
   'пидор', 'підор', 'пидарас',
   'мудак',
 
-  // UA/RU (Трансліт)
   'hui', 'huy', 'huj',
   'pizda', 'pisda',
   'blyat', 'blyad',
@@ -66,22 +59,18 @@ const BANNED_WORDS = [
   'mudak'
 ]; 
 
-// --- 👇 ОНОВЛЕНО: Покращена функція перевірки, яка ігнорує пробіли та символи ---
 const containsBannedWords = (text) => {
   if (!text) return false;
   
-  // Перетворюємо текст в нижній регістр та видаляємо всі не-буквені символи
   const textToCompare = text.toLowerCase().replace(/[\s\-_.,!?*@0-9]/g, '');
 
   for (const word of BANNED_WORDS) {
-    // Перевіряємо, чи очищений текст містить заборонене слово
     if (textToCompare.includes(word)) {
       return true;
     }
   }
   return false;
 };
-// --- 👆 КІНЕЦЬ ОНОВЛЕННЯ ФІЛЬТРУ ---
 
 
 const TERMS_URL = "https://air-chat.github.io/airchat/#/terms";
@@ -89,7 +78,7 @@ const PRIVACY_URL = "https://air-chat.github.io/airchat/#/privacy";
 
 const InputWithIcon = ({ icon, placeholder, value, onChangeText, keyboardType, autoCapitalize, secureTextEntry, onToggleVisibility, isPassword, containerStyle }) => {
     const { colors } = useTheme();
-    const styles = getStyles(colors, {}); // insets не потрібні для цього компонента
+    const styles = getStyles(colors, {});
 
     return (
         <View style={[styles.inputWrapper, containerStyle]}>
@@ -131,14 +120,13 @@ export default function RegistrationScreen({ navigation, route }) {
   const [errorText, setErrorText] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // 4. СТАН ДЛЯ ЧЕКБОКСУ (Вимога 1)
+
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isEmailAvailable, setIsEmailAvailable] = useState(true);
   const debounceTimeout = useRef(null);
 
-  // Ефект для перевірки email (без змін)
   useEffect(() => {
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
     if (!email.trim() || !validateEmail(email)) {
@@ -169,7 +157,6 @@ export default function RegistrationScreen({ navigation, route }) {
     Keyboard.dismiss();
     setErrorText('');
 
-    // 5. ПЕРЕВІРКИ ПЕРЕД РЕЄСТРАЦІЄЮ
     if (containsBannedWords(fullName.trim())) {
       setErrorText(t('registration.bannedName', "Це ім'я містить неприпустимі слова."));
       return;
@@ -192,7 +179,6 @@ export default function RegistrationScreen({ navigation, route }) {
         return;
     }
 
-    // 6. ПЕРЕВІРКА ЧЕКБОКСУ (Вимога 1)
     if (!agreedToTerms) {
       setErrorText(t('registration.mustAgreeToTerms', 'Ви повинні погодитись з Умовами Користування.'));
       return;
@@ -230,13 +216,11 @@ export default function RegistrationScreen({ navigation, route }) {
   const clearError = () => { if (errorText) setErrorText(''); };
   const togglePasswordVisibility = useCallback(() => setIsPasswordVisible(prev => !prev), []);
   
-  // 7. ФУНКЦІЯ ДЛЯ ЧЕКБОКСУ (Вимога 1)
   const toggleAgreedToTerms = () => {
     setAgreedToTerms(!agreedToTerms);
     clearError();
   };
 
-  // 8. ФУНКЦІЯ ДЛЯ ВІДКРИТТЯ ПОСИЛАНЬ (Вимога 1)
   const handleOpenURL = async (url) => {
     try {
       await Linking.openURL(url);
@@ -305,7 +289,6 @@ export default function RegistrationScreen({ navigation, route }) {
               />
             </View>
             
-            {/* 9. ЧЕКБОКС ТА ПОСИЛАННЯ НА УМОВИ (Вимога 1) */}
             <View style={styles.termsContainer}>
               <TouchableOpacity 
                 style={styles.checkbox}
@@ -339,7 +322,6 @@ export default function RegistrationScreen({ navigation, route }) {
             {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
             <View style={styles.footer}>
-              {/* 10. КНОПКА НЕАКТИВНА БЕЗ ПОГОДЖЕННЯ (Вимога 1) */}
               <TouchableOpacity 
                 style={[
                   styles.registerButton, 
@@ -364,7 +346,6 @@ export default function RegistrationScreen({ navigation, route }) {
   );
 }
 
-// --- СТИЛІ ---
 const getStyles = (colors, insets) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -385,7 +366,6 @@ const getStyles = (colors, insets) =>
         right: 10,
         top: 0,
     },
-    // Стилі для Умов
     termsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -399,7 +379,7 @@ const getStyles = (colors, insets) =>
     termsText: {
         color: colors.secondaryText,
         fontSize: 14,
-        flex: 1, // Дозволяє тексту переноситися
+        flex: 1,
     },
     termsLink: {
         color: colors.primary,
@@ -410,13 +390,11 @@ const getStyles = (colors, insets) =>
     errorText: { color: '#D32F2F', textAlign: 'center', marginBottom: 20, fontSize: 14, fontWeight: '500' },
     footer: { alignItems: 'center', marginTop: 20 },
     registerButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center' },
-    // Стиль для неактивної кнопки
     disabledButton: {
-      backgroundColor: colors.border, // Або будь-який сірий колір
+      backgroundColor: colors.border,
     },
     registerButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
     loginLink: { color: colors.secondaryText, fontSize: 14, marginTop: 24 },
-    // Стилі для InputWithIcon
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',

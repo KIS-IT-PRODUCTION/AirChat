@@ -14,12 +14,11 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { Svg, Path } from 'react-native-svg'; // Імпортуємо для ілюстрації
+import { Svg, Path } from 'react-native-svg';
 
 import { useTheme } from './ThemeContext';
 import { useAuth } from '../provider/AuthContext.js';
 
-// --- Компонент для ілюстрації ---
 const SupportIllustration = ({ colors }) => (
     <View style={{ alignItems: 'center', marginBottom: 24 }}>
         <Svg height="150" width="150" viewBox="0 0 24 24">
@@ -47,8 +46,6 @@ export default function SupportScreen({ navigation }) {
     }
     setLoading(true);
     
-    // У реальному додатку тут буде запит до вашого бекенду
-    // await supabase.from('feedback').insert([{ user_id: session.user.id, message: message }])
     
     setTimeout(() => {
       setLoading(false);
@@ -184,7 +181,7 @@ const getStyles = (colors) =>
       marginRight: 12,
     },
     emailText: {
-      color: `${colors.text}99`, // Трохи прозоріший текст для email
+      color: `${colors.text}99`,
       fontSize: 16,
     },
     textArea: {

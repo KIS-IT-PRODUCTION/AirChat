@@ -15,7 +15,6 @@ import 'moment/locale/ro';
 import 'moment/locale/en-gb';
 import { MotiView } from 'moti';
 
-// --- Допоміжні компоненти (без змін) ---
 const TripCard = memo(({ item, t, onDelete, onPress }) => {
     const { colors, theme } = useTheme();
     const styles = getStyles(colors, theme);
@@ -129,7 +128,6 @@ const MyTripsScreen = () => {
     const fetchTrips = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
-            // ✅ ВИПРАВЛЕНО 1: Використовуємо 'accepted_driver_id' замість 'driver_id'
             const { data, error } = await supabase
                 .from('transfers')
                 .select('*, passenger:passenger_id(id, full_name, phone, avatar_url, last_seen)')
@@ -147,7 +145,6 @@ const MyTripsScreen = () => {
             setIsLoading(true);
             fetchTrips().finally(() => setIsLoading(false));
 
-            // ✅ ВИПРАВЛЕНО 2: Використовуємо 'accepted_driver_id' у фільтрі підписки
             const tripsSubscription = supabase
                 .channel('public:transfers:driver_trips')
                 .on('postgres_changes',
@@ -268,7 +265,6 @@ const MyTripsScreen = () => {
 
 export default memo(MyTripsScreen);
 
-// --- Стилі (без змін) ---
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     headerContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },

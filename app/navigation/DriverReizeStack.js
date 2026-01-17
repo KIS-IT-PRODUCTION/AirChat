@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import FlightScheduleScreen from '../driver/FlightScheduleScreen'; // ✨ Імпорт екрану розкладу рейсів
+import FlightScheduleScreen from '../driver/FlightScheduleScreen';
 
 
 const Stack = createStackNavigator();

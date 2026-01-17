@@ -1,4 +1,4 @@
-import React from 'react'; // ✅ ВИПРАВЛЕНО: Зайві імпорти видалено
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,12 +8,8 @@ import Poizdki from '../../assets/poizdki.svg';
 import Poizdki2 from '../../assets/poizdki_out.svg';
 import Chat from '../../assets/chat.svg';
 import Chat2 from '../../assets/chat2.svg';
-
-// ✅ ВИПРАВЛЕНО: Імпортуємо хуки з глобальних контекстів
 import { useUnreadCount } from '../../provider/Unread Count Context';
 import { useNewTrips } from '../../provider/NewTripsContext';
-
-// Імпортуємо екрани та стеки для водія
 import DriverHomeScreen from '../DriverHomeScreen';
 import MessagesStack from './MessagesStack';
 import DriverProfileStack from './DriverProfileStack';
@@ -26,7 +22,6 @@ export default function DriverTabNavigator() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   
-  // ✅ ВИПРАВЛЕНО: Отримуємо лічильники напряму з контексту, без локальних станів і функцій
   const { unreadCount } = useUnreadCount();
   const { newTripsCount } = useNewTrips();
 
@@ -87,7 +82,6 @@ export default function DriverTabNavigator() {
         component={MessagesStack}
         options={{ 
           title: t('tabs.messages'), 
-          // ✅ ВИПРАВЛЕНО: Використовуємо unreadCount з контексту
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
           tabBarBadgeStyle: { backgroundColor: colors.primary }
         }}

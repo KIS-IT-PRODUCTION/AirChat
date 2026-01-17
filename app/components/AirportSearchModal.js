@@ -1,4 +1,3 @@
-// components/AirportSearchModal.js
 import React, { useState, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { useTheme } from '../ThemeContext';
@@ -8,7 +7,6 @@ import { supabase } from '../../config/supabase';
 
 const ITEM_HEIGHT = 60;
 
-// Функція для перетворення коду країни в емодзі прапора
 function countryCodeToEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '🏳️';
     const codePoints = countryCode
@@ -60,7 +58,6 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
         const subDisplayName = item.name_uk ? `${item.city}, ${item.country_code}` : item.name;
 
         return (
-            // ✨ FIX: Тепер onPress передає весь об'єкт 'item', а не тільки 'item.iata_code'
             <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
                 <Text style={styles.flagText}>{countryCodeToEmoji(item.country_code)}</Text>
                 <View style={styles.cityInfo}>

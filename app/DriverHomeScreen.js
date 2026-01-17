@@ -17,7 +17,6 @@ import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolateColor } from 'react-native-reanimated';
 
-// --- СТИЛІ ---
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
@@ -38,12 +37,10 @@ const getStyles = (colors, theme) => StyleSheet.create({
     postedTimeText: { color: colors.secondaryText, fontSize: 12, textAlign: 'center', marginBottom: 8 },
     card: { backgroundColor: colors.card, borderRadius: 20, padding: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme === 'light' ? 0.08 : 0.15, shadowRadius: 12, elevation: 5 },
     
-    // Стилі для різних станів картки
     expiringCard: { backgroundColor: theme === 'dark' ? colors.background : '#ffffffff' },
     
-    // ✅ ЗМІНЕНО: Цей стиль тепер набагато помітніший
     pastCard: { 
-        backgroundColor: theme === 'dark' ? colors.background : '#ffffffff', // Дуже темний фон для темної теми, світло-сірий для світлої
+        backgroundColor: theme === 'dark' ? colors.background : '#ffffffff',
         opacity: 1,
         borderWidth: 0.9,
        borderColor: "#ff2525ff"
@@ -71,7 +68,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
     commentText: { color: colors.secondaryText, fontSize: 14, fontStyle: 'italic', flex: 1 },
 });
 
-// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 const RoleSwitcher = ({ role, onSwitch, isSwitching }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -172,7 +168,6 @@ const TransferRequestCard = memo(({ item, onPress, isExpiring, isPast }) => {
 
 const keyExtractor = (item) => item.id;
 
-// --- ОСНОВНИЙ КОМПОНЕНТ ---
 const DriverHomeScreen = () => {
   const { colors, theme } = useTheme();
   const { t, i18n } = useTranslation();

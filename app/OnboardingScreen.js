@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../app/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
-// Компонент слайду
 const Slide = ({ icon, title, text, colors }) => {
   const styles = getStyles(colors);
   return (

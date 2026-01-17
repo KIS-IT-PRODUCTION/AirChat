@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View } from 'react-native';
 import moment from 'moment';
-import { useTranslation } from 'react-i18next'; // Імпорт для локалізації
+import { useTranslation } from 'react-i18next';
 import { useUserStatus } from '../UserStatusContext';
 import { supabase } from '../config/supabase';
 import { useTheme } from './ThemeContext';
 
-// Функція форматування часу тепер приймає t (функцію перекладу)
 const formatLastSeen = (lastSeenDate, t) => {
     if (!lastSeenDate) return '';
     
@@ -14,32 +13,27 @@ const formatLastSeen = (lastSeenDate, t) => {
     const lastSeen = moment(lastSeenDate);
     const diffSeconds = now.diff(lastSeen, 'seconds');
 
-    // Якщо різниця менше 60 секунд
     if (diffSeconds < 60) {
         return t('status.justNow', 'Був(ла) щойно');
     }
     
-    // Якщо менше години - використовуємо вбудований формат moment (наприклад, "5 хвилин тому")
     if (diffSeconds < 3600) {
         return lastSeen.fromNow(); 
     }
 
-    // В інших випадках: "Був(ла) о 14:30"
     return t('status.lastSeenAt', 'Був(ла) ') + lastSeen.format('HH:mm');
 };
 
 const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
-    const { t } = useTranslation(); // Хук перекладу
+    const { t } = useTranslation();
     const { onlineUsers } = useUserStatus();
     const { colors } = useTheme();
     
     const [lastSeen, setLastSeen] = useState(initialLastSeen);
     const [statusText, setStatusText] = useState('');
     
-    // Перевірка онлайн через контекст (Socket)
     const isPresenceOnline = onlineUsers.has(recipientId);
 
-    // Підписка на оновлення бази даних (резервний варіант для last_seen)
     useEffect(() => {
         if (!recipientId) return;
         
@@ -57,7 +51,6 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
         return () => { supabase.removeChannel(channel); };
     }, [recipientId]);
 
-    // Оновлення тексту статусу
     useEffect(() => {
         const updateText = () => {
             if (isTyping) {
@@ -70,17 +63,15 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
         };
 
         updateText();
-        // Оновлюємо текст кожні 30 сек (щоб змінювався час "був 5 хв тому")
         const interval = setInterval(updateText, 30000);
 
         return () => clearInterval(interval);
     }, [isPresenceOnline, lastSeen, isTyping, t]);
 
-    // Стилі тексту
     const getStatusColor = () => {
-        if (isTyping) return colors.primary; // Колір для "друкує..."
-        if (isPresenceOnline) return '#4CAF50'; // Зелений для Онлайн
-        return colors.secondaryText; // Сірий для офлайн
+        if (isTyping) return colors.primary;
+        if (isPresenceOnline) return '#4CAF50';
+        return colors.secondaryText;
     };
 
     return (

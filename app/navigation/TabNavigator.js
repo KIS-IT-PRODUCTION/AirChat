@@ -5,11 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
-// ✨ Імпортуємо хуки з наших глобальних контекстів
 import { useUnreadCount } from '../../provider/Unread Count Context';
 import { useNewOffers } from '../../provider/NewOffersContext';
 
-// Імпортуємо екрани та стеки
 import HomeScreen from '../HomeScreen';
 import TransfersScreen from '../TransfersScreen';
 import ProfileStack from './ProfileStack'; 
@@ -24,7 +22,6 @@ export default function TabNavigator() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   
-  // ✨ Отримуємо лічильники з глобальних контекстів
   const { unreadCount } = useUnreadCount();
   const { newOffersCount } = useNewOffers();
 
@@ -69,9 +66,8 @@ export default function TabNavigator() {
         component={TransfersScreen} 
         options={{ 
           title: t('tabs.transfers', 'Трансфери'),
-          // ✨ Динамічно показуємо лічильник нових пропозицій
           tabBarBadge: newOffersCount > 0 ? newOffersCount : null,
-          tabBarBadgeStyle: { backgroundColor: '#FFA000' } // Можна задати інший колір
+          tabBarBadgeStyle: { backgroundColor: '#FFA000' }
         }}
       />
       <Tab.Screen 
@@ -79,7 +75,6 @@ export default function TabNavigator() {
         component={MessagesStack}
         options={{ 
           title: t('tabs.messages', 'Чат'), 
-          // Динамічно показуємо лічильник непрочитаних повідомлень
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
         }}
       />      

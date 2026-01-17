@@ -1,4 +1,3 @@
-// AuthScreen.js
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -20,17 +19,14 @@ export default function AuthScreen() {
       </View>
 
       <View style={styles.buttonsContainer}>
-        {/* Кнопка реєстрації для клієнта */}
         <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('RegistrationScreen', { role: 'client' })}>
           <Text style={styles.buttonText}>{t('auth.register')}</Text>
         </TouchableOpacity>
         
-        {/* Кнопка входу (веде на єдиний екран входу) */}
         <TouchableOpacity style={[styles.primaryButton, styles.secondaryButton]} onPress={() => navigation.navigate('LoginScreen')}>
           <Text style={[styles.buttonText, { color: colors.text }]}>{t('auth.login')}</Text>
         </TouchableOpacity>
 
-        {/* ОНОВЛЕНО: Кнопка тепер веде на екран реєстрації з роллю 'driver' */}
         <TouchableOpacity onPress={() => navigation.navigate('RegistrationScreen', { role: 'driver' })}>
           <Text style={styles.driverLink}>{t('authScreen.driverLogin', { defaultValue: 'Are you a driver? Register here' })}</Text>
         </TouchableOpacity>
@@ -39,7 +35,6 @@ export default function AuthScreen() {
   );
 }
 
-// ... стилі залишаються без змін
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: 'space-between' },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },

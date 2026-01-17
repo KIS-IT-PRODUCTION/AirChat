@@ -143,17 +143,16 @@ export const getStyles = (colors) => StyleSheet.create({
     myMessageTime: { color: 'rgba(255,255,255,0.9)' },
     theirMessageTime: { color: colors.text, opacity: 0.6 },
 
-    // --- REACTIONS (КОМПАКТНІ) ---
+    // --- REACTIONS ---
     reactionsContainer: { 
-        // width: '100%' прибрано, щоб не розтягувати бульбашку
         flexDirection: 'row', 
         flexWrap: 'wrap', 
         marginTop: 4, 
         marginBottom: 1,
     },
     reactionBadge: { 
-        borderRadius: 12, // Більш заокруглені
-        paddingHorizontal: 6, // Менші відступи
+        borderRadius: 12,
+        paddingHorizontal: 6,
         paddingVertical: 3, 
         marginRight: 4, 
         marginBottom: 3, 
@@ -169,7 +168,7 @@ export const getStyles = (colors) => StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.05)',
         borderColor: 'rgba(0,0,0,0.08)',
     },
-    reactionBadgeText: { fontSize: 11, fontWeight: '700' }, // Менший шрифт
+    reactionBadgeText: { fontSize: 11, fontWeight: '700' },
     reactionBadgeTextMy: { color: '#FFFFFF' },
     reactionBadgeTextOther: { color: colors.text },
 

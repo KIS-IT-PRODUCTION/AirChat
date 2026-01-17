@@ -1,8 +1,8 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 
-import ChatListScreen from '../ChatListScreen'; // Створимо на наступному кроці
-import IndividualChatScreen from '../IndividualChatScreen'; // І цей теж
+import ChatListScreen from '../ChatListScreen';
+import IndividualChatScreen from '../IndividualChatScreen';
 
 const Stack = createStackNavigator();
 
@@ -10,7 +10,7 @@ export default function MessagesStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false, // Ми будемо використовувати власні хедери на кожному екрані
+        headerShown: false,
       }}
     >
       <Stack.Screen name="ChatList" component={ChatListScreen} />

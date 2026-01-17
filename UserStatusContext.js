@@ -15,15 +15,22 @@ export const UserStatusProvider = ({ children }) => {
 
     const updateDbLastSeen = async () => {
         if (!session?.user?.id) return;
-        // Оновлюємо last_seen в базі, щоб інші бачили актуальний час
-        await supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id);
+        try {
+            await supabase
+                .from('profiles')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('id', session.user.id);
+        } catch (error) {
+            console.log("Error updating last_seen:", error);
+        }
     };
 
     const setupPresence = async () => {
         if (!session?.user?.id) return;
         
-        // Якщо канал вже є, не створюємо новий
-        if (channelRef.current) return;
+        if (channelRef.current && channelRef.current.state === 'joined') return;
+        
+        if (channelRef.current) supabase.removeChannel(channelRef.current);
 
         const channel = supabase.channel('global_presence', {
             config: { presence: { key: session.user.id } },
@@ -45,21 +52,18 @@ export const UserStatusProvider = ({ children }) => {
                     await channel.track({
                         online_at: new Date().toISOString(),
                         user_id: session.user.id,
+                        status: 'online'
                     });
                 }
             });
     };
 
-    // 🔥 Функція для МИТТЄВОГО виходу
     const handleGoOffline = async () => {
         if (channelRef.current) {
-            // 1. Повідомляємо сервер, що ми йдемо (це прибере статус Online у інших)
             await channelRef.current.untrack();
-            // 2. Відключаємось від каналу
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
-        // 3. Оновлюємо час в базі (щоб писало "був щойно")
         await updateDbLastSeen();
     };
 
@@ -69,22 +73,35 @@ export const UserStatusProvider = ({ children }) => {
         setupPresence();
         updateDbLastSeen();
 
-        const subscription = AppState.addEventListener('change', async (nextAppState) => {
-            if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-                console.log('App active: Going Online');
-                setupPresence();
+        const heartbeatInterval = setInterval(() => {
+            if (AppState.currentState === 'active') {
                 updateDbLastSeen();
-            } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-                console.log('App background: Going Offline IMMEDIATELY');
-                // 🔥 Викликаємо при згортанні
-                handleGoOffline();
+            }
+        }, 60000);
+
+        return () => {
+            clearInterval(heartbeatInterval);
+            handleGoOffline();
+        };
+    }, [session]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', async (nextAppState) => {
+            if (session?.user) {
+                if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+                    console.log('App active: Going Online');
+                    setupPresence();
+                    updateDbLastSeen();
+                } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
+                    console.log('App background: Going Offline');
+                    handleGoOffline();
+                }
             }
             appState.current = nextAppState;
         });
 
         return () => {
             subscription.remove();
-            handleGoOffline();
         };
     }, [session]);
 

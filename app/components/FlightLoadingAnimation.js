@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Video } from 'expo-av'; // ✨ 1. Імпортуємо компонент Video
+import { Video } from 'expo-av';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
 
@@ -11,13 +11,12 @@ const FlightLoadingAnimation = () => {
 
     return (
         <View style={styles.container}>
-            {/* ✨ 2. Використовуємо компонент Video замість LottieView */}
             <Video
                 source={require('../../assets/video.mp4')}
                 style={styles.video}
-                isLooping // Автоматично зациклює відео
-                shouldPlay // Автоматично починає відтворення
-                resizeMode="cover" // Масштабує відео, щоб заповнити контейнер
+                isLooping
+                shouldPlay
+                resizeMode="cover"
             />
             <Text style={styles.text}>{t('flights.loading', 'Шукаємо найкращі рейси...')}</Text>
         </View>
@@ -32,11 +31,10 @@ const getStyles = (colors) => StyleSheet.create({
         padding: 20,
         marginTop: 50,
     },
-    // ✨ 3. Стилі для відео
     video: {
         width: 150,
         height: 150,
-        borderRadius: 20, // Додамо заокруглення для краси
+        borderRadius: 20,
     },
     text: {
         fontSize: 18,

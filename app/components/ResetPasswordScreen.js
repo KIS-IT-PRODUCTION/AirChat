@@ -13,7 +13,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors, insets);
 
-  // ✨ 1. Отримуємо email з параметрів навігації
   const { email } = route.params;
 
   const [token, setToken] = useState('');
@@ -35,7 +34,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
     }
 
     setLoading(true);
-    // ✨ 2. Нова логіка: верифікуємо OTP і оновлюємо пароль
     const { error } = await supabase.auth.verifyOtp({
         email,
         token,
@@ -48,7 +46,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
         return;
     }
 
-    // Якщо код правильний, оновлюємо пароль
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 

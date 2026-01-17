@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView,
   TextInput, Alert, Modal, Pressable, Platform, ActivityIndicator
 } from 'react-native';
-// ✨ 1. Імпортуємо необхідні модулі
 import { Image } from 'expo-image';
 import { MotiView } from 'moti';
 import * as FileSystem from 'expo-file-system';
@@ -15,7 +14,6 @@ import { useAuth } from '../provider/AuthContext';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 
-// --- Компоненти полів (без змін) ---
 const EditableField = ({ labelKey, icon, value, isEditing, onToggleEdit, onChangeText }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
@@ -69,7 +67,6 @@ const PasswordField = ({ labelKey, icon, onNavigate }) => {
     );
 };
 
-// ✨ 2. НОВИЙ ДИЗАЙН: Повністю перероблений компонент перемикача теми
 const ThemeSwitcher = () => {
   const { colors, theme, toggleTheme } = useTheme();
   const styles = getStyles(colors);
@@ -95,7 +92,6 @@ const ThemeSwitcher = () => {
 };
 
 
-// --- Модальні вікна (без змін) ---
 const AvatarSelectionModal = ({ visible, onClose, onPickFromGallery, onSelectPreset }) => {
     const { colors } = useTheme();
     const { t } = useTranslation();
@@ -156,7 +152,6 @@ const ChangePasswordModal = ({ visible, onClose, onSave, isSaving }) => {
     );
 };
 
-// --- Основний компонент ---
 const SettingsScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
@@ -322,7 +317,6 @@ const SettingsScreen = ({ navigation }) => {
   const toggleEdit = useCallback((fieldName) => { setEditingField(prev => (prev === fieldName ? null : fieldName)); }, []);
   const handleLogout = useCallback(() => { Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), onPress: signOut, style: 'destructive' }]); }, [signOut, t]);
   
-  // --- 👇 НОВА ФУНКЦІЯ ВИДАЛЕННЯ АКАУНТУ (Вимога Apple 5.1.1) 👇 ---
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
         t('settings.deleteAccountTitle', 'Видалити акаунт?'),
@@ -334,20 +328,17 @@ const SettingsScreen = ({ navigation }) => {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        // 1. Викликаємо SQL-функцію, яку ви створили в Supabase
                         const { error } = await supabase.rpc('delete_my_account');
                         
                         if (error) {
                           throw error;
                         }
                         
-                        // 2. Повідомляємо про успіх
                         Alert.alert(
                           t('settings.deleteSuccessTitle', 'Акаунт видалено'),
                           t('settings.deleteSuccessBody', 'Ваш акаунт було успішно видалено.')
                         );
                         
-                        // 3. Виходимо з системи
                         await signOut();
                         
                     } catch (error) {
@@ -360,9 +351,7 @@ const SettingsScreen = ({ navigation }) => {
             },
         ]
     );
-  }, [signOut, t]); // Додаємо signOut і t в залежності
-  // --- 👆 КІНЕЦЬ НОВОЇ ФУНКЦІЇ 👆 ---
-
+  }, [signOut, t]);
   const getDisplayAvatar = useCallback(() => {
     if (localAvatar) return { uri: localAvatar.uri };
     if (avatarUrl) return { uri: avatarUrl };
@@ -430,12 +419,10 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={styles.logoutButtonText}>{t('settings.logout')}</Text>
         </TouchableOpacity>
 
-        {/* --- 👇 НОВА КНОПКА ВИДАЛЕННЯ АКАУНТУ 👇 --- */}
         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
             <Ionicons name="trash-bin-outline" size={22} color={colors.danger} />
             <Text style={styles.deleteButtonText}>{t('settings.deleteAccount', 'Видалити акаунт назавжди')}</Text>
         </TouchableOpacity>
-        {/* --- 👆 КІНЕЦЬ НОВОЇ КНОПКИ 👆 --- */}
       </View>
     </SafeAreaView>
   );
@@ -467,7 +454,6 @@ const getStyles = (colors) => StyleSheet.create({
     logoutButton: { flexDirection: 'row', backgroundColor: 'transparent', borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
     logoutButtonText: { color: colors.primary, fontSize: 18, fontWeight: 'bold' },
     
-    // --- 👇 НОВІ СТИЛІ ДЛЯ КНОПКИ ВИДАЛЕННЯ 👇 ---
     deleteButton: {
         flexDirection: 'row',
         backgroundColor: 'transparent',
@@ -484,7 +470,6 @@ const getStyles = (colors) => StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    // --- 👆 КІНЕЦЬ НОВИХ СТИЛІВ 👆 ---
     
     modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     avatarModalContent: { backgroundColor: colors.card, padding: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, alignItems: 'center' },
@@ -494,7 +479,7 @@ const getStyles = (colors) => StyleSheet.create({
     galleryButton: { flexDirection: 'row', backgroundColor: `${colors.primary}20`, borderRadius: 12, paddingVertical: 14, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 },
     galleryButtonText: { color: colors.primary, fontSize: 16, fontWeight: 'bold' },
     modalInput: { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: '100%', padding: 14, fontSize: 16, color: colors.text, marginBottom: 16 },
-    langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border, width: '100%' }, // Додано 'width' для стабільності
+    langButton: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border, width: '100%' },
     langButtonText: { color: colors.text, fontSize: 18, textAlign: 'center' },
     themeContainer: {
         flexDirection: 'row',

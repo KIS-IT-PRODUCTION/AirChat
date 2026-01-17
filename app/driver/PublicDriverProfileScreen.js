@@ -9,7 +9,6 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../config/supabase';
 import moment from 'moment';
 
-// --- Компоненти (без змін) ---
 const StatCard = memo(({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return ( <View style={styles.statItem}><Ionicons name={icon} size={28} color={colors.primary} /><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View> );
@@ -57,7 +56,6 @@ const AdminProfileInfo = ({ profile, onGoBack }) => {
 };
 
 
-// --- Основний компонент екрана ---
 export default function PublicDriverProfileScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -83,7 +81,6 @@ export default function PublicDriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
-  // --- 👇 ФУНКЦІЯ FETCHPROFILE DATA ТЕПЕР ВИКЛИКАЄ RPC 👇 ---
   const fetchProfileData = useCallback(async () => {
     if (!driverId) { setLoading(false); return; }
     
@@ -93,7 +90,6 @@ export default function PublicDriverProfileScreen() {
     setProfile(null);
 
     try {
-      // ЗАПИТ 1: Отримуємо основні дані профілю
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -106,9 +102,9 @@ export default function PublicDriverProfileScreen() {
       if (error) throw error;
 
       if (!data) {
-        setProfile(null); // Не знайдено
+        setProfile(null);
       } else if (data.role === 'client') {
-        setIsPassenger(true); // Це пасажир
+        setIsPassenger(true);
       } else if (data.role === 'admin') {
         setIsAdmin(true);
         setProfile({
@@ -117,16 +113,13 @@ export default function PublicDriverProfileScreen() {
             avatar_url: data.avatar_url,
         });
       } else if (data.role === 'driver') {
-        
-        // ✅ ЗАПИТ 2: Отримуємо статистику (кількість поїздок)
-        // Викликаємо нову SQL-функцію, яку ми створили у Кроці 1
+
         const { data: stats, error: statsError } = await supabase
           .rpc('get_public_driver_stats', { p_driver_id: driverId })
           .single();
 
         if (statsError) throw statsError;
 
-        // Збираємо повні дані
         setProfile({
             id: data.id,
             full_name: data.full_name,
@@ -137,11 +130,10 @@ export default function PublicDriverProfileScreen() {
             car_model: data.driver_profiles?.car_model,
             car_plate: data.driver_profiles?.car_plate,
             experience_years: data.driver_profiles?.experience_years,
-            // Використовуємо пораховане значення з RPC-дзвінка
             completed_trips: stats.completed_trips_count 
         });
       } else {
-        setProfile(null); // Невідома роль
+        setProfile(null);
       }
     } catch (err) {
       Alert.alert(t('common.error'), err.message);
@@ -150,13 +142,8 @@ export default function PublicDriverProfileScreen() {
     }
   }, [driverId, t]);
 
-  // ❗️ МИ ПОВНІСТЮ ВИДАЛИЛИ СТАРУ ФУНКЦІЮ 'fetchCompletedTripsCount',
-  // тому що вона більше не потрібна. 
-  // Вся логіка тепер на сервері.
 
   useFocusEffect(useCallback(() => { fetchProfileData(); }, [fetchProfileData]));
-
- // --- (Решта файлу: handleCall, handleMessage, рендеринг - БЕЗ ЗМІН) ---
  
  const handleCall = () => {
     if (!profile?.phone) {
@@ -265,7 +252,6 @@ export default function PublicDriverProfileScreen() {
   );
 }
 
-// --- Стилі (без змін) ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },

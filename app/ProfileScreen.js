@@ -9,7 +9,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
-import { MotiView } from 'moti'; // Переконайтесь, що MotiView імпортовано
+import { MotiView } from 'moti';
 
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
@@ -41,14 +41,13 @@ export default function ProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
-  // ✅ ВИПРАВЛЕНО: Викликаємо нову SQL-функцію
   const fetchProfileData = useCallback(async () => {
     if (!session?.user) { setLoading(false); return; }
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .rpc('get_full_passenger_profile', { p_user_id: session.user.id }) // Використовуємо нову функцію
-        .single(); // .single() тут безпечно
+        .rpc('get_full_passenger_profile', { p_user_id: session.user.id })
+        .single();
         
       if (error) throw error;
       setProfile(data);
@@ -66,7 +65,6 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-         {/* ✅ ВИПРАВЛЕНО: Додано хедер навіть під час завантаження */}
         <View style={styles.header}>
             <Logo width={40} height={40} />
             <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
@@ -82,7 +80,6 @@ export default function ProfileScreen() {
   if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
-         {/* ✅ ВИПРАВЛЕНО: Додано хедер і краще повідомлення про помилку */}
         <View style={styles.header}>
             <Logo width={40} height={40} />
             <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
@@ -123,7 +120,6 @@ export default function ProfileScreen() {
         
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 }}>
           <View style={styles.statsContainer}>
-              {/* ✅ ВИПРАВЛЕНО: Використовуємо нові назви полів */}
               <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips_count || 0} label={t('profile.completedTrips')} colors={colors} />
               <StatCard icon="file-tray-full-outline" value={profile.transfers_created_count || 0} label={t('profile.adsCount')} colors={colors} />
               <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
@@ -150,7 +146,6 @@ export default function ProfileScreen() {
   );
 }
 
-// Стилі (з додаванням centeredMessage та noDataText)
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContainer: { padding: 16, paddingBottom: 40 },

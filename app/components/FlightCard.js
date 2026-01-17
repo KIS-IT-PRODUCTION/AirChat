@@ -1,4 +1,3 @@
-// components/FlightCard.js
 import React, { memo, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../ThemeContext';

@@ -7,8 +7,6 @@ const EmptyState = ({ isLoading, error, message, title, icon }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
 
-    // ✨ Примітка: Анімацію завантаження тепер обробляє FlightScheduleScreen,
-    // тому цей isLoading більше не використовується, але залишений для сумісності.
     if (isLoading) {
         return <ActivityIndicator style={{ marginTop: 50 }} size="large" color={colors.primary} />;
     }

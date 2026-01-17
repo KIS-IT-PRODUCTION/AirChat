@@ -18,8 +18,6 @@ import { Swipeable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { useUserStatus } from '../UserStatusContext'; 
 
-// --- ContextMenuModal та BlockReasonModal залишаються без змін ---
-// (Вставте їх сюди з попереднього коду, якщо потрібно, вони не змінювалися)
 const ContextMenuModal = ({ visible, onClose, user, onAction }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -76,9 +74,7 @@ const BlockReasonModal = ({ visible, onClose, onSubmit }) => {
         </Modal>
     );
 };
-// --- Кінець модалок ---
 
-// ✨ Компонент Пошуку
 const SearchBar = ({ value, onChange, onClear }) => {
     const { colors } = useTheme();
     const styles = getStyles(colors);
@@ -161,22 +157,19 @@ const ChatItem = React.memo(({ item, index, currentUserId, onlineUsers, onLongPr
     
     useEffect(() => { Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 50, useNativeDriver: true }).start(); }, []);
 
-    // ✨ Оновлені Swipe Actions (зліва - Обране)
     const renderLeftActions = (progress, dragX) => {
          const scale = dragX.interpolate({ inputRange: [0, 80], outputRange: [0.8, 1], extrapolate: 'clamp' });
-         const actionIcon = item.is_favorite ? "star-outline" : "star"; // Використовуємо filled star для дії
+         const actionIcon = item.is_favorite ? "star-outline" : "star";
          
          return (
              <TouchableOpacity style={styles.leftActionContainer} onPress={() => { onToggleFavorite(); swipeableRowRef.current?.close(); }}>
                  <Animated.View style={[styles.actionIconWrapper, { backgroundColor: '#FFC107', transform: [{ scale }] }]}>
                      <Ionicons name={actionIcon} size={24} color="#FFF" />
-                     {/* Можна додати текст, якщо потрібно, але іконка чистіша */}
                  </Animated.View>
              </TouchableOpacity>
          );
     };
 
-    // ✨ Оновлені Swipe Actions (справа - Видалення)
     const renderRightActions = (progress, dragX) => {
         const scale = dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0.8], extrapolate: 'clamp' });
         
@@ -199,10 +192,10 @@ const ChatItem = React.memo(({ item, index, currentUserId, onlineUsers, onLongPr
                 renderLeftActions={renderLeftActions}
                 renderRightActions={renderRightActions}
                 onSwipeableWillOpen={() => onOpen(item.room_id, swipeableRowRef.current)}
-                containerStyle={{ overflow: 'visible' }} // Важливо для тіней
+                containerStyle={{ overflow: 'visible' }}
             >
                 <TouchableOpacity
-                    style={styles.chatItemCard} activeOpacity={0.9} // Трохи збільшили opacity
+                    style={styles.chatItemCard} activeOpacity={0.9}
                     onPress={() => navigation.navigate('IndividualChat', {
                         roomId: item.room_id, recipientId: item.other_participant_id, recipientName: item.other_participant_name,
                         recipientAvatar: item.other_participant_avatar, recipientLastSeen: item.other_participant_last_seen,
@@ -274,7 +267,6 @@ export default function ChatListScreen() {
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     
-    // ✨ Додаємо стан для пошуку
     const [searchQuery, setSearchQuery] = useState('');
 
     const [contextMenu, setContextMenu] = useState({ visible: false, user: null });
@@ -311,7 +303,6 @@ export default function ChatListScreen() {
          const originalFavs = [...favoriteChats];
          const originalRegs = [...regularChats];
          
-         // Optimistic Update
          if (newFavoriteStatus) {
              setRegularChats(prev => prev.filter(c => c.room_id !== chatItem.room_id));
              setFavoriteChats(prev => [{ ...chatItem, is_favorite: true }, ...prev]);
@@ -368,7 +359,6 @@ export default function ChatListScreen() {
         openSwipeableRowRef.current = ref;
     };
 
-    // ✨ Логіка фільтрації для пошуку
     const getFilteredChats = (chats) => {
         if (!searchQuery.trim()) return chats;
         return chats.filter(chat => 
@@ -402,7 +392,6 @@ export default function ChatListScreen() {
             </View>
 
             <FlatList
-                // ✨ Додаємо пошук в хедер списку
                 ListHeaderComponent={
                     <>
                         <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
@@ -436,7 +425,7 @@ export default function ChatListScreen() {
                 contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => fetchChats(true)} tintColor={colors.primary} />}
-                extraData={[onlineUsers, searchQuery]} // Оновлюємо список при зміні пошуку або статусу
+                extraData={[onlineUsers, searchQuery]}
                 ListEmptyComponent={
                     !isInitialLoading && (
                         <View style={styles.emptyContainer}>
@@ -464,7 +453,6 @@ const getStyles = (colors) => StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
     title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1, marginLeft: -40 },
     
-    // ✨ Стилі для Пошуку
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -506,7 +494,6 @@ const getStyles = (colors) => StyleSheet.create({
     emptyContainer: { alignItems: 'center', marginTop: 80 },
     emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
     
-    // ✨ Оновлені стилі для Swipe Actions
     leftActionContainer: { width: 80, justifyContent: 'center', alignItems: 'center' },
     rightActionContainer: { width: 80, justifyContent: 'center', alignItems: 'center' },
     actionIconWrapper: { 

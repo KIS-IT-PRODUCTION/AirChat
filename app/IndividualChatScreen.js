@@ -15,8 +15,6 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../provider/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,23 +24,38 @@ import ImageViewing from 'react-native-image-viewing';
 import { MotiView } from 'moti'; 
 
 import { getStyles } from './components/ChatStyles';
-import MessageBubble from './components/MessageBubble';
+import MessageBubble from './components/MessageBubble'; 
 import ChatInput from './components/ChatInput';
 import PinnedMessageBar from './components/PinnedMessageBar';
 import ChatHeaderStatus from './ChatHeaderStatus';
 
 const PAGE_SIZE = 25;
 
-// --- КОМПОНЕНТИ ---
-const ImageViewerModal = React.memo(({ visible, uri, onClose, onSave, colors, t }) => {
-    const styles = useMemo(() => getStyles(colors), [colors]); 
-    if (!uri) return null;
-    const Header = () => (
-        <TouchableOpacity style={styles.saveButtonContainer} onPress={() => onSave(uri)}>
-             <Ionicons name="download-outline" size={24} color="#fff" />
-             <Text style={styles.saveButtonText}>{t('chat.save', 'Зберегти')}</Text>
-        </TouchableOpacity>
+const DateHeader = ({ date, t, colors }) => {
+    let dateText = '';
+    const messageDate = moment(date);
+    const today = moment();
+    const yesterday = moment().subtract(1, 'days');
+
+    if (messageDate.isSame(today, 'day')) {
+        dateText = t('chat.today', 'Сьогодні');
+    } else if (messageDate.isSame(yesterday, 'day')) {
+        dateText = t('chat.yesterday', 'Вчора');
+    } else {
+        dateText = messageDate.format('D MMMM YYYY');
+    }
+
+    return (
+        <View style={{ alignItems: 'center', marginVertical: 12, marginBottom: 8 }}>
+            <View style={{ backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 12, color: colors.secondaryText, fontWeight: '500' }}>{dateText}</Text>
+            </View>
+        </View>
     );
+};
+
+const ImageViewerModal = React.memo(({ visible, uri, onClose, colors, t }) => {
+    if (!uri) return null;
     return (
         <ImageViewing 
             images={[{ uri }]} 
@@ -50,12 +63,11 @@ const ImageViewerModal = React.memo(({ visible, uri, onClose, onSave, colors, t 
             visible={visible} 
             onRequestClose={onClose} 
             animationType="fade" 
-            HeaderComponent={Header} 
         />
     );
 });
 
-const MessageActionSheet = React.memo(({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect, onSaveImage, onPin, onReply, colors, t }) => {
+const MessageActionSheet = React.memo(({ visible, onClose, message, isMyMessage, onCopy, onEdit, onDelete, onReact, onSelect, onPin, onReply, colors, t }) => {
     const styles = useMemo(() => getStyles(colors), [colors]);
     const insets = useSafeAreaInsets();
     if (!message) return null;
@@ -75,7 +87,6 @@ const MessageActionSheet = React.memo(({ visible, onClose, message, isMyMessage,
                         <TouchableOpacity style={styles.actionButton} onPress={() => { onReply(); onClose(); }}><Ionicons name="arrow-undo-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.reply', 'Відповісти')}</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.actionButton} onPress={() => { onPin(); onClose(); }}><Ionicons name="pin-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.pin', 'Закріпити')}</Text></TouchableOpacity>
                         {isMyMessage && (<TouchableOpacity style={styles.actionButton} onPress={() => { onSelect(); onClose(); }}><Ionicons name="checkmark-circle-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.select', 'Вибрати')}</Text></TouchableOpacity>)}
-                        {message.image_url && (<TouchableOpacity style={styles.actionButton} onPress={() => { onSaveImage(message.image_url); onClose(); }}><Ionicons name="download-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.saveImage', 'Зберегти')}</Text></TouchableOpacity>)}
                         {message.content && (<TouchableOpacity style={styles.actionButton} onPress={() => { onCopy(); onClose(); }}><Ionicons name="copy-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.copy', 'Копіювати')}</Text></TouchableOpacity>)}
                         {isMyMessage && message.content && (<TouchableOpacity style={styles.actionButton} onPress={() => { onEdit(); onClose(); }}><Ionicons name="create-outline" size={22} color={colors.text} /><Text style={styles.actionButtonText}>{t('chat.edit', 'Редагувати')}</Text></TouchableOpacity>)}
                         {isMyMessage && (<TouchableOpacity style={[styles.actionButton, { borderBottomWidth: 0 }]} onPress={() => { onDelete(); onClose(); }}><Ionicons name="trash-outline" size={22} color={'#D83C3C'} /><Text style={[styles.actionButtonText, { color: '#D83C3C' }]}>{t('common.delete', 'Видалити')}</Text></TouchableOpacity>)}
@@ -87,7 +98,6 @@ const MessageActionSheet = React.memo(({ visible, onClose, message, isMyMessage,
     );
 });
 
-// --- ГОЛОВНИЙ ЕКРАН ---
 export default function IndividualChatScreen() {
     const { colors } = useTheme();
     const styles = useMemo(() => getStyles(colors), [colors]);
@@ -97,7 +107,6 @@ export default function IndividualChatScreen() {
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
     
-    // --- STATE ---
     const [recipientInfo, setRecipientInfo] = useState({ 
         name: route.params?.recipientName || route.params?.driverName || t('common.user', 'Користувач'), 
         avatar: route.params?.recipientAvatar || null 
@@ -124,9 +133,7 @@ export default function IndividualChatScreen() {
     const [isActionSheetVisible, setActionSheetVisible] = useState(false);
     const [isSendingLocation, setIsSendingLocation] = useState(false);
 
-    // --- STATUS STATE ---
     const [lastSeen, setLastSeen] = useState(route.params?.recipientLastSeen || null);
-    const [isPresenceOnline, setIsPresenceOnline] = useState(false);
 
     const flatListRef = useRef(null);
     const channelRef = useRef(null);
@@ -134,17 +141,14 @@ export default function IndividualChatScreen() {
     const sentSoundRef = useRef(new Audio.Sound());
     const receivedSoundRef = useRef(new Audio.Sound());
 
-    const { recipientId, recipientName, recipientLastSeen } = route.params || {};
+    const { recipientId } = route.params || {};
     
-    // --- ВАЖЛИВО: Функція прокрутки до низу (останнього повідомлення) ---
     const scrollToBottom = (animated = true) => {
         if (flatListRef.current) {
-            // В inverted списку offset 0 це самий низ
             flatListRef.current.scrollToOffset({ offset: 0, animated: animated });
         }
     };
 
-    // --- HEADER SETUP ---
     useLayoutEffect(() => {
         if (selectionMode) {
             navigation.setOptions({
@@ -195,9 +199,8 @@ export default function IndividualChatScreen() {
                 )
             });
         }
-    }, [navigation, recipientId, recipientName, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, handleDeleteSelected, isRecipientTyping]);
+    }, [navigation, recipientId, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, handleDeleteSelected, isRecipientTyping]);
 
-    // --- EFFECT: Load Sounds & Locale ---
     useEffect(() => {
         if (i18n?.language) moment.locale(i18n.language);
         const loadSounds = async () => { try { await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3')); await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3')); } catch (e) {} };
@@ -207,35 +210,6 @@ export default function IndividualChatScreen() {
 
     const playSound = useCallback(async (ref) => { try { await ref.current.replayAsync(); } catch (e) {} }, []);
 
-    // --- EFFECT: Profile & DB Status ---
-    useEffect(() => {
-        const rId = route.params?.recipientId || route.params?.driverId;
-        if (!rId) return;
-
-        const task = InteractionManager.runAfterInteractions(() => {
-            const fetchProfile = async () => {
-                const { data } = await supabase.from('profiles').select('full_name, avatar_url, last_seen').eq('id', rId).single();
-                if (data) {
-                    setRecipientInfo({ name: data.full_name, avatar: data.avatar_url });
-                    setLastSeen(data.last_seen);
-                }
-            };
-            fetchProfile();
-
-            const statusChannel = supabase.channel(`status-${rId}`)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${rId}` }, (payload) => {
-                    setLastSeen(payload.new.last_seen);
-                    setRecipientInfo(prev => ({ ...prev, name: payload.new.full_name, avatar: payload.new.avatar_url }));
-                })
-                .subscribe();
-            
-             return () => { supabase.removeChannel(statusChannel); };
-        });
-
-        return () => task.cancel();
-    }, [route.params?.recipientId, route.params?.driverId]);
-
-    // --- EFFECT: Init Chat ---
     useEffect(() => {
         let isMounted = true;
         const initChat = async () => {
@@ -256,12 +230,14 @@ export default function IndividualChatScreen() {
             } catch (e) { 
                 console.log("Chat init error:", e);
             } finally { 
-                if (isMounted) setInitialLoading(false);
+                if (isMounted) {
+                    setInitialLoading(false);
+                    setIsScreenReady(true);
+                }
             }
         };
 
         const task = InteractionManager.runAfterInteractions(() => {
-            setIsScreenReady(true);
             if (session?.user) initChat();
         });
 
@@ -273,7 +249,6 @@ export default function IndividualChatScreen() {
         };
     }, [route.params, session]);
 
-    // --- LOGIC: Mark Read ---
     const markMessagesAsRead = useCallback(async () => {
         if (!currentRoomId || !session?.user?.id) return;
         try {
@@ -289,13 +264,11 @@ export default function IndividualChatScreen() {
             if (nextAppState === 'active') { 
                 markMessagesAsRead(); 
                 fetchMessages(currentRoomId, 0);
-                if (channelRef.current) channelRef.current.track({ user_id: session.user.id, online_at: new Date().toISOString() });
             }
         });
         return () => subscription.remove();
-    }, [currentRoomId, markMessagesAsRead, session.user.id]);
+    }, [currentRoomId, markMessagesAsRead]);
 
-    // --- SUBSCRIPTIONS ---
     const subscribeToChat = (roomId) => {
         if (channelRef.current) supabase.removeChannel(channelRef.current);
         const recipientId = route.params?.recipientId || route.params?.driverId;
@@ -304,47 +277,34 @@ export default function IndividualChatScreen() {
         channelRef.current = ch;
         
         ch
-        // 1. New Message (ОТРИМАНЕ)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (pl) => {
-            if (pl.new.sender_id === session.user.id) return; // Свої обробляємо локально
-            
-            setMessages(p => [pl.new, ...p]); 
-            playSound(receivedSoundRef); 
-            markMessagesAsRead();
-            
-            // --- ВИПРАВЛЕННЯ: ФОКУС НА НОВОМУ ПОВІДОМЛЕННІ ---
-            // Чекаємо 200мс, щоб список оновився, і скролимо вниз
-            setTimeout(() => {
-                scrollToBottom(true);
-            }, 200);
+            if (pl.new.sender_id === session.user.id) {
+                setMessages(prev => prev.map(m => (m.client_id === pl.new.client_id ? pl.new : m)));
+            } else {
+                setMessages(p => {
+                    if (p.some(m => m.id === pl.new.id)) return p;
+                    return [pl.new, ...p];
+                });
+                playSound(receivedSoundRef); 
+                markMessagesAsRead();
+            }
+            setTimeout(() => scrollToBottom(true), 200);
         })
-        // 2. Update Message
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (pl) => {
              setMessages(p => p.map(m => m.id === pl.new.id ? { ...m, ...pl.new } : m));
         })
-        // 3. Delete Message
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, (pl) => {
             setMessages(prev => prev.filter(m => m.id !== pl.old.id));
         })
-        // 4. Room Update (Pins)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${roomId}` }, (pl) => {
              if (pl.new.pinned_messages) fetchPinnedMessages(roomId);
         })
-        // 5. Typing
         .on('broadcast', { event: 'typing' }, ({ payload }) => {
             if (payload.user_id !== session.user.id) {
                 setIsRecipientTyping(true);
                 if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
                 typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 2000);
             }
-        })
-        // 6. Presence
-        .on('presence', { event: 'sync' }, () => {
-            const state = ch.presenceState();
-            const isOnline = Object.values(state).some(presences => 
-                presences.some(p => p.user_id === recipientId)
-            );
-            setIsPresenceOnline(isOnline);
         })
         .subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
@@ -380,35 +340,46 @@ export default function IndividualChatScreen() {
         }
     };
 
-  const handleSendText = useCallback(async (text) => {
+    const handleSendText = useCallback(async (text) => {
         if (editingMessage) {
             const { error } = await supabase.from('messages').update({ content: text }).eq('id', editingMessage.id);
             if (!error) { setMessages(p => p.map(m => m.id === editingMessage.id ? { ...m, content: text } : m)); setEditingMessage(null); }
             return;
         }
         const cid = uuidv4();
-        const optimisticMsg = { id: Date.now(), client_id: cid, created_at: new Date().toISOString(), sender_id: session.user.id, room_id: currentRoomId, content: text, status: 'sending', reactions: [], reply_to_message_id: replyToMessage?.id || null, is_read: false };
+        
+        const optimisticMsg = { 
+            id: cid,
+            client_id: cid, 
+            created_at: new Date().toISOString(), 
+            sender_id: session.user.id, 
+            room_id: currentRoomId, 
+            content: text, 
+            status: 'sending', 
+            reactions: [], 
+            reply_to_message_id: replyToMessage?.id || null, 
+            is_read: false 
+        };
+        
         setMessages(p => [optimisticMsg, ...p]); 
         playSound(sentSoundRef);
-        
-        setTimeout(() => scrollToBottom(true), 50);
+        setReplyToMessage(null);
+        scrollToBottom(true);
 
         const payload = { content: text, room_id: currentRoomId, sender_id: session.user.id, client_id: cid };
         if (replyToMessage) payload.reply_to_message_id = replyToMessage.id;
 
         const { data, error } = await supabase.from('messages').insert([payload]).select().single();
         if (!error) {
-            setMessages(p => p.map(m => m.client_id === cid ? data : m)); setReplyToMessage(null);
+            setMessages(p => p.map(m => m.client_id === cid ? data : m));
             
             const recipientId = route.params?.recipientId || route.params?.driverId;
-            
             if (recipientId) {
                 supabase.functions.invoke('send-push-notification', { 
                     body: { 
                         recipient_id: recipientId, 
                         message_content: text, 
                         sender_name: profile?.full_name,
-                        
                         room_id: currentRoomId,      
                         sender_id: session.user.id   
                     } 
@@ -419,20 +390,28 @@ export default function IndividualChatScreen() {
             setMessages(p => p.filter(m => m.client_id !== cid)); Alert.alert(t('common.error'), t('chat.sendError'));
         }
     }, [currentRoomId, session, replyToMessage, editingMessage, route.params, profile, t, playSound]);
-const uploadFile = async (asset, type) => {
+
+    const uploadFile = async (asset, type) => {
         setAttachmentModalVisible(false);
         const cid = uuidv4();
-        const msg = { id: Date.now(), client_id: cid, room_id: currentRoomId, sender_id: session.user.id, created_at: new Date().toISOString(), status: 'uploading', reactions: [] };
         
-        if (type === 'image') msg.image_url = asset.uri; else msg.location = asset;
+        const msg = { 
+            id: cid,
+            client_id: cid, 
+            room_id: currentRoomId, 
+            sender_id: session.user.id, 
+            created_at: new Date().toISOString(), 
+            status: 'uploading', 
+            reactions: [],
+            is_read: false
+        };
+        
+        if (type === 'image') msg.image_url = asset.uri; 
+        else msg.location = asset;
         
         setMessages(p => [msg, ...p]); 
         playSound(sentSoundRef);
-        
-        // Фокус
-        setTimeout(() => scrollToBottom(true), 50);
-        
-        // ❌ ТУТ БУВ ПЕРШИЙ ВИКЛИК (Я ЙОГО ВИДАЛИВ) ❌
+        scrollToBottom(true);
 
         try {
             let dbPayload = { room_id: currentRoomId, sender_id: session.user.id, client_id: cid };
@@ -458,18 +437,14 @@ const uploadFile = async (asset, type) => {
             
             setMessages(p => p.map(m => m.client_id === cid ? data : m));
             
-            // ✅ ЗАЛИШАЄМО ТІЛЬКИ ЦЕЙ ВИКЛИК (ПІСЛЯ УСПІШНОГО ЗАВАНТАЖЕННЯ)
-            // І додаємо сюди room_id та sender_id для навігації
             const recipientId = route.params?.recipientId || route.params?.driverId;
             if (recipientId) {
                 const notificationText = type === 'image' ? '📷 Фото' : '📍 Геолокація';
-                
                 supabase.functions.invoke('send-push-notification', { 
                     body: { 
                         recipient_id: recipientId, 
                         message_content: notificationText, 
                         sender_name: profile?.full_name,
-                        // 🔥 Додаємо параметри для переходу в чат
                         room_id: currentRoomId,
                         sender_id: session.user.id
                     } 
@@ -483,17 +458,28 @@ const uploadFile = async (asset, type) => {
     };
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if(status!=='granted') return Alert.alert(t('chat.permissionDeniedTitle'));
-        const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: false });
-        if(!r.canceled) uploadFile(r.assets[0], 'image');
+        try {
+            const r = await ImagePicker.launchImageLibraryAsync({ 
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.7, 
+                allowsEditing: false 
+            });
+            
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                uploadFile(r.assets[0], 'image');
+            }
+        } catch (e) {
+            console.log("Error picking image:", e);
+        }
     };
+
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if(status!=='granted') return Alert.alert(t('chat.permissionDeniedTitle'));
         const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-        if(!r.canceled) uploadFile(r.assets[0], 'image');
+        if(!r.canceled && r.assets && r.assets.length > 0) uploadFile(r.assets[0], 'image');
     };
+
     const sendLoc = async () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -532,6 +518,7 @@ const uploadFile = async (asset, type) => {
             }
         } catch (e) {}
     };
+    
     const handleUnpinMessage = async (msgId) => {
         try {
             const newPins = pinnedMessages.filter(m => m.id !== msgId).map(m => m.id);
@@ -570,18 +557,7 @@ const uploadFile = async (asset, type) => {
         });
     }, []);
 
-    const handleSaveImage = useCallback(async (uri) => {
-        try {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status !== 'granted') return Alert.alert(t('common.error'), 'Permission denied');
-            const fileUri = FileSystem.documentDirectory + uuidv4() + '.jpg';
-            const { uri: localUri } = await FileSystem.downloadAsync(uri, fileUri);
-            await MediaLibrary.saveToLibraryAsync(localUri);
-            Alert.alert(t('common.success'), t('chat.imageSaved'));
-        } catch (e) { Alert.alert(t('common.error'), e.message); }
-    }, [t]);
-
-  const handleScrollToMessage = useCallback((message) => {
+    const handleScrollToMessage = useCallback((message) => {
         if (!message || !message.id) return;
         const index = messages.findIndex(m => m.id === message.id);
         if (index !== -1 && flatListRef.current) {
@@ -601,25 +577,33 @@ const uploadFile = async (asset, type) => {
     
     const handleTyping = useCallback(() => channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: session.user.id } }), [session]);
 
-    const renderItem = useCallback(({ item }) => {
+    const renderItem = useCallback(({ item, index }) => {
+        const nextItem = messages[index + 1];
+
+        const isNewDay = !nextItem || !moment(item.created_at).isSame(nextItem.created_at, 'day');
+
         return (
-            <MessageBubble 
-                message={item} 
-                isMyMessage={item.sender_id === session?.user?.id}
-                currentUserId={session?.user?.id}
-                onLongPress={(m) => { if(selectionMode) { if(m.sender_id === session.user.id) handleToggleSelection(m.id); } else { setSelectedMessageForAction(m); setActionSheetVisible(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
-                onDoubleTap={(emoji, m) => handleReaction(emoji, m)} 
-                onImagePress={setViewingImageUri} 
-                onSelect={handleToggleSelection} 
-                selectionMode={selectionMode} 
-                isSelected={selectedMessages.has(item.id)}
-                highlighted={item.id === highlightedMessageId}
-                colors={colors}
-                replyMessage={item.reply_to_message_id ? messages.find(m => m.id === item.reply_to_message_id) : null}
-                onReplyPress={(m) => handleScrollToMessage(m)}
-            />
+            <View>
+=                {isNewDay && <DateHeader date={item.created_at} t={t} colors={colors} />}
+                
+                <MessageBubble 
+                    message={item} 
+                    isMyMessage={item.sender_id === session?.user?.id}
+                    currentUserId={session?.user?.id}
+                    onLongPress={(m) => { if(selectionMode) { if(m.sender_id === session.user.id) handleToggleSelection(m.id); } else { setSelectedMessageForAction(m); setActionSheetVisible(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
+                    onDoubleTap={(emoji, m) => handleReaction(emoji, m)} 
+                    onImagePress={setViewingImageUri} 
+                    onSelect={handleToggleSelection} 
+                    selectionMode={selectionMode} 
+                    isSelected={selectedMessages.has(item.id)}
+                    highlighted={item.id === highlightedMessageId}
+                    colors={colors}
+                    replyMessage={item.reply_to_message_id ? messages.find(m => m.id === item.reply_to_message_id) : null}
+                    onReplyPress={(m) => handleScrollToMessage(m)}
+                />
+            </View>
         );
-    }, [selectionMode, colors, session, highlightedMessageId, handleReaction, handleToggleSelection, messages, selectedMessages]);
+    }, [selectionMode, colors, session, highlightedMessageId, handleReaction, handleToggleSelection, messages, selectedMessages, t]);
 
     return (
         <View style={styles.container}>
@@ -655,6 +639,7 @@ const uploadFile = async (asset, type) => {
                         maxToRenderPerBatch={10}
                         windowSize={10} 
                         removeClippedSubviews={true}
+                        extraData={messages} // Важливо для оновлення дат
                         maintainVisibleContentPosition={null} 
                         onScrollToIndexFailed={onScrollToIndexFailed}
                     />
@@ -674,7 +659,6 @@ const uploadFile = async (asset, type) => {
                 </KeyboardAvoidingView>
             </SafeAreaView>
 
-            {/* Modal Components */}
             <Modal transparent={true} visible={isAttachmentModalVisible} animationType="slide" onRequestClose={() => setAttachmentModalVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setAttachmentModalVisible(false)}>
                     <View style={styles.attachmentContainer}>
@@ -689,7 +673,7 @@ const uploadFile = async (asset, type) => {
                 </TouchableOpacity>
             </Modal>
 
-            <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} onSave={handleSaveImage} colors={colors} t={t} />
+            <ImageViewerModal visible={!!viewingImageUri} uri={viewingImageUri} onClose={() => setViewingImageUri(null)} colors={colors} t={t} />
 
             <MessageActionSheet 
                 visible={isActionSheetVisible} 
@@ -701,7 +685,6 @@ const uploadFile = async (asset, type) => {
                 onDelete={handleDeleteMessage}
                 onReact={(emoji) => handleReaction(emoji, selectedMessageForAction)}
                 onSelect={() => { setSelectionMode(true); setSelectedMessages(new Set([selectedMessageForAction.id])); }}
-                onSaveImage={handleSaveImage}
                 onPin={handlePinMessage}
                 onReply={() => setReplyToMessage(selectedMessageForAction)}
                 colors={colors}

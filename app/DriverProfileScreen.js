@@ -11,7 +11,6 @@ import Logo from '../assets/icon.svg';
 import moment from 'moment';
 import { MotiView } from 'moti';
 
-// Компоненти StatCard та InfoRow (без змін)
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
     return (
@@ -57,7 +56,6 @@ export default function DriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
-  // ✅ ВИПРАВЛЕНО: Функція тепер набагато простіша
   const fetchProfileData = useCallback(async () => {
     if (!session?.user) { 
         setLoading(false); 
@@ -66,10 +64,9 @@ export default function DriverProfileScreen() {
     try {
       setLoading(true);
       
-      // Викликаємо одну-єдину функцію, яка робить все на сервері
       const { data, error } = await supabase
         .rpc('get_full_driver_profile', { p_driver_id: session.user.id })
-        .single(); // .single() тут безпечно, бо функція завжди повертає один об'єкт
+        .single();
 
       if (error) throw error;
       
@@ -82,7 +79,6 @@ export default function DriverProfileScreen() {
     }
   }, [session, t]);
 
-  // useFocusEffect залишається для оновлення даних при поверненні на екран
   useFocusEffect(useCallback(() => { 
     fetchProfileData(); 
   }, [fetchProfileData]));
@@ -145,7 +141,6 @@ export default function DriverProfileScreen() {
                   label={t('profile.experience', 'Досвід водіння')} 
                   colors={colors} 
               />
-              {/* ✅ ВИПРАВЛЕНО: Беремо пораховану кількість прямо з об'єкта профілю */}
               <StatCard icon="checkmark-done-circle-outline" value={profile.completed_trips_count} label={t('profile.completedTrips')} colors={colors} />
               <StatCard icon="time-outline" value={calculateTimeInApp(profile.member_since)} label={t('profile.inApp')} colors={colors} />
           </View>
@@ -170,7 +165,6 @@ export default function DriverProfileScreen() {
     </SafeAreaView>
   );
 }
-// Стилі (без змін)
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },

@@ -32,10 +32,8 @@ export default function ForgotPasswordScreen({ navigation }) {
     }
 
     setLoading(true);
-    // ✨ 1. Змінюємо метод: тепер надсилаємо OTP-код
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       options: {
-        // redirectTo більше не потрібен
       },
     });
     setLoading(false);
@@ -43,7 +41,6 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (error) {
       setErrorText(error.message);
     } else {
-      // ✨ 2. При успішному надсиланні перенаправляємо на екран введення коду
       navigation.navigate('ResetPasswordScreen', { email: email.trim().toLowerCase() });
     }
   };

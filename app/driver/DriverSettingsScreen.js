@@ -4,7 +4,6 @@ import {
   TextInput, Alert, Modal, Pressable, Platform, ActivityIndicator,
   Switch
 } from 'react-native';
-// Image вже імпортовано, ми використаємо його для очищення кешу
 import { Image } from 'expo-image'; 
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +16,6 @@ import { useAuth } from '../../provider/AuthContext';
 import { supabase } from '../../config/supabase';
 import Logo from '../../assets/icon.svg';
 
-// --- Компоненти (без змін) ---
 const EditableField = ({ labelKey, icon, value, isEditing, onToggleEdit, onChangeText, keyboardType = 'default' }) => {
     const { colors } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors);
     return (
@@ -56,7 +54,6 @@ const ThemeSwitcher = () => {
     );
 };
 
-// --- Модальні вікна (без змін) ---
 const AvatarSelectionModal = ({ visible, onClose, onPickFromGallery, onSelectPreset, fullName }) => {
     const { colors } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors);
     const presetAvatars = [
@@ -81,7 +78,6 @@ const ChangePasswordModal = ({ visible, onClose, onSave, isSaving }) => {
     );
 };
 
-// --- Основний компонент ---
 const DriverSettingsScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { t, i18n } = useTranslation();
@@ -222,7 +218,6 @@ const DriverSettingsScreen = ({ navigation }) => {
     );
   }, [signOut, t]);
 
-  // --- 👇 НОВА ФУНКЦІЯ ВИДАЛЕННЯ АКАУНТУ (Вимога Apple 5.1.1) 👇 ---
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
         t('settings.deleteAccountTitle', 'Видалити акаунт?'),
@@ -234,20 +229,17 @@ const DriverSettingsScreen = ({ navigation }) => {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        // 1. Викликаємо SQL-функцію, яку ви створили в Supabase
                         const { error } = await supabase.rpc('delete_my_account');
                         
                         if (error) {
                           throw error;
                         }
                         
-                        // 2. Повідомляємо про успіх
                         Alert.alert(
                           t('settings.deleteSuccessTitle', 'Акаунт видалено'),
                           t('settings.deleteSuccessBody', 'Ваш акаунт було успішно видалено.')
                         );
                         
-                        // 3. Виходимо з системи
                         await signOut();
                         
                     } catch (error) {
@@ -260,9 +252,7 @@ const DriverSettingsScreen = ({ navigation }) => {
             },
         ]
     );
-  }, [signOut, t]); // Додаємо signOut і t в залежності
-  // --- 👆 КІНЕЦЬ НОВОЇ ФУНКЦІЇ 👆 ---
-
+  }, [signOut, t]);
   const toggleEdit = (fieldName) => setEditingField(prev => (prev === fieldName ? null : fieldName));
   const getDisplayAvatar = useCallback(() => {
     if (localAvatarUri) return { uri: localAvatarUri };
@@ -273,7 +263,6 @@ const DriverSettingsScreen = ({ navigation }) => {
   return (
     
     <SafeAreaView style={styles.container}>
-      {/* ... (код модальних вікон без змін) ... */}
       <Modal
         visible={isLanguageModalVisible}
         onRequestClose={() => setLanguageModalVisible(false)}
@@ -339,7 +328,6 @@ const DriverSettingsScreen = ({ navigation }) => {
               <EditableField labelKey="registration.fullNameLabel" icon="person-outline" value={fullName} onChangeText={setFullName} isEditing={editingField === 'fullName'} onToggleEdit={() => toggleEdit('fullName')} />
               <EditableField labelKey="registration.phoneLabel" icon="call-outline" value={phone} onChangeText={setPhone} isEditing={editingField === 'phone'} onToggleEdit={() => toggleEdit('phone')} keyboardType="phone-pad" />
               
-              {/* Секція Водія (показуємо тільки в режимі водія) */}
               {authProfile.role === 'driver' && (
                 <>
                   <Text style={styles.sectionTitle}>{t('settings.carInfo')}</Text>
@@ -380,7 +368,6 @@ const DriverSettingsScreen = ({ navigation }) => {
 
 export default memo(DriverSettingsScreen);
 
-// --- Стилі ---
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -405,24 +392,22 @@ const getStyles = (colors) => StyleSheet.create({
     logoutButton: { flexDirection: 'row', backgroundColor: 'transparent', borderRadius: 12, paddingVertical: 16, width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
     logoutButtonText: { color: colors.primary, fontSize: 18, fontWeight: 'bold' },
     
-    // --- 👇 НОВІ СТИЛІ ДЛЯ КНОПКИ ВИДАЛЕННЯ 👇 ---
     deleteButton: {
         flexDirection: 'row',
-        backgroundColor: 'transparent', // Прозорий фон
+        backgroundColor: 'transparent',
         borderRadius: 12,
-        paddingVertical: 14, // Трохи менше, ніж у кнопки "Вийти"
+        paddingVertical: 14,
         width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginTop: 8, // Невеликий відступ від кнопки "Вийти"
+        marginTop: 8,
     },
     deleteButtonText: {
-        color: colors.danger, // Червоний колір з вашої теми
-        fontSize: 16, // Трохи менший шрифт
+        color: colors.danger,
+        fontSize: 16,
         fontWeight: 'bold',
     },
-    // --- 👆 КІНЕЦЬ НОВИХ СТИЛІВ 👆 ---
     
     modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     avatarModalContent: { backgroundColor: colors.card, padding: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, alignItems: 'center' },

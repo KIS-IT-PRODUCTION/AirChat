@@ -11,6 +11,7 @@ import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
 import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додано імпорт AsyncStorage
 
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
@@ -120,6 +121,7 @@ const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, sele
           )}
 
           <View style={[styles.driverInfo, !hasCarInfo && styles.driverInfoCentered]}>
+            {/* Аватарки вже мають cachePolicy="disk", тому вони автоматично кешуються! */}
             <Image 
                 source={item.driver_avatar_url ? { uri: item.driver_avatar_url } : require('../assets/default-avatar.png')} 
                 style={[styles.driverAvatar, !hasCarInfo && styles.driverAvatarCentered]}
@@ -164,22 +166,48 @@ export default function TransfersScreen() {
 
   const isInitialLoad = useRef(true);
 
+  // ✨ Оновлена функція завантаження з підтримкою кешу
   const fetchTransfers = useCallback(async (showLoading = false) => {
     if (!session?.user) { 
       setLoading(false); 
       return; 
     }
+    
+    const CACHE_KEY = `PASSENGER_TRANSFERS_CACHE_${session.user.id}`;
+
+    // Спершу пробуємо дістати дані з кешу для миттєвого відображення
     if (showLoading) {
+      try {
+        const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+            setTransfers(JSON.parse(cachedData));
+            setLoading(false); // Якщо є кеш, відключаємо лоадер на весь екран
+        } else {
+            setLoading(true);
+        }
+      } catch (e) {
+        console.error("Failed to load transfers cache", e);
         setLoading(true);
+      }
     }
+
     setError(null);
     try {
       const { data, error: fetchError } = await supabase.rpc('get_my_transfers', { p_id: session.user.id });
       if (fetchError) throw fetchError;
+      
       setTransfers(data || []);
+      // Зберігаємо свіжі дані в кеш
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data || []));
     } catch (err) {
         console.error("Error fetching transfers:", err.message);
-        setError(err.message);
+        // Показуємо помилку ТІЛЬКИ якщо немає збережених даних
+        setTransfers(prev => {
+            if (prev.length === 0) {
+                setError(err.message);
+            }
+            return prev;
+        });
     } finally { 
       setLoading(false);
     }
@@ -277,18 +305,26 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
     }
   }, [viewMode, handleToggleSelection]);
 
+  // ✨ Оновлена функція видалення, щоб синхронізувати кеш
   const handleDeleteSelected = useCallback(() => {
     Alert.alert( t('transfersScreen.deleteConfirmTitle'), t('transfersScreen.deleteConfirmBody', { count: selectedItems.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => {
             const { error } = await supabase.from('transfers').delete().in('id', Array.from(selectedItems));
             if (error) { Alert.alert(t('common.error'), error.message); } else {
-              setTransfers(prev => prev.filter(t => !selectedItems.has(t.id)));
+              setTransfers(prev => {
+                  const updatedTransfers = prev.filter(t => !selectedItems.has(t.id));
+                  // Оновлюємо кеш після видалення, щоб вони не з'явилися знову в оффлайні
+                  if (session?.user?.id) {
+                      AsyncStorage.setItem(`PASSENGER_TRANSFERS_CACHE_${session.user.id}`, JSON.stringify(updatedTransfers)).catch(console.error);
+                  }
+                  return updatedTransfers;
+              });
               setSelectionMode(false);
               setSelectedItems(new Set());
             }
         }}
       ]
     );
-  }, [selectedItems, t]);
+  }, [selectedItems, session, t]);
   
   const Header = () => (
     <View style={styles.header}>

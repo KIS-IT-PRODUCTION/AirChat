@@ -10,6 +10,7 @@ import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
 import { MotiView } from 'moti';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додано імпорт
 
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
@@ -56,14 +57,31 @@ export default function DriverProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
+  // ✨ Оновлена функція з кешуванням
   const fetchProfileData = useCallback(async () => {
     if (!session?.user) { 
         setLoading(false); 
         return; 
     }
+
+    const CACHE_KEY = `DRIVER_PROFILE_CACHE_${session.user.id}`;
+
+    // Спершу перевіряємо кеш
     try {
+      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        setProfile(JSON.parse(cachedData));
+        setLoading(false); // Вимикаємо лоадер миттєво
+      } else {
+        setLoading(true);
+      }
+    } catch (e) {
+      console.error("Помилка читання кешу профілю водія", e);
       setLoading(true);
-      
+    }
+
+    // Запит за свіжими даними
+    try {
       const { data, error } = await supabase
         .rpc('get_full_driver_profile', { p_driver_id: session.user.id })
         .single();
@@ -71,9 +89,14 @@ export default function DriverProfileScreen() {
       if (error) throw error;
       
       setProfile(data);
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)); // Записуємо в кеш
 
     } catch (error) {
-      Alert.alert(t('common.error'), error.message);
+      console.log("Помилка оновлення профілю водія:", error.message);
+      setProfile(prev => {
+          if (!prev) Alert.alert(t('common.error'), error.message);
+          return prev;
+      });
     } finally {
       setLoading(false);
     }
@@ -111,11 +134,13 @@ export default function DriverProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 100 }}>
           <View style={styles.profileCard}>
+            {/* ✨ Додано cachePolicy="disk" */}
             <Image 
               source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
               style={styles.avatar}
               contentFit="cover"
               transition={300}
+              cachePolicy="disk"
             />
             <Text style={styles.fullName}>{profile.full_name || t('profile.noName', 'Безіменний водій')}</Text>
             <Text style={styles.phone}>{profile.phone || t('profile.noPhone', 'Не вказано')}</Text>
@@ -156,8 +181,8 @@ export default function DriverProfileScreen() {
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 500 }}>
           <View style={styles.footer}>
             <Text style={styles.footerText}>{t('footer.question', 'Не знаєте як працює додаток?')}</Text>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>{t('footer.link', 'Інструкція та знайомство з функціями')}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Instructions')}>
+              <Text style={styles.footerLink}>{t('footer.linkDriver', 'Інструкція та знайомство з функціями')}</Text>
             </TouchableOpacity>
           </View>
         </MotiView>

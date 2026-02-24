@@ -10,6 +10,7 @@ import { supabase } from '../config/supabase';
 import Logo from '../assets/icon.svg';
 import moment from 'moment';
 import { MotiView } from 'moti';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додали імпорт
 
 const StatCard = ({ icon, value, label, colors }) => {
     const styles = getStyles(colors);
@@ -41,18 +42,52 @@ export default function ProfileScreen() {
     return `< 1 ${t('profile.month_one')}`;
   };
 
+  const handleInstructions = () => {
+    navigation.navigate('Instructions');
+  };
+
+  // ✨ Оновлена функція завантаження
   const fetchProfileData = useCallback(async () => {
     if (!session?.user) { setLoading(false); return; }
+
+    const CACHE_KEY = `PASSENGER_PROFILE_CACHE_${session.user.id}`;
+
+    // 1. Спочатку пробуємо дістати дані з кешу
     try {
+      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        setProfile(JSON.parse(cachedData));
+        setLoading(false); // Відключаємо лоадер, щоб показати кеш миттєво
+      } else {
+        setLoading(true); // Показуємо лоадер тільки якщо кешу зовсім немає
+      }
+    } catch (e) {
+      console.error("Помилка читання кешу профілю", e);
       setLoading(true);
+    }
+
+    // 2. Робимо запит до Supabase для отримання свіжих даних
+    try {
       const { data, error } = await supabase
         .rpc('get_full_passenger_profile', { p_user_id: session.user.id })
         .single();
         
       if (error) throw error;
+      
+      // Оновлюємо стейт і перезаписуємо кеш новими даними
       setProfile(data);
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      
     } catch (error) {
-      Alert.alert(t('common.error'), error.message);
+      console.log("Помилка оновлення профілю:", error.message);
+      // Якщо в нас немає даних навіть у кеші, покажемо Alert. 
+      // Якщо кеш є, ми просто тихо ігноруємо відсутність інтернету.
+      setProfile(prev => {
+          if (!prev) {
+              Alert.alert(t('common.error'), error.message);
+          }
+          return prev;
+      });
     } finally {
       setLoading(false);
     }
@@ -107,11 +142,13 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 100 }}>
           <View style={styles.profileCard}>
+            {/* ✨ Додано cachePolicy="disk" для збереження аватарки без інтернету */}
             <Image 
               source={profile.avatar_url ? { uri: profile.avatar_url } : require('../assets/default-avatar.png')} 
               style={styles.avatar} 
               contentFit="cover"
               transition={300}
+              cachePolicy="disk" 
             />
             <Text style={styles.fullName}>{profile.full_name || t('profile.noName')}</Text>
             <Text style={styles.phone}>{profile.phone || t('profile.noPhone')}</Text>
@@ -136,7 +173,7 @@ export default function ProfileScreen() {
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 400 }}>
           <View style={styles.footer}>
             <Text style={styles.footerText}>{t('footer.question')}</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleInstructions}>
               <Text style={styles.footerLink}>{t('footer.link')}</Text>
             </TouchableOpacity>
           </View>

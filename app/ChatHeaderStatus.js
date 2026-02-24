@@ -5,23 +5,32 @@ import { useTranslation } from 'react-i18next';
 import { useUserStatus } from '../UserStatusContext';
 import { supabase } from '../config/supabase';
 import { useTheme } from './ThemeContext';
+import TypingIndicator from './components/TypingIndicator.js'; 
 
 const formatLastSeen = (lastSeenDate, t) => {
     if (!lastSeenDate) return '';
     
     const now = moment();
-    const lastSeen = moment(lastSeenDate);
+    const lastSeen = moment.utc(lastSeenDate).local(); 
     const diffSeconds = now.diff(lastSeen, 'seconds');
 
-    if (diffSeconds < 60) {
+    if (Math.abs(diffSeconds) < 60) {
         return t('status.justNow', 'Був(ла) щойно');
     }
     
-    if (diffSeconds < 3600) {
+    if (diffSeconds > 0 && diffSeconds < 3600) {
         return lastSeen.fromNow(); 
     }
 
-    return t('status.lastSeenAt', 'Був(ла) ') + lastSeen.format('HH:mm');
+    if (lastSeen.isSame(now, 'day')) {
+        return t('status.lastSeenToday', 'Був(ла) сьогодні о ') + lastSeen.format('HH:mm');
+    }
+    
+    if (lastSeen.isSame(now.clone().subtract(1, 'days'), 'day')) {
+        return t('status.lastSeenYesterday', 'Був(ла) вчора о ') + lastSeen.format('HH:mm');
+    }
+
+    return t('status.lastSeenAt', 'Був(ла) ') + lastSeen.format('DD.MM.YYYY HH:mm');
 };
 
 const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
@@ -33,6 +42,10 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
     const [statusText, setStatusText] = useState('');
     
     const isPresenceOnline = onlineUsers.has(recipientId);
+
+    useEffect(() => {
+        if (initialLastSeen) setLastSeen(initialLastSeen);
+    }, [initialLastSeen]);
 
     useEffect(() => {
         if (!recipientId) return;
@@ -53,9 +66,7 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
 
     useEffect(() => {
         const updateText = () => {
-            if (isTyping) {
-                setStatusText(t('chat.typing', 'друкує...'));
-            } else if (isPresenceOnline) {
+            if (isPresenceOnline) {
                 setStatusText(t('chat.onlineStatus', 'Онлайн'));
             } else {
                 setStatusText(formatLastSeen(lastSeen, t)); 
@@ -66,23 +77,26 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
         const interval = setInterval(updateText, 30000);
 
         return () => clearInterval(interval);
-    }, [isPresenceOnline, lastSeen, isTyping, t]);
+    }, [isPresenceOnline, lastSeen, t]);
 
     const getStatusColor = () => {
-        if (isTyping) return colors.primary;
         if (isPresenceOnline) return '#4CAF50';
         return colors.secondaryText;
     };
 
     return (
-        <View style={{ flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ 
-                fontSize: 12, 
-                color: getStatusColor(),
-                fontWeight: (isPresenceOnline || isTyping) ? '600' : 'normal'
-            }}>
-                {statusText}
-            </Text>
+        <View style={{ flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 20 }}>
+            {isTyping ? (
+                <TypingIndicator />
+            ) : (
+                <Text style={{ 
+                    fontSize: 12, 
+                    color: getStatusColor(),
+                    fontWeight: isPresenceOnline ? '600' : 'normal'
+                }}>
+                    {statusText}
+                </Text>
+            )}
         </View>
     );
 };

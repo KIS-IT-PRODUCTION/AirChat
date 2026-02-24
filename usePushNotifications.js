@@ -57,6 +57,7 @@ export const usePushNotifications = (navigationRef) => {
 
   const notificationListener = useRef();
   const responseListener = useRef();
+  const hasHandledInitialPush = useRef(false);
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     let token;
@@ -133,13 +134,16 @@ export const usePushNotifications = (navigationRef) => {
         handleChatNavigation(navigationRef, notificationData);
       });
       
-      Notifications.getLastNotificationResponseAsync().then(response => {
-        if (response) {
-            console.log('[PUSH_COLD_START] Додаток відкрито натисканням на сповіщення.');
-            const notificationData = response.notification.request.content.data;
-            handleChatNavigation(navigationRef, notificationData);
-        }
-      });
+      if (!hasHandledInitialPush.current) {
+        Notifications.getLastNotificationResponseAsync().then(response => {
+          if (response) {
+              console.log('[PUSH_COLD_START] Додаток відкрито натисканням на сповіщення.');
+              const notificationData = response.notification.request.content.data;
+              handleChatNavigation(navigationRef, notificationData);
+          }
+        });
+        hasHandledInitialPush.current = true;
+      }
 
       return () => {
         if (notificationListener.current) {

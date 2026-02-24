@@ -14,6 +14,7 @@ import 'moment/locale/uk';
 import 'moment/locale/ro';
 import 'moment/locale/en-gb';
 import { MotiView } from 'moti';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додано імпорт кешу
 
 const TripCard = memo(({ item, t, onDelete, onPress }) => {
     const { colors, theme } = useTheme();
@@ -125,8 +126,27 @@ const MyTripsScreen = () => {
 
     useFocusEffect(useCallback(() => { clearNewTripsCount(); }, [clearNewTripsCount]));
 
-    const fetchTrips = useCallback(async () => {
+    // ✨ Оновлена функція з підтримкою кешу
+    const fetchTrips = useCallback(async (showLoading = false) => {
         if (!session?.user?.id) return;
+        
+        const CACHE_KEY = `MY_TRIPS_CACHE_${session.user.id}`;
+
+        if (showLoading) {
+            try {
+                const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+                if (cachedData) {
+                    setAllTrips(JSON.parse(cachedData));
+                    setIsLoading(false); // Якщо є кеш, одразу прибираємо лоадер
+                } else {
+                    setIsLoading(true);
+                }
+            } catch (e) {
+                console.error("Помилка читання кешу моїх поїздок", e);
+                setIsLoading(true);
+            }
+        }
+
         try {
             const { data, error } = await supabase
                 .from('transfers')
@@ -136,20 +156,29 @@ const MyTripsScreen = () => {
                 .order('transfer_datetime', { ascending: true });
 
             if (error) throw error;
-            setAllTrips(data || []);
-        } catch (e) { console.error("Error fetching trips:", e.message); } 
+            
+            const fetchedData = data || [];
+            setAllTrips(fetchedData);
+            
+            // Зберігаємо свіжі дані в пам'ять
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(fetchedData));
+            
+        } catch (e) { 
+            console.error("Error fetching trips:", e.message); 
+        } finally {
+            if (showLoading) setIsLoading(false);
+        }
     }, [session]);
 
     useEffect(() => {
         if (session?.user?.id) {
-            setIsLoading(true);
-            fetchTrips().finally(() => setIsLoading(false));
+            fetchTrips(true); // Передаємо true для первинного завантаження (з перевіркою кешу)
 
             const tripsSubscription = supabase
                 .channel('public:transfers:driver_trips')
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'transfers', filter: `accepted_driver_id=eq.${session.user.id}` },
-                    () => fetchTrips()
+                    () => fetchTrips(false) // При оновленні через вебсокети лоадер не показуємо
                 )
                 .subscribe();
 
@@ -164,7 +193,7 @@ const MyTripsScreen = () => {
 
     const onRefresh = useCallback(async () => { 
         setRefreshing(true); 
-        await fetchTrips();
+        await fetchTrips(false);
         setRefreshing(false);
     }, [fetchTrips]);
 
@@ -296,4 +325,4 @@ const getStyles = (colors, theme) => StyleSheet.create({
     actionButtonText: { marginLeft: 8, fontSize: 14, fontWeight: 'bold' },
     deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10, borderTopWidth: 1, borderColor: colors.border },
     deleteButtonText: { marginLeft: 8, color: '#D32F2F', fontWeight: 'bold' },
-}); 
+});

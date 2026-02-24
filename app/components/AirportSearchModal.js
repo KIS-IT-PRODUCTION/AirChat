@@ -25,31 +25,55 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (searchQuery.length < 2) {
+        // Якщо тексту мало, очищаємо результати одразу
+        if (searchQuery.trim().length < 2) {
             setResults([]);
+            setIsLoading(false);
             return;
         }
 
-        setIsLoading(true);
-        const handler = setTimeout(() => {
-            supabase.rpc('search_airports', { search_term: searchQuery })
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error("Airport search RPC error:", error.message);
-                    setResults([]);
-                } else {
-                    setResults(data || []);
-                }
-            })
-            .finally(() => setIsLoading(false));
-        }, 300);
+        let isCurrentRequest = true; // ✨ Запобіжник для "гонки запитів"
 
-        return () => clearTimeout(handler);
+        // Запускаємо таймер ТІЛЬКИ на фактичний пошук
+        const handler = setTimeout(async () => {
+            if (!isCurrentRequest) return;
+            
+            // Вмикаємо завантаження ТІЛЬКИ коли юзер перестав друкувати
+            setIsLoading(true); 
+
+            try {
+                const { data, error } = await supabase.rpc('search_airports', { search_term: searchQuery.trim() });
+                
+                // Оновлюємо стейт, тільки якщо юзер не почав вводити новий текст
+                if (isCurrentRequest) {
+                    if (error) {
+                        console.error("Airport search RPC error:", error.message);
+                        setResults([]);
+                    } else {
+                        setResults(data || []);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                if (isCurrentRequest) setResults([]);
+            } finally {
+                if (isCurrentRequest) {
+                    setIsLoading(false);
+                }
+            }
+        }, 400); // ✨ Збільшено debounce до 400мс. Це ідеальний час, щоб дочекатись кінця вводу слова.
+
+        // Функція очищення: спрацьовує, якщо юзер ввів нову букву до завершення таймауту
+        return () => {
+            isCurrentRequest = false; 
+            clearTimeout(handler);
+        };
     }, [searchQuery]);
 
     const handleClose = () => {
         setSearchQuery('');
         setResults([]);
+        setIsLoading(false);
         onClose();
     };
 
@@ -84,19 +108,25 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             autoFocus={true}
+                            autoCorrect={false} // ✨ Додано, щоб клавіатура не "тупила" при перевірці орфографії
                         />
                     </View>
-                    {isLoading && <ActivityIndicator style={{ marginVertical: 20 }} size="large" color={colors.primary} />}
-                    {!isLoading && results.length === 0 && searchQuery.length > 1 && (
+                    
+                    {isLoading ? (
+                        <ActivityIndicator style={{ marginVertical: 20 }} size="large" color={colors.primary} />
+                    ) : results.length === 0 && searchQuery.trim().length > 1 ? (
                         <Text style={styles.noResultsText}>{t('flights.noAirportsFound', 'Аеропортів не знайдено')}</Text>
+                    ) : (
+                        <FlatList
+                            data={results}
+                            keyExtractor={(item) => `${item.iata_code}-${item.name}`}
+                            renderItem={renderItem}
+                            getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                            keyboardShouldPersistTaps="handled"
+                            initialNumToRender={15} // ✨ Оптимізація рендеру списку
+                            maxToRenderPerBatch={10}
+                        />
                     )}
-                    <FlatList
-                        data={results}
-                        keyExtractor={(item) => item.iata_code + item.name}
-                        renderItem={renderItem}
-                        getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-                        keyboardShouldPersistTaps="handled"
-                    />
                 </Pressable>
             </Pressable>
         </Modal>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from './config/supabase';
 import { useAuth } from './provider/AuthContext';
@@ -12,20 +12,21 @@ export const UserStatusProvider = ({ children }) => {
     const appState = useRef(AppState.currentState);
     const channelRef = useRef(null);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
-
-    const updateDbLastSeen = async () => {
+const updateDbLastSeen = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
-            await supabase
-                .from('profiles')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('id', session.user.id);
+            const { error } = await supabase.rpc('update_last_seen', { 
+                p_user_id: session.user.id 
+            });
+            
+            if (error) {
+                console.error("[UserStatus] Помилка оновлення часу:", error.message);
+            }
         } catch (error) {
-            console.log("Error updating last_seen:", error);
+            console.error("[UserStatus] Мережева помилка updateDbLastSeen:", error);
         }
-    };
-
-    const setupPresence = async () => {
+    }, [session?.user?.id]);
+    const setupPresence = useCallback(async () => {
         if (!session?.user?.id) return;
         
         if (channelRef.current && channelRef.current.state === 'joined') return;
@@ -56,19 +57,19 @@ export const UserStatusProvider = ({ children }) => {
                     });
                 }
             });
-    };
+    }, [session?.user?.id]);
 
-    const handleGoOffline = async () => {
+    const handleGoOffline = useCallback(async () => {
         if (channelRef.current) {
             await channelRef.current.untrack();
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
         await updateDbLastSeen();
-    };
+    }, [updateDbLastSeen]);
 
     useEffect(() => {
-        if (!session?.user) return;
+        if (!session?.user?.id) return;
 
         setupPresence();
         updateDbLastSeen();
@@ -77,17 +78,17 @@ export const UserStatusProvider = ({ children }) => {
             if (AppState.currentState === 'active') {
                 updateDbLastSeen();
             }
-        }, 60000);
+        }, 30000);
 
         return () => {
             clearInterval(heartbeatInterval);
             handleGoOffline();
         };
-    }, [session]);
+    }, [session?.user?.id, setupPresence, updateDbLastSeen, handleGoOffline]);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', async (nextAppState) => {
-            if (session?.user) {
+            if (session?.user?.id) {
                 if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
                     console.log('App active: Going Online');
                     setupPresence();
@@ -103,7 +104,7 @@ export const UserStatusProvider = ({ children }) => {
         return () => {
             subscription.remove();
         };
-    }, [session]);
+    }, [session?.user?.id, setupPresence, updateDbLastSeen, handleGoOffline]);
 
     return (
         <UserStatusContext.Provider value={{ onlineUsers }}>

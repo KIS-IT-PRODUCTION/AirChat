@@ -16,7 +16,7 @@ import { useAuth } from '../provider/AuthContext';
 import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolateColor } from 'react-native-reanimated';
-
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додано імпорт
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
@@ -165,7 +165,6 @@ const TransferRequestCard = memo(({ item, onPress, isExpiring, isPast }) => {
         </TouchableOpacity>
     );
 });
-
 const keyExtractor = (item) => item.id;
 
 const DriverHomeScreen = () => {
@@ -183,10 +182,29 @@ const DriverHomeScreen = () => {
   
   const isInitialLoad = useRef(true);
 
+  // ✨ Оновлена функція завантаження заявок з кешем
   const fetchDriverData = useCallback(async (showLoading = false) => {
+    const CACHE_KEY_REQUESTS = `DRIVER_FEED_REQUESTS`;
+    const CACHE_KEY_COUNT = `DRIVER_FEED_COUNT`;
+
     if (showLoading) {
-      setLoading(true);
+        // Миттєво пробуємо дістати дані з пам'яті
+        try {
+            const cachedReq = await AsyncStorage.getItem(CACHE_KEY_REQUESTS);
+            const cachedCount = await AsyncStorage.getItem(CACHE_KEY_COUNT);
+            if (cachedReq) {
+                setRequests(JSON.parse(cachedReq));
+                if (cachedCount) setNewRequestsCount(JSON.parse(cachedCount));
+                setLoading(false); // Дані є — лоадер вимикаємо
+            } else {
+                setLoading(true);
+            }
+        } catch (e) {
+            console.error("Помилка читання кешу стрічки водія", e);
+            setLoading(true);
+        }
     }
+
     try {
         const [requestsPromise, countPromise] = await Promise.all([
             supabase.rpc('get_driver_feed_transfers'), 
@@ -196,14 +214,21 @@ const DriverHomeScreen = () => {
         if (requestsPromise.error) throw requestsPromise.error;
         if (countPromise.error) throw countPromise.error;
 
-        setRequests(requestsPromise.data || []);
-        setNewRequestsCount(countPromise.data || 0); 
+        const freshRequests = requestsPromise.data || [];
+        const freshCount = countPromise.data || 0;
+
+        setRequests(freshRequests);
+        setNewRequestsCount(freshCount); 
+        
+        // Зберігаємо свіжі дані в кеш
+        await AsyncStorage.setItem(CACHE_KEY_REQUESTS, JSON.stringify(freshRequests));
+        await AsyncStorage.setItem(CACHE_KEY_COUNT, JSON.stringify(freshCount));
+
     } catch (error) {
         console.error("Error fetching driver data:", error.message);
+        // Тихо ігноруємо помилку, якщо юзер вже бачить закешовані дані
     } finally {
-        if (showLoading) {
-          setLoading(false);
-        }
+        setLoading(false);
     }
   }, []); 
 
@@ -334,8 +359,9 @@ const DriverHomeScreen = () => {
                     />
                 )}
                 <TouchableOpacity onPress={handleProfilePress}>
+                    {/* ✨ Тут аватарка з провайдера, якщо треба можна додати cachePolicy і туди */}
                     {profile?.avatar_url ? (
-                        <Image source={{ uri: profile.avatar_url }} style={styles.profilePic} />
+                        <Image source={{ uri: profile.avatar_url }} style={styles.profilePic} cachePolicy="disk" />
                     ) : (
                         <View style={[styles.profilePic, styles.profilePlaceholder]}>
                             <Ionicons name="person-outline" size={22} color={colors.secondaryText} />

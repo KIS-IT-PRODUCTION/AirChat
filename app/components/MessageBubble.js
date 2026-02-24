@@ -168,7 +168,12 @@ const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSe
                         </View>
                     )}
                     
-                    <View style={{ maxWidth: selectionMode ? '85%' : '100%' }}>
+                    {/* ОБГОРТКА ПОВІДОМЛЕННЯ + РЕАКЦІЙ */}
+                    <View style={{ 
+                        maxWidth: selectionMode ? '85%' : '100%',
+                        // Додаємо відступ знизу, якщо є реакції, щоб бабл не наїжджав на інші повідомлення
+                        paddingBottom: aggregatedReactions.length > 0 ? 12 : 0 
+                    }}>
                         <MotiView 
                             animate={{ backgroundColor: highlighted ? highlightBgColor : baseColor, scale: highlighted ? 1.05 : 1 }}
                             transition={{ type: 'timing', duration: 300 }}
@@ -210,25 +215,7 @@ const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSe
                                 </TouchableOpacity>
                             )}
                             
-                            {/* Реакції */}
-                            {aggregatedReactions.length > 0 && (
-                                <View style={[styles.reactionsContainer, isMyMessage && { justifyContent: 'flex-end' }]}>
-                                    <AnimatePresence>
-                                        {aggregatedReactions.map((r, index) => (
-                                            <MotiView 
-                                                key={`${r.emoji}-${index}`}
-                                                from={{ scale: 0 }} animate={{ scale: 1 }}
-                                                style={[styles.reactionBadge, isMyMessage ? styles.reactionBadgeMy : styles.reactionBadgeOther]}
-                                            >
-                                                <Text style={[styles.reactionBadgeText, isMyMessage ? styles.reactionBadgeTextMy : styles.reactionBadgeTextOther]}>
-                                                    {r.emoji} {r.count > 1 ? r.count : ''}
-                                                </Text>
-                                            </MotiView>
-                                        ))}
-                                    </AnimatePresence>
-                                </View>
-                            )}
-
+                            {/* ФУТЕР залишається всередині, щоб час красиво накладався на картинку */}
                             <View style={[styles.messageFooter, isMedia && styles.messageInfoOverlay]}>
                                 <Text style={[styles.messageTime, isMyMessage ? styles.myMessageTime : styles.theirMessageTime]}>
                                     {moment(message.created_at).format('HH:mm')}
@@ -243,6 +230,40 @@ const MessageBubble = ({ message, currentUserId, onImagePress, onLongPress, onSe
                             </View>
 
                         </MotiView>
+
+                        {/* РЕАКЦІЇ винесені назовні (ефект Telegram) */}
+                        {aggregatedReactions.length > 0 && (
+                            <View style={[
+                                styles.reactionsContainer,
+                                { 
+                                    position: 'absolute', 
+                                    bottom: -6, // Зсуваємо вниз на край баблу
+                                    zIndex: 10,
+                                    flexDirection: 'row',
+                                    margin: 0, padding: 0
+                                },
+                                isMyMessage ? { right: 8 } : { left: 8 }
+                            ]}>
+                                <AnimatePresence>
+                                    {aggregatedReactions.map((r, index) => (
+                                        <MotiView 
+                                            key={`${r.emoji}-${index}`}
+                                            from={{ scale: 0 }} animate={{ scale: 1 }}
+                                            style={[
+                                                styles.reactionBadge, 
+                                                isMyMessage ? styles.reactionBadgeMy : styles.reactionBadgeOther,
+                                                // Додаємо легку тінь, щоб реакції гарно виділялись поверх баблу і фону
+                                                { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 3 }
+                                            ]}
+                                        >
+                                            <Text style={[styles.reactionBadgeText, isMyMessage ? styles.reactionBadgeTextMy : styles.reactionBadgeTextOther]}>
+                                                {r.emoji} {r.count > 1 ? r.count : ''}
+                                            </Text>
+                                        </MotiView>
+                                    ))}
+                                </AnimatePresence>
+                            </View>
+                        )}
                     </View>
 
                     {selectionMode && isMyMessage && (

@@ -3,7 +3,7 @@ import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import './i18n'; 
 
-import React, { useState, useEffect, memo, useRef, useMemo } from 'react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
 import { 
     NavigationContainer, 
     useNavigationContainerRef, 
@@ -13,17 +13,16 @@ import {
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
-    View, StyleSheet, Text, AppState, Animated, Easing, StatusBar,
+    View, StyleSheet, Text, AppState, StatusBar,
     Modal, TouchableOpacity 
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useNetInfo } from '@react-native-community/netinfo';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking'; 
 import { LogBox } from 'react-native';
-import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
 
 import { ThemeProvider, useTheme } from './app/ThemeContext';
@@ -49,6 +48,7 @@ import DriverRequestDetailScreen from './app/driver/DriverRequestDetailScreen';
 import PublicDriverProfileScreen from './app/driver/PublicDriverProfileScreen.js';
 import Support from './app/SupportScreen.js';
 import IndividualChatScreen from './app/IndividualChatScreen.js';
+import InstructionsScreen from './app/InstructionsScreen.js';
 
 enableScreens();
 SplashScreen.preventAutoHideAsync();
@@ -79,6 +79,7 @@ function UserAppStack() {
             <Stack.Screen name="Settings" component={Settings} />
             <Stack.Screen name="PublicDriverProfile" component={PublicDriverProfileScreen} />
             <Stack.Screen name="Support" component={Support} />
+            <Stack.Screen name="Instructions" component={InstructionsScreen} />
         </Stack.Navigator>
     );
 }
@@ -91,6 +92,7 @@ function DriverAppStack() {
             <Stack.Screen name="Support" component={Support} />
             <Stack.Screen name="PublicDriverProfile" component={PublicDriverProfileScreen} />
             <Stack.Screen name="IndividualChat" component={IndividualChatScreen} />
+            <Stack.Screen name="Instructions" component={InstructionsScreen} />
         </Stack.Navigator>
     );
 }
@@ -139,41 +141,6 @@ const BannedUserModal = memo(() => {
   );
 });
 
-const NoInternetBanner = memo(({ visible }) => {
-    const { colors } = useTheme();
-    const { t } = useTranslation();
-    const topInset = useSafeAreaInsets().top;
-    const animation = useRef(new Animated.Value(-100)).current;
-
-    useEffect(() => {
-        Animated.timing(animation, {
-            toValue: visible ? topInset + 10 : -100,
-            duration: 300,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-        }).start();
-    }, [visible, topInset]);
-    
-    const styles = useMemo(() => StyleSheet.create({
-        bannerContainer: { position: 'absolute', top: 0, left: 16, right: 16, zIndex: 1000 },
-        contentContainer: {
-            height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            paddingHorizontal: 16, backgroundColor: '#e14932', borderRadius: 12,
-            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 8,
-        },
-        bannerText: { color: '#fff', marginLeft: 10, fontWeight: 'bold', fontSize: 15 },
-    }), []); 
-
-    return (
-        <Animated.View style={[styles.bannerContainer, { transform: [{ translateY: animation }] }]}>
-            <View style={styles.contentContainer}>
-                <Ionicons name="cloud-offline-outline" size={22} color="#fff" />
-                <Text style={styles.bannerText}>{t('errors.noInternetTitle', 'Немає з\'єднання з Інтернетом')}</Text>
-            </View>
-        </Animated.View>
-    );
-});
-
 function AppContent({ navigationRef }) {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
@@ -181,22 +148,23 @@ function AppContent({ navigationRef }) {
     const { unreadCount, fetchUnreadCount } = useUnreadCount();
     const { newOffersCount } = useNewOffers();
     const { newTripsCount } = useNewTrips();
-    const netInfo = useNetInfo();
-    const [isNetworkDown, setIsNetworkDown] = useState(false);
 
     usePushNotifications(navigationRef); 
-
-    useEffect(() => {
-        const isConnected = netInfo.isConnected === true && netInfo.isInternetReachable === true;
-        if (netInfo.type !== 'unknown') setIsNetworkDown(!isConnected);
-    }, [netInfo.isConnected, netInfo.isInternetReachable, netInfo.type]);
 
     useEffect(() => {
         AsyncStorage.getItem('hasOnboarded').then(val => setIsFirstLaunch(val === null));
     }, []);
 
     useEffect(() => {
-        if (!isAuthLoading && isFirstLaunch !== null) SplashScreen.hideAsync();
+        let timeout;
+        if (!isAuthLoading && isFirstLaunch !== null) {
+            SplashScreen.hideAsync();
+        } else {
+            timeout = setTimeout(() => {
+                SplashScreen.hideAsync();
+            }, 3000); 
+        }
+        return () => clearTimeout(timeout);
     }, [isAuthLoading, isFirstLaunch]);
 
     useEffect(() => {
@@ -225,8 +193,15 @@ function AppContent({ navigationRef }) {
    return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
             <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
-            {session && profile ? (profile.role === 'driver' ? <DriverAppStack /> : <UserAppStack />) : <AuthNavigator isFirstLaunch={isFirstLaunch} />}
-            <NoInternetBanner visible={isNetworkDown} />
+            {session && profile ? (
+                profile.role === 'driver' ? (
+                    <DriverAppStack key="driver-stack" />
+                ) : (
+                    <UserAppStack key="user-stack" />
+                )
+            ) : (
+                <AuthNavigator isFirstLaunch={isFirstLaunch} key="auth-stack" />
+            )}
         </View>
     );
 }

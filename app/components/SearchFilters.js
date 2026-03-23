@@ -72,9 +72,8 @@ const SearchFilters = ({
 
             <TouchableOpacity onPress={onSearch} disabled={isLoading}>
                 <LinearGradient
-                    colors={isLoading ? ['#aaa', '#888'] : [colors.primary, '#3498db']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                    colors={isLoading ? ['#aaa', '#888'] : ['#1c6fc3', '#1c6fc3']}
+
                     style={styles.searchButton}
                 >
                     {isLoading ? (

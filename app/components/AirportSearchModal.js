@@ -25,29 +25,32 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        // Якщо тексту мало, очищаємо результати одразу
         if (searchQuery.trim().length < 2) {
             setResults([]);
             setIsLoading(false);
             return;
         }
 
-        let isCurrentRequest = true; // ✨ Запобіжник для "гонки запитів"
+        let isCurrentRequest = true;
 
-        // Запускаємо таймер ТІЛЬКИ на фактичний пошук
         const handler = setTimeout(async () => {
             if (!isCurrentRequest) return;
             
-            // Вмикаємо завантаження ТІЛЬКИ коли юзер перестав друкувати
             setIsLoading(true); 
 
             try {
-                const { data, error } = await supabase.rpc('search_airports', { search_term: searchQuery.trim() });
+                // ✨ ШУКАЄМО ПРЯМО В ТАБЛИЦІ AIRPORTS (без Edge-функцій)
+                const searchTerm = `%${searchQuery.trim()}%`;
                 
-                // Оновлюємо стейт, тільки якщо юзер не почав вводити новий текст
+                const { data, error } = await supabase
+                    .from('airports')
+                    .select('*')
+                    .or(`iata_code.ilike.${searchTerm},city.ilike.${searchTerm},name.ilike.${searchTerm},name_uk.ilike.${searchTerm}`)
+                    .limit(20);
+                
                 if (isCurrentRequest) {
                     if (error) {
-                        console.error("Airport search RPC error:", error.message);
+                        console.error("Database search error:", error.message);
                         setResults([]);
                     } else {
                         setResults(data || []);
@@ -61,9 +64,8 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
                     setIsLoading(false);
                 }
             }
-        }, 400); // ✨ Збільшено debounce до 400мс. Це ідеальний час, щоб дочекатись кінця вводу слова.
+        }, 300); // 300ms debounce
 
-        // Функція очищення: спрацьовує, якщо юзер ввів нову букву до завершення таймауту
         return () => {
             isCurrentRequest = false; 
             clearTimeout(handler);
@@ -108,7 +110,7 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             autoFocus={true}
-                            autoCorrect={false} // ✨ Додано, щоб клавіатура не "тупила" при перевірці орфографії
+                            autoCorrect={false}
                         />
                     </View>
                     
@@ -123,7 +125,7 @@ const AirportSearchModal = ({ visible, onClose, onSelect, title }) => {
                             renderItem={renderItem}
                             getItemLayout={(data, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
                             keyboardShouldPersistTaps="handled"
-                            initialNumToRender={15} // ✨ Оптимізація рендеру списку
+                            initialNumToRender={15}
                             maxToRenderPerBatch={10}
                         />
                     )}

@@ -101,7 +101,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-            <Logo width={40} height={40} />
+            <Logo width={60} height={60} />
             <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
             <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')} disabled={true}>
               <Ionicons name="headset-outline" size={24} color={colors.secondaryText} />
@@ -116,7 +116,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-            <Logo width={40} height={40} />
+            <Logo width={60} height={60} />
             <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
              <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')} disabled={true}>
               <Ionicons name="headset-outline" size={24} color={colors.secondaryText} />
@@ -133,7 +133,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-          <Logo width={40} height={40} />
+          <Logo width={60} height={60} />
           <Text style={styles.headerTitle}>{t('profile.myProfile')}</Text>
           <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
             <Ionicons name="headset-outline" size={24} color={colors.text} />
@@ -186,8 +186,8 @@ export default function ProfileScreen() {
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContainer: { padding: 16, paddingBottom: 40 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
     avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 16, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.primary },

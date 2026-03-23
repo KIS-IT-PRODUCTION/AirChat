@@ -7,7 +7,8 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 import { useUnreadCount } from '../../provider/Unread Count Context';
 import { useNewOffers } from '../../provider/NewOffersContext';
-
+import { useAuth } from '../../provider/AuthContext';
+import ReizeStack from './ReizeStack';
 import HomeScreen from '../HomeScreen';
 import TransfersScreen from '../TransfersScreen';
 import ProfileStack from './ProfileStack'; 
@@ -16,6 +17,8 @@ import Home from '../../assets/panel/home.svg';
 import Home2 from '../../assets/panel/home2.svg';
 import Chat from '../../assets/chat.svg';
 import Chat2 from '../../assets/chat2.svg';
+import Poizdki from '../../assets/poizdki.svg';
+import Poizdki2 from '../../assets/poizdki_out.svg';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -24,6 +27,8 @@ export default function TabNavigator() {
   
   const { unreadCount } = useUnreadCount();
   const { newOffersCount } = useNewOffers();
+  
+  const { profile } = useAuth(); 
 
   return (
     <Tab.Navigator
@@ -34,7 +39,6 @@ export default function TabNavigator() {
         tabBarStyle: ((route) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? '';
           if (routeName === 'IndividualChat') {
-            return { display: 'none' };
           }
           return {
             backgroundColor: colors.card,
@@ -46,8 +50,11 @@ export default function TabNavigator() {
           if (route.name === 'HomeTab') {
             return focused ? <Home2 width={size} height={size} fill={color} /> : <Home width={size} height={size} fill={color} />;
           } else if (route.name === 'TransfersTab') {
+            return focused ? <Poizdki2 width={size} height={size} fill={color} /> : <Poizdki width={size} height={size} fill={color} />;
+          } else if (route.name === 'ReizeTab') {
             iconName = focused ? 'airplane' : 'airplane-outline';
-          } else if (route.name === 'MessagesTab') {
+          }
+           else if (route.name === 'MessagesTab') {
             return focused ? <Chat2 width={size} height={size} fill={color} /> : <Chat width={size} height={size} fill={color} />;
           } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
@@ -70,6 +77,12 @@ export default function TabNavigator() {
           tabBarBadgeStyle: { backgroundColor: '#FFA000' }
         }}
       />
+      
+      <Tab.Screen 
+        name="ReizeTab" 
+        component={ReizeStack}
+        options={{ title: t('tabs.flights') }}
+      />
       <Tab.Screen 
         name="MessagesTab" 
         component={MessagesStack}
@@ -77,7 +90,26 @@ export default function TabNavigator() {
           title: t('tabs.messages', 'Чат'), 
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Перевіряємо, чи це пасажир. 
+            // ЗАМІНИ 'passenger' на те, як у тебе в базі називається роль пасажира!
+            const isPassenger = profile?.role === 'client'; 
+
+            if (isPassenger) {
+              // 1. Зупиняємо стандартну поведінку (не відкриваємо ChatList)
+              e.preventDefault(); 
+
+              // 2. Примусово перекидаємо відразу в IndividualChat з параметрами
+              navigation.navigate('MessagesTab', {
+                screen: 'IndividualChat',
+                params: { participant1_id: 'd691e54e-0f19-4aa9-b4c9-47183a798c06' }
+              });
+            }
+          },
+        })}
       />      
+      
       <Tab.Screen 
         name="ProfileTab" 
         component={ProfileStack}

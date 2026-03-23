@@ -52,23 +52,43 @@ export const FormProvider = ({ children }) => {
 };
 
 export const useFormState = () => useContext(FormContext);
-
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 };
+
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
     scrollContent: { paddingBottom: 40 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingHorizontal: 15, paddingTop: 16 },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+        paddingHorizontal: 12,
+    },
+    headerSide: {
+        flex: 1,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+    },
+    headerCenter: {
+        alignItems: 'center',
+        justifyContent: 'center',
+
+    },    
     profilePic: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card },
+    
     roleSwitcher: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 4, ...shadowStyle, position: 'relative' },
     roleOption: { padding: 8, borderRadius: 16, zIndex: 1, width: 40, alignItems: 'center', justifyContent: 'center' },
-    rolePill: { position: 'absolute', top: 4, bottom: 4, left: 4, width: 40, backgroundColor: colors.primary, borderRadius: 16 },
+    rolePill: { position: 'absolute', top: 4, bottom: 4, left: 4, width: 40, backgroundColor: colors.primary, borderRadius: 16 }, // Жовтий фон повзунка
+    
     tabContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 12, padding: 4, marginBottom: 24, marginHorizontal: 15, ...(theme === 'light' ? shadowStyle : {}) },
     tab: { flex: 1, paddingVertical: 16, borderRadius: 8 },
-    activeTab: { backgroundColor: colors.primary },
+    activeTab: { backgroundColor: colors.primary }, // Жовтий фон активної вкладки
     tabText: { color: colors.text, textAlign: 'center', fontWeight: '600', fontSize: 14 },
-    activeTabText: { color: '#FFFFFF' },
+    activeTabText: { color: '#121212' }, // Темний текст на жовтій вкладці
+    
     title: { color: colors.text, fontSize: 24, fontWeight: 'bold', marginBottom: 16, paddingHorizontal: 15 },
     card: { backgroundColor: colors.card, borderRadius: 20, marginBottom: 16, marginHorizontal: 15, ...(theme === 'light' ? shadowStyle : {}) },
+    
     inputRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Platform.OS === 'ios' ? 4 : 0, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent', borderRadius: 10 },
     errorHighlight: { borderColor: '#FF453A', backgroundColor: theme === 'light' ? 'rgba(255, 69, 58, 0.05)' : 'rgba(255, 69, 58, 0.15)' },
     errorText: { color: '#FF453A', fontSize: 12, paddingTop: 4, paddingLeft: 16 },
@@ -81,32 +101,48 @@ const getStyles = (colors, theme) => StyleSheet.create({
     detailValueContainer: { flexDirection: 'row', alignItems: 'center' },
     detailValue: { color: colors.text, fontSize: 16, fontWeight: '600' },
     verticalDivider: { height: '60%', width: 1, backgroundColor: colors.border || '#EFEFF4' },
+    
     radioGroupContainer: { flexDirection: 'row', gap: 12, marginBottom: 16, marginHorizontal: 15 },
-    radioContainer: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1.5, backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', gap: 2, height: 110, ...(theme === 'light' ? shadowStyle : {}) },
-    radioContainerActive: { backgroundColor: theme === 'light' ? '#EBF5FF' : 'rgba(10, 132, 255, 0.2)', borderColor: colors.primary },
+    
+    radioContainer: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1.5, backgroundColor: colors.card, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', gap: 2, height: 110, ...(theme === 'light' ? shadowStyle : {}) },
+    radioContainerActive: { backgroundColor: 'rgba(247, 196, 21, 0.15)', borderColor: colors.primary },
     radioText: { color: colors.text, fontSize: 16, fontWeight: '600', textAlign: 'center' },
     radioTextActive: { color: colors.primary },
+    
     checkboxRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, justifyContent: 'space-between' },
     checkboxTextContainer: { flex: 1 },
     petImage: { width: 40, height: 40 },
     checkboxSubtext: { color: colors.secondaryText, fontSize: 14, textAlign: 'center' },
+    
     submitButton: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginHorizontal: 15, ...(theme === 'light' ? shadowStyle : {}) },
-    submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+    submitButtonText: { color: '#121212', fontSize: 18, fontWeight: 'bold' }, // Темний текст
+    
     modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)' },
     modalContent: { backgroundColor: colors.card, borderRadius: 20, padding: 24, width: '90%', maxWidth: 400, alignItems: 'center', ...shadowStyle },
     modalCloseButton: { position: 'absolute', top: 16, right: 16 },
     modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 8, textAlign: 'center' },
     modalSubtitle: { fontSize: 15, color: colors.secondaryText, textAlign: 'center', marginBottom: 24 },
-    modalCommentInput: { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 12, width: '100%', height: 80, padding: 12, fontSize: 16, color: colors.text, textAlignVertical: 'top', marginBottom: 24 },
+    
+    // ЗМІНЕНО: Контур поля вводу коментаря в модалці тепер жовтий
+    modalCommentInput: { backgroundColor: colors.background, borderColor: colors.primary, borderWidth: 1.5, borderRadius: 12, width: '100%', height: 80, padding: 12, fontSize: 16, color: colors.text, textAlignVertical: 'top', marginBottom: 24 },
+    
     modalButtonRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', gap: 8, marginTop: 16 },
+    
+    // ЗМІНЕНО: Основні кнопки в модальних вікнах (жовтий фон)
     modalRowPrimaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, flex: 1, alignItems: 'center', justifyContent: 'center' },
     modalFullWidthPrimaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
-    modalFullWidthSecondaryButton: { backgroundColor: 'transparent', paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-    modalSecondaryButton: { backgroundColor: colors.background, paddingVertical: 14, borderRadius: 12, flex: 1, alignItems: 'center', justifyContent: 'center', borderColor: colors.border, borderWidth: 1 },
+    
+    // ЗМІНЕНО: Вторинні кнопки в модальних вікнах (прозорий фон, але ЖОВТИЙ контур)
+    modalSecondaryButton: { backgroundColor: colors.background, paddingVertical: 14, borderRadius: 12, flex: 1, alignItems: 'center', justifyContent: 'center', borderColor: colors.primary, borderWidth: 1.5 },
+    modalFullWidthSecondaryButton: { backgroundColor: 'transparent', paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 8, borderColor: colors.primary, borderWidth: 1.5 },
+    
     modalDestructiveButton: { backgroundColor: 'transparent', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
     modalDestructiveButtonText: { color: '#FF453A', fontSize: 16, fontWeight: '600' },
     modalSecondaryButtonText: { color: colors.text, fontSize: 16, fontWeight: '600' },
-    modalPrimaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+    
+    // ЗМІНЕНО: Текст на жовтих кнопках в модалці
+    modalPrimaryButtonText: { color: '#121212', fontSize: 16, fontWeight: 'bold' },
+    
     flightInputContainer: { flexDirection: 'row', alignItems: 'center' },
     infoIcon: { paddingLeft: 10, paddingRight: 16 },
     signIcon: { width: 40, height: 40, textAlign: 'center' },
@@ -116,7 +152,6 @@ const getStyles = (colors, theme) => StyleSheet.create({
     passengerCounter: { flexDirection: 'row', alignItems: 'center', gap: 20 },
     passengerCountText: { color: colors.text, fontSize: 22, fontWeight: 'bold', minWidth: 30, textAlign: 'center' },
 });
-
 const RoleSwitcher = ({ role, onSwitch, isSwitching }) => { const { colors } = useTheme(); const styles = getStyles(colors); const isDriver = role === 'driver'; const switchValue = useSharedValue(isDriver ? 1 : 0); useEffect(() => { switchValue.value = withSpring(isDriver ? 1 : 0, { damping: 15, stiffness: 120 }); }, [isDriver]); const pillStyle = useAnimatedStyle(() => ({ transform: [{ translateX: switchValue.value * 48 }] })); const passengerIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], ['#FFFFFF', colors.secondaryText]) })); const driverIconStyle = useAnimatedStyle(() => ({ color: interpolateColor(switchValue.value, [0, 1], [colors.secondaryText, '#FFFFFF']) })); if (isSwitching) { return ( <View style={[styles.roleSwitcher, { paddingHorizontal: 28, paddingVertical: 12 }]}><ActivityIndicator size="small" color={colors.primary} /></View> ); } return ( <View style={styles.roleSwitcher}><Animated.View style={[styles.rolePill, pillStyle]} /><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(false)} disabled={!isDriver}><Animated.View><Ionicons name="person-outline" size={20} style={passengerIconStyle} /></Animated.View></TouchableOpacity><TouchableOpacity style={styles.roleOption} onPress={() => onSwitch(true)} disabled={isDriver}><Animated.View><Ionicons name="car-sport-outline" size={20} style={driverIconStyle} /></Animated.View></TouchableOpacity></View> ); };
 const AnimatedBlock = ({ children, delay }) => ( <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500, delay }} >{children}</MotiView> );
 const AuthPromptModal = ({ visible, onClose, onLogin, onRegister }) => { const { colors, theme } = useTheme(); const { t } = useTranslation(); const styles = getStyles(colors, theme); return (<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}><View style={styles.modalBackdrop}><View style={styles.modalContent}><TouchableOpacity style={styles.modalCloseButton} onPress={onClose}><Ionicons name="close" size={28} color={colors.secondaryText} /></TouchableOpacity><Text style={styles.modalTitle}>{t('authPrompt.title')}</Text><Text style={styles.modalSubtitle}>{t('authPrompt.subtitle')}</Text><View style={styles.modalButtonRow}><TouchableOpacity style={styles.modalSecondaryButton} onPress={onRegister}><Text style={styles.modalSecondaryButtonText}>{t('auth.register')}</Text></TouchableOpacity><TouchableOpacity style={styles.modalRowPrimaryButton} onPress={onLogin}><Text style={styles.modalPrimaryButtonText}>{t('auth.login')}</Text></TouchableOpacity></View></View></View></Modal>); };
@@ -270,21 +305,30 @@ export default function HomeScreen({ navigation }) {
                 <FlatList
                     data={[]} keyExtractor={() => 'main-content'} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent} ListHeaderComponent={
                         <>
-                           <AnimatedBlock delay={0}>
-                                <View style={styles.header}>
-                                    <Logo width={40} height={40} />
-                                    {profile?.is_driver && ( <RoleSwitcher role={profile.role} onSwitch={handleRoleSwitch} isSwitching={isSwitchingRole} /> )}
-                                    <TouchableOpacity onPress={() => session?.user ? navigation.navigate('ProfileTab') : navigation.navigate('Auth')}>
-                                        {loadingProfile ? (
-                                            <ActivityIndicator size="small" style={{width: 40, height: 40}} />
-                                        ) : (
-                                            <Image 
-                                                source={userProfile?.avatar_url ? { uri: userProfile.avatar_url } : require('../assets/default-avatar.png')} 
-                                                style={styles.profilePic} 
-                                            />
-                                        )}
-                                    </TouchableOpacity>
-                                </View>
+                    <AnimatedBlock delay={0}>
+                  <View style={styles.header}>
+                        <View style={styles.headerSide}>
+                            <Logo width={60} height={60} />
+                        </View>
+
+                        <View style={styles.headerCenter}>
+                            {profile?.is_driver && ( 
+                                <RoleSwitcher role={profile.role} onSwitch={handleRoleSwitch} isSwitching={isSwitchingRole} /> 
+                            )}
+                        </View>
+        <View style={[styles.headerSide, { alignItems: 'flex-end' }]}>
+            <TouchableOpacity onPress={() => session?.user ? navigation.navigate('ProfileTab') : navigation.navigate('Auth')}>
+                {loadingProfile ? (
+                    <ActivityIndicator size="small" style={{width: 40, height: 40}} />
+                ) : (
+                    <Image 
+                        source={userProfile?.avatar_url ? { uri: userProfile.avatar_url } : require('../assets/default-avatar.png')} 
+                        style={styles.profilePic} 
+                    />
+                )}
+            </TouchableOpacity>
+        </View>
+    </View>
                             </AnimatedBlock>
 
                             <AnimatedBlock delay={100}><View style={styles.tabContainer}><TouchableOpacity style={[styles.tab, activeTab === 'to' && styles.activeTab]} onPress={() => setActiveTab('to')}><Text style={[styles.tabText, activeTab === 'to' && styles.activeTabText]}>{t('home.toAirport')}</Text></TouchableOpacity><TouchableOpacity style={[styles.tab, activeTab === 'from' && styles.activeTab]} onPress={() => setActiveTab('from')}><Text style={[styles.tabText, activeTab === 'from' && styles.activeTabText]}>{t('home.fromAirport')}</Text></TouchableOpacity></View></AnimatedBlock>

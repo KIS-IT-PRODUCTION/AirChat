@@ -234,7 +234,7 @@ const MyTripsScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerContainer}>
-                <View style={styles.headerTopRow}><Logo width={40} height={40} />
+                <View style={styles.headerTopRow}><Logo width={60} height={60} />
                     <Text style={styles.title}>{t('myTrips.title')}</Text>
                     <View style={{ width: 40 }} /> 
                 </View>
@@ -296,9 +296,9 @@ export default memo(MyTripsScreen);
 
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    headerContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerContainer: {  paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
     headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1 },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1, position: 'absolute', left: 0, right: 0 },
     tabContainer: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 25, padding: 4, position: 'relative', borderWidth: 1, borderColor: colors.border },
     animatedThumb: { position: 'absolute', top: 4, left: 4, bottom: 4, backgroundColor: colors.primary, borderRadius: 21 },
     tabButton: { flex: 1, paddingVertical: 10, borderRadius: 21, alignItems: 'center', justifyContent: 'center', zIndex: 1 },

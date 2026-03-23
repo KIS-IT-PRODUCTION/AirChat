@@ -18,34 +18,39 @@ Notifications.setNotificationHandler({
 
 let isNavigating = false;
 
-const handleChatNavigation = (navigationRef, data) => {
+const handlePushNavigation = (navigationRef, data) => {
   if (isNavigating) {
     console.log('[PUSH_NAV] Навігація вже в процесі, пропускаємо.');
     return;
   }
 
-  if (navigationRef.current?.isReady() && data?.roomId) {
-    console.log('[PUSH_NAV] Навігація готова. Перехід до IndividualChat:', data.roomId);
-    isNavigating = true;
+  if (navigationRef.current?.isReady()) {
+    console.log('[PUSH_NAV] Навігація готова. Дані:', data);
     
-    navigationRef.current.navigate('IndividualChat', {
-      roomId: data.roomId,
-      recipientId: data.recipientId,
-      recipientName: data.recipientName,
-      recipientAvatar: data.recipientAvatar,
-      recipientLastSeen: data.recipientLastSeen,
-    });
-    
-    setTimeout(() => { 
-      isNavigating = false; 
-      console.log('[PUSH_NAV] Прапорець навігації скинуто.');
-    }, 1500); 
+    if (data?.roomId) {
+      isNavigating = true;
+      navigationRef.current.navigate('IndividualChat', {
+        roomId: data.roomId,
+        recipientId: data.recipientId,
+        recipientName: data.recipientName,
+        recipientAvatar: data.recipientAvatar,
+        recipientLastSeen: data.recipientLastSeen,
+      });
+      setTimeout(() => { isNavigating = false; }, 1500);
+    } 
+    else if (data?.screen === 'DriverRequest' && data?.transferId) {
+      isNavigating = true;
+      navigationRef.current.navigate('DriverRequest', {
+        id: data.transferId,
+      });
+      setTimeout(() => { isNavigating = false; }, 1500);
+    }
 
   } else if (!navigationRef.current?.isReady()) {
     console.log('[PUSH_NAV] Навігація не готова, повторна спроба через 200мс...');
-    setTimeout(() => handleChatNavigation(navigationRef, data), 200);
+    setTimeout(() => handlePushNavigation(navigationRef, data), 200);
   } else {
-    console.warn('[PUSH_NAV] Не вдалося перейти: відсутній roomId або ref.', data);
+    console.warn('[PUSH_NAV] Не вдалося перейти: відсутні необхідні дані.', data);
   }
 };
 
@@ -131,7 +136,7 @@ export const usePushNotifications = (navigationRef) => {
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
         console.log('[PUSH_TAP] Користувач натиснув на сповіщення.');
         const notificationData = response.notification.request.content.data;
-        handleChatNavigation(navigationRef, notificationData);
+        handlePushNavigation(navigationRef, notificationData);
       });
       
       if (!hasHandledInitialPush.current) {
@@ -139,7 +144,7 @@ export const usePushNotifications = (navigationRef) => {
           if (response) {
               console.log('[PUSH_COLD_START] Додаток відкрито натисканням на сповіщення.');
               const notificationData = response.notification.request.content.data;
-              handleChatNavigation(navigationRef, notificationData);
+              handlePushNavigation(navigationRef, notificationData);
           }
         });
         hasHandledInitialPush.current = true;

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 export default function InstructionsScreen() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('passenger'); 
   const navigation = useNavigation();
 
   const handleGoBack = () => {
@@ -16,49 +15,30 @@ export default function InstructionsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <TouchableOpacity onPress={handleGoBack} style={{ marginBottom: 20 }}>
-          <Text style={{ color: '#007BFF' }}>{t('common.back')}</Text>
+          <Text style={{ color: '#007BFF' }}>{t('common.back', 'Назад')}</Text>
         </TouchableOpacity>
         
-        <Text style={styles.headerTitle}>{t('instructions.title')}</Text>
-
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleButton, activeTab === 'passenger' && styles.activeButton]}
-            onPress={() => setActiveTab('passenger')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.toggleText, activeTab === 'passenger' && styles.activeText]}>
-              {t('instructions.tabs.passenger')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.toggleButton, activeTab === 'driver' && styles.activeButton]}
-            onPress={() => setActiveTab('driver')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.toggleText, activeTab === 'driver' && styles.activeText]}>
-              {t('instructions.tabs.driver')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.headerTitle}>{t('instructions.title', 'Інструкція')}</Text>
 
         <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
-          {activeTab === 'passenger' ? (
-            <View style={styles.instructionsBlock}>
-              <InstructionStep number="1" text={t('instructions.passenger.step1')} />
-              <InstructionStep number="2" text={t('instructions.passenger.step2')} />
-              <InstructionStep number="3" text={t('instructions.passenger.step3')} />
-              <InstructionStep number="4" text={t('instructions.passenger.step4')} />
-            </View>
-          ) : (
-            <View style={styles.instructionsBlock}>
-              <InstructionStep number="1" text={t('instructions.driver.step1')} />
-              <InstructionStep number="2" text={t('instructions.driver.step2')} />
-              <InstructionStep number="3" text={t('instructions.driver.step3')} />
-              <InstructionStep number="4" text={t('instructions.driver.step4')} />
-            </View>
-          )}
+          <View style={styles.instructionsBlock}>
+            <InstructionStep 
+              number="1" 
+              text={t('instructions.passenger.step1', 'Створіть заявку на поїздку:\nвкажіть звідки, куди та коли ви плануєте їхати.')} 
+            />
+            <InstructionStep 
+              number="2" 
+              text={t('instructions.passenger.step2', 'Отримайте пропозицію поїздки від EUROBUS.')} 
+            />
+            <InstructionStep 
+              number="3" 
+              text={t('instructions.passenger.step3', 'Підтвердьте поїздку.')} 
+            />
+            <InstructionStep 
+              number="4" 
+              text={t('instructions.passenger.step4', 'Тримайте зв’язок у чаті або телефоном та вирушайте у поїздку.\nПриємної поїздки!')} 
+            />
+          </View>
         </ScrollView>
         
       </View>
@@ -91,35 +71,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E9ECEF',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  activeButton: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  toggleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6C757D',
-  },
-  activeText: {
-    color: '#007BFF',
   },
   contentContainer: {
     flex: 1,

@@ -135,7 +135,7 @@ const ConfirmedDriverCard = React.memo(({ driver, onChangeDriver }) => {
                     <Text style={styles.driverName}>{driver.driver_name}</Text>
                     <Text style={styles.driverCarText}>{driver.car_make} {driver.car_model}</Text>
                 </View>
-                <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+                <Ionicons name="shield-checkmark" size={24} color={colors.primary2} />
             </View>
             <TouchableOpacity style={styles.changeDriverButton} onPress={onChangeDriver}>
                 <Text style={styles.changeDriverButtonText}>{t('transferDetail.changeDriver', 'Змінити водія')}</Text>
@@ -251,17 +251,25 @@ export default function TransferDetailScreen({ navigation, route }) {
     };
   }, [transferId, fetchData]);
 
-  const handleAcceptOffer = useCallback(async (offer) => {
+const handleAcceptOffer = useCallback(async (offer) => {
       setIsAccepting(true);
       try {
-          const { error } = await supabase.functions.invoke('accept-offer-and-notify', { body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } });
+          const { error } = await supabase.functions.invoke('accept-offer-and-notify', { 
+              body: { offer_id: offer.offer_id, transfer_id: transferId, driver_id: offer.driver_id } 
+          });
           if (error) throw error;
+          
+          // ✨ ДОДАНО: Одразу завантажуємо оновлені дані з бази
+          await fetchData();
+          
           Alert.alert(t('common.success'), t('transferDetail.driverConfirmed'));
-      } catch (error) { Alert.alert(t('common.error'), error.message); } 
+      } catch (error) { 
+          Alert.alert(t('common.error'), error.message); 
+      } 
       finally { setIsAccepting(false); }
-  }, [transferId, t]);
+  }, [transferId, t, fetchData]); // ✨ ДОДАНО: fetchData у масив залежностей
   
-  const handleChangeDriver = useCallback(async () => {
+const handleChangeDriver = useCallback(async () => {
       Alert.alert(
         t('transferDetail.changeDriverConfirmTitle'),
         t('transferDetail.changeDriverConfirmText'),
@@ -280,7 +288,6 @@ export default function TransferDetailScreen({ navigation, route }) {
                         });
                         if (resetError) throw new Error(`Помилка скидання трансферу: ${resetError.message}`);
                         
-                        console.log("Ensuring is_admin_assigned is false...");
                         const { error: updateError } = await supabase
                             .from('transfers')
                             .update({ is_admin_assigned: false }) 
@@ -288,13 +295,15 @@ export default function TransferDetailScreen({ navigation, route }) {
 
                         if (updateError) {
                             console.error("Failed to ensure is_admin_assigned is false:", updateError.message);
-                        } else {
-                            console.log("is_admin_assigned flag ensured to be false.");
                         }
 
                         if (driverToHideId) {
                             setHiddenDriverId(driverToHideId);
                         }
+
+                        // ✨ ДОДАНО: Одразу оновлюємо екран після зміни водія
+                        await fetchData();
+
                     } catch (error) {
                         Alert.alert(t('common.error'), error.message);
                     }
@@ -302,7 +311,7 @@ export default function TransferDetailScreen({ navigation, route }) {
             }
         ]
       );
-  }, [t, transferId, transferData?.accepted_driver_details?.driver_id]);
+  }, [t, transferId, transferData?.accepted_driver_details?.driver_id, fetchData]); // ✨ ДОДАНО: fetchData у масив залежностей
   
   const handleCancelTransfer = useCallback(async () => { 
     Alert.alert(
@@ -372,7 +381,7 @@ export default function TransferDetailScreen({ navigation, route }) {
         <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 500 }}>
             <View style={styles.userInfoSection}><Image source={transferData?.passenger_avatar_url ? { uri: transferData.passenger_avatar_url } : require('../assets/default-avatar.png')} style={styles.userAvatar} contentFit="cover" transition={300} cachePolicy="disk" /><Text style={styles.userName}>{transferData?.passenger_name}</Text></View>
             <View style={styles.infoCard}><InfoRow icon={transferData?.direction === 'from_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.from')} value={transferData?.from_location} colors={colors} /><View style={styles.dottedLine} /><InfoRow icon={transferData?.direction === 'to_airport' ? 'airplane-outline' : 'location-outline'} label={t('transferDetail.to')} value={transferData?.to_location} colors={colors} /></View>
-            <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text><View style={styles.detailsGrid}><DetailItem icon="calendar-outline" value={moment(transferData?.transfer_datetime).format('D MMM')} colors={colors} /><DetailItem icon="time-outline" value={moment(transferData?.transfer_datetime).format('HH:mm')} colors={colors} /><DetailItem icon="barcode-outline" value={transferData?.flight_number} label={t('transferDetail.flightNumber')} colors={colors} /></View><View style={styles.divider} /><View style={styles.passengerDetailsContainer}>{transferData.adults_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="people-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.adults_count}`} {t('transferData.adults_count')}</Text></View>)}{transferData.children_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="person-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.children_count}`} {t('transferData.children_count')}</Text></View>)}{transferData.infants_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="happy-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.infants_count}`} {t('transferData.infants_count')}</Text></View>)}</View><View style={styles.divider} /><View style={styles.detailsGrid}><DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} /><DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} /><DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} /><DetailItem icon="car-sport-outline" value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} label={t('transferDetail.transferType')} colors={colors} /></View>{(transferData.status === 'accepted' || transferData.status === 'completed') && finalPrice && (<><View style={styles.divider} /><InfoRow icon="cash-outline" label={t('transferDetail.finalPrice')} value={`${finalPrice} ${finalCurrency || t('common.currency_uah')}`} colors={colors} valueStyle={{ color: colors.primary, fontWeight: 'bold' }} /></>)}</View>
+            <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.detailsTitle')}</Text><View style={styles.detailsGrid}><DetailItem icon="calendar-outline" value={moment(transferData?.transfer_datetime).format('D MMM')} colors={colors} /><DetailItem icon="time-outline" value={moment(transferData?.transfer_datetime).format('HH:mm')} colors={colors} /><DetailItem icon="barcode-outline" value={transferData?.flight_number} label={t('transferDetail.flightNumber')} colors={colors} /></View><View style={styles.divider} /><View style={styles.passengerDetailsContainer}>{transferData.adults_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="people-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.adults_count}`} {t('transferData.adults_count')}</Text></View>)}{transferData.children_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="person-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.children_count}`} {t('transferData.children_count')}</Text></View>)}{transferData.infants_count > 0 && (<View style={styles.passengerDetailItem}><Ionicons name="happy-outline" size={20} color={colors.text} /><Text style={styles.passengerDetailText}>{`${transferData.infants_count}`} {t('transferData.infants_count')}</Text></View>)}</View><View style={styles.divider} /><View style={styles.detailsGrid}><DetailItem icon="briefcase-outline" value={transferData?.luggage_info} label={t('transferDetail.luggage')} colors={colors} /><DetailItem icon="paw-outline" value={transferData?.with_pet ? t('common.yes') : null} label={t('transferDetail.withPet')} colors={colors} /><DetailItem icon="person-add-outline" value={transferData?.meet_with_sign ? t('common.yes') : null} label={t('home.meetWithSign')} colors={colors} /><DetailItem icon="car-sport-outline" value={transferData?.transfer_type === 'individual' ? t('transfersScreen.individual') : t('transfersScreen.group')} label={t('transferDetail.transferType')} colors={colors} /></View>{(transferData.status === 'accepted' || transferData.status === 'completed') && finalPrice && (<><View style={styles.divider} /><InfoRow icon="cash-outline" label={t('transferDetail.finalPrice')} value={`${finalPrice} ${finalCurrency || t('common.currency_uah')}`} colors={colors} valueStyle={{ color: '#053667', fontWeight: 'bold' }} /></>)}</View>
             {transferData?.passenger_comment && (<View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.clientComment')}</Text><Text style={styles.commentText}>"{transferData.passenger_comment}"</Text></View>)}
             <View style={styles.infoCard}><Text style={styles.sectionTitle}>{t('transferDetail.route')}</Text><View style={styles.mapContainer}><MapView ref={mapViewRef} style={StyleSheet.absoluteFill} provider={PROVIDER_GOOGLE}>{routeCoordinates.length > 0 && (<><Marker coordinate={routeCoordinates[0]} title={t('transferDetail.from')} pinColor={colors.primary} /><Marker coordinate={routeCoordinates[routeCoordinates.length - 1]} title={t('transferDetail.to')} /><Polyline coordinates={routeCoordinates} strokeColor={colors.primary} strokeWidth={5} /></>)}</MapView></View>{routeInfo && (<View style={styles.routeInfoContainer}><View style={styles.routeInfoItem}><Ionicons name="speedometer-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.distance}</Text></View><View style={styles.routeInfoItem}><Ionicons name="time-outline" size={24} color={colors.secondaryText} /><Text style={styles.routeInfoText}>{routeInfo.duration}</Text></View></View>)}</View>
             
@@ -433,7 +442,7 @@ const getStyles = (colors) => StyleSheet.create({
     routeInfoContainer: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 16, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
     routeInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     routeInfoText: { color: colors.text, fontSize: 16, fontWeight: '500' },
-    cancelButton: { flexDirection: 'row', backgroundColor: '#D32F2F', padding: 14, borderRadius: 12, justifyContent: 'center', alignItems: 'center', gap: 8, margin: 16 },
+    cancelButton: { flexDirection: 'row', backgroundColor: colors.primary2, padding: 14, borderRadius: 12, justifyContent: 'center', alignItems: 'center', gap: 8, margin: 16 },
     cancelButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     offersSection: { marginHorizontal: 16, marginTop: 16 },
     noOffersText: { color: colors.secondaryText, textAlign: 'center', fontStyle: 'italic', padding: 20 },
@@ -445,10 +454,10 @@ const getStyles = (colors) => StyleSheet.create({
     driverCarText: { color: colors.secondaryText, fontSize: 14, marginTop: 4 },
     driverMessageText: { color: colors.text, fontStyle: 'italic', marginVertical: 12 },
     driverActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, marginTop: 8 },
-    chooseDriverButton: { backgroundColor: colors.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
+    chooseDriverButton: { backgroundColor: colors.primary2, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
     chooseDriverButtonText: { color: '#fff', fontWeight: 'bold' },
     driverPrice: { color: colors.text, fontSize: 20, fontWeight: 'bold' },
     confirmedDriverCard: { borderColor: colors.primary, borderWidth: 1.5 },
-    changeDriverButton: { backgroundColor: `${colors.primary}20`, padding: 12, borderRadius: 10, marginTop: 12, alignItems: 'center' },
-    changeDriverButtonText: { color: colors.primary, fontWeight: 'bold' },
+    changeDriverButton: { backgroundColor: colors.primary2, padding: 12, borderRadius: 10, marginTop: 12, alignItems: 'center' },
+    changeDriverButtonText: { color: '#fff', fontWeight: 'bold' },
 });

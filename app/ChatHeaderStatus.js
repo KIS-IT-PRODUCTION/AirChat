@@ -43,18 +43,42 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
     
     const isPresenceOnline = onlineUsers.has(recipientId);
 
+    // Якщо initialLastSeen зміниться зовні, оновлюємо стан
     useEffect(() => {
         if (initialLastSeen) setLastSeen(initialLastSeen);
     }, [initialLastSeen]);
 
     useEffect(() => {
         if (!recipientId) return;
+
+        // ✨ НОВЕ: Самостійно завантажуємо last_seen з бази при відкритті чату
+        const fetchInitialStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('last_seen')
+                    .eq('id', recipientId)
+                    .single();
+                
+                if (data && data.last_seen) {
+                    setLastSeen(data.last_seen);
+                }
+            } catch (err) {
+                console.error("Помилка завантаження статусу:", err);
+            }
+        };
+
+        // Викликаємо завантаження, якщо ми не отримали дату від батьківського компонента
+        if (!initialLastSeen) {
+            fetchInitialStatus();
+        }
         
+        // Підписка на оновлення в реальному часі
         const channel = supabase.channel(`public:profiles:id=eq.${recipientId}`)
             .on('postgres_changes', 
                 { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${recipientId}` }, 
                 (payload) => {
-                    if (payload.new.last_seen) {
+                    if (payload.new && payload.new.last_seen) {
                         setLastSeen(payload.new.last_seen);
                     }
                 }
@@ -62,7 +86,7 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [recipientId]);
+    }, [recipientId, initialLastSeen]);
 
     useEffect(() => {
         const updateText = () => {
@@ -74,7 +98,8 @@ const ChatHeaderStatus = ({ recipientId, initialLastSeen, isTyping }) => {
         };
 
         updateText();
-        const interval = setInterval(updateText, 30000);
+        // Оновлюємо текст щохвилини, щоб "хвилин тому" було актуальним
+        const interval = setInterval(updateText, 60000); 
 
         return () => clearInterval(interval);
     }, [isPresenceOnline, lastSeen, t]);

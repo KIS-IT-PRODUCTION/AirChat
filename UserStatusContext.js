@@ -15,9 +15,8 @@ export const UserStatusProvider = ({ children }) => {
 const updateDbLastSeen = useCallback(async () => {
         if (!session?.user?.id) return;
         try {
-            const { error } = await supabase.rpc('update_last_seen', { 
-                p_user_id: session.user.id 
-            });
+            // Більше не передаємо p_user_id, сервер сам знає, хто робить запит
+            const { error } = await supabase.rpc('update_last_seen');
             
             if (error) {
                 console.error("[UserStatus] Помилка оновлення часу:", error.message);

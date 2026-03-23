@@ -124,7 +124,7 @@ export default function DriverProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Logo width={40} height={40} />
+        <Logo width={60} height={60} />
         <Text style={styles.headerTitle}>{t('profile.myProfile', 'Мій профіль')}</Text>
         <TouchableOpacity style={styles.supportButton} onPress={() => navigation.navigate('Support')}>
           <Ionicons name="headset-outline" size={24} color={colors.text} />
@@ -192,8 +192,8 @@ export default function DriverProfileScreen() {
 }
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0  },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',  paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerTitle: { color: colors.text, fontSize: 24, fontWeight: 'bold', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
     supportButton: { backgroundColor: colors.card, padding: 8, borderRadius: 20 },
     scrollContainer: { padding: 16, paddingBottom: 40 },
     profileCard: { backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },

@@ -12,9 +12,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import SearchFilters from '../components/SearchFilters';
 import FlightCard from '../components/FlightCard';
-import AirportSearchModal from '../components/AirportSearchModal';
+import AirportSearchModal from '../components/AirportSearchModal'; // Впевнийсь, що шлях правильний
 import EmptyState from '../components/EmptyState';
 import FlightLoadingAnimation from '../components/FlightLoadingAnimation';
+import Logo from '../../assets/icon.svg';
 
 const FlightScheduleScreen = () => {
     const { colors, isDarkMode } = useTheme();
@@ -41,13 +42,15 @@ const FlightScheduleScreen = () => {
             const { data, error } = await supabase
                 .from('airports')
                 .select('*')
-                .in('iata_code', ['LWO', 'WAW']);
+                .in('iata_code', ['OTP', 'KIV']); // Змінив дефолтні на Румунію/Молдову для прикладу
 
             if (error) {
                 console.error("Error fetching initial airports:", error);
-            } else {
-                setOrigin(data.find(a => a.iata_code === 'LWO'));
-                setDestination(data.find(a => a.iata_code === 'WAW'));
+            } else if (data && data.length > 0) {
+                const otp = data.find(a => a.iata_code === 'OTP') || data[0];
+                const kiv = data.find(a => a.iata_code === 'KIV') || (data.length > 1 ? data[1] : data[0]);
+                setOrigin(otp);
+                setDestination(kiv);
             }
         };
 
@@ -78,18 +81,27 @@ const FlightScheduleScreen = () => {
         setDatePickerVisible(false);
     };
 
-    const handleSearch = useCallback(async () => {
+const handleSearch = useCallback(async () => {
         if (!origin || !destination || !selectedDate) {
-            setError(t('errors.fillAllFields'));
+            setError(t('errors.fillAllFields', 'Будь ласка, заповніть всі поля'));
             return;
         }
+
         setIsLoading(true);
         setSearched(true);
         setError(null);
         setFlights([]);
+        
         try {
+            // Форматуємо дату суворо як YYYY-MM-DD
             const flightDate = moment(selectedDate).format('YYYY-MM-DD');
             
+            console.log("Відправляємо запит на сервер:", {
+                originIata: origin.iata_code,
+                destinationIata: destination.iata_code,
+                flightDate
+            });
+
             const { data, error: funcError } = await supabase.functions.invoke('flight-schedule', {
                 body: {
                     originIata: origin.iata_code,
@@ -98,11 +110,36 @@ const FlightScheduleScreen = () => {
                 }
             });
 
-            if (funcError) throw funcError;
-            if (data && data.error) throw new Error(data.error.message || t('errors.apiError'));
-            setFlights(Array.isArray(data.data) ? data.data : []);
+            // Якщо сама функція не змогла виконатися (наприклад, впав сервер)
+            if (funcError) {
+                console.error("Помилка виклику Edge-функції:", funcError);
+                throw funcError;
+            }
+
+            // Якщо функція виконалася, але повернула власну помилку (наприклад, SerpApi error)
+            if (data && data.error) {
+                console.error("Помилка від API рейсів:", data.error);
+                throw new Error(data.error);
+            }
+
+            console.log("Отримані рейси:", data?.data);
+
+            // Безпечно встановлюємо рейси (перевіряємо, чи data.data є масивом)
+            const receivedFlights = data?.data;
+            if (Array.isArray(receivedFlights)) {
+                setFlights(receivedFlights);
+                if (receivedFlights.length === 0) {
+                     // Логуємо, якщо API відповів успішно, але рейсів 0
+                     console.log("Рейсів на цю дату не знайдено.");
+                }
+            } else {
+                console.warn("API повернув неочікуваний формат даних:", data);
+                setFlights([]);
+            }
+
         } catch (e) {
-            setError(e.message);
+            console.error("Catch Error:", e.message);
+            setError(e.message || t('errors.apiError', 'Помилка завантаження рейсів'));
         } finally {
             setIsLoading(false);
         }
@@ -120,7 +157,7 @@ const FlightScheduleScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerContainer}>
-                <Ionicons name="paper-plane-outline" size={32} color={colors.primary} />
+                <Logo width={60} height={60} />
                 <Text style={styles.title}>{t('flights.title', 'Розклад рейсів')}</Text>
             </View>
 
@@ -200,7 +237,7 @@ const FlightScheduleScreen = () => {
 
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    headerContainer: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
     title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
     modalOverlay: {
         flex: 1,
@@ -215,10 +252,7 @@ const getStyles = (colors) => StyleSheet.create({
         padding: 20,
         alignItems: 'center',
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5
@@ -232,11 +266,7 @@ const getStyles = (colors) => StyleSheet.create({
         width: '100%',
         alignItems: 'center',
     },
-    confirmButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
+    confirmButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });
 
 export default memo(FlightScheduleScreen);

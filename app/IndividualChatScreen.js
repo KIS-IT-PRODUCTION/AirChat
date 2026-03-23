@@ -107,6 +107,8 @@ export default function IndividualChatScreen() {
     const { session, profile } = useAuth();
     const { fetchUnreadCount } = useUnreadCount();
     
+    const [recipientProfile, setRecipientProfile] = useState(null);
+
     const [recipientInfo, setRecipientInfo] = useState({ 
         name: route.params?.recipientName || route.params?.driverName || t('common.user', 'Користувач'), 
         avatar: route.params?.recipientAvatar || null 
@@ -141,7 +143,9 @@ export default function IndividualChatScreen() {
     const sentSoundRef = useRef(new Audio.Sound());
     const receivedSoundRef = useRef(new Audio.Sound());
 
-    const { recipientId } = route.params || {};
+    // Створюємо єдиний правильний ID для всіх частин екрану
+    const EUROBUS_ID = '7ea1ba14-76c8-4f31-ad16-c7592290d4af';
+    const resolvedRecipientId = route.params?.recipientId || route.params?.driverId || route.params?.participant1_id || EUROBUS_ID;
     
     const scrollToBottom = (animated = true) => {
         if (flatListRef.current) {
@@ -149,7 +153,33 @@ export default function IndividualChatScreen() {
         }
     };
 
-    useLayoutEffect(() => {
+    // ✨ НОВА ФУНКЦІЯ: Завантаження профілю з бази даних
+    const fetchRecipientData = async (targetId) => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', targetId)
+                .single();
+
+            if (data) {
+                console.log("✅ Профіль співрозмовника завантажено:", data.full_name || data.first_name);
+                setRecipientProfile(data);
+                
+                // Оновлюємо також recipientInfo для сумісності з іншим кодом
+                setRecipientInfo(prev => ({
+                    ...prev,
+                    name: data.full_name || data.first_name || prev.name,
+                    avatar: data.avatar_url || prev.avatar
+                }));
+            } else if (error) {
+                console.error("❌ Помилка завантаження профілю:", error);
+            }
+        } catch (e) {
+            console.error("Catch error fetchRecipientData:", e);
+        }
+    };
+useLayoutEffect(() => {
         if (selectionMode) {
             navigation.setOptions({
                 headerShown: true,
@@ -180,27 +210,36 @@ export default function IndividualChatScreen() {
                         <Ionicons name="chevron-back" size={28} color={colors.primary} />
                     </TouchableOpacity>
                 ),
-                headerTitle: () => (
+               headerTitle: () => (
                     <View style={{ alignItems: 'center' }}>
                         <Text style={{ fontSize: 17, fontWeight: 'bold', color: colors.text }}>
-                            {recipientInfo.name}
+                            {recipientProfile?.full_name || recipientProfile?.first_name || recipientInfo.name}
                         </Text>
+                        {/* ✨ ВИПРАВЛЕНО: Тепер ми завжди передаємо правильний ID */}
                         <ChatHeaderStatus 
-                            recipientId={recipientId || route.params?.driverId} 
-                            initialLastSeen={lastSeen} 
+                            recipientId={resolvedRecipientId} 
+                            initialLastSeen={lastSeen || recipientProfile?.last_seen} 
                             isTyping={isRecipientTyping}
                         />
                     </View>
                 ),
-                headerRight: () => (
-                    <TouchableOpacity onPress={() => (recipientId || route.params?.driverId) && navigation.navigate('PublicDriverProfile', { driverId: recipientId || route.params?.driverId, driverName: recipientInfo.name })} style={{ marginRight: 10 }}>
-                        <Image source={recipientInfo.avatar ? { uri: recipientInfo.avatar } : require('../assets/default-avatar.png')} style={{ width: 35, height: 35, borderRadius: 17.5 }} contentFit="cover"/>
-                    </TouchableOpacity>
-                )
+                headerRight: () => {
+                    const avatarSource = (recipientProfile?.avatar_url || recipientInfo.avatar) 
+                        ? { uri: recipientProfile?.avatar_url || recipientInfo.avatar } 
+                        : require('../assets/default-avatar.png');
+                        
+                    return (
+                        <TouchableOpacity 
+                            onPress={() => resolvedRecipientId && navigation.navigate('PublicDriverProfile', { driverId: resolvedRecipientId, driverName: recipientProfile?.full_name || recipientInfo.name })} 
+                            style={{ marginRight: 10 }}
+                        >
+                            <Image source={avatarSource} style={{ width: 35, height: 35, borderRadius: 17.5 }} contentFit="cover"/>
+                        </TouchableOpacity>
+                    );
+                }
             });
         }
-    }, [navigation, recipientId, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, handleDeleteSelected, isRecipientTyping]);
-
+  }, [navigation, resolvedRecipientId, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, recipientProfile, handleDeleteSelected, isRecipientTyping]);
     useEffect(() => {
         if (i18n?.language) moment.locale(i18n.language);
         const loadSounds = async () => { try { await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3')); await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3')); } catch (e) {} };
@@ -210,25 +249,67 @@ export default function IndividualChatScreen() {
 
     const playSound = useCallback(async (ref) => { try { await ref.current.replayAsync(); } catch (e) {} }, []);
 
-    useEffect(() => {
+useEffect(() => {
         let isMounted = true;
         const initChat = async () => {
             try {
-                const rId = route.params?.recipientId || route.params?.driverId;
+                // Жорстко заданий ID диспетчера (EUROBUS) для пасажирів
+                const EUROBUS_ID = 'd691e54e-0f19-4aa9-b4c9-47183a798c06';
+                const rId = route.params?.recipientId || route.params?.driverId || route.params?.participant1_id || EUROBUS_ID; 
                 let activeRoomId = route.params?.roomId;
 
-                if (!activeRoomId && rId) {
-                    const { data } = await supabase.rpc('find_or_create_chat_room', { p_recipient_id: rId });
-                    if (data) activeRoomId = data;
+                console.log("▶️ [INIT] Мій ID:", session?.user?.id, "| ID співрозмовника:", rId);
+
+                // Завантажуємо дані профілю
+                if (rId) {
+                    fetchRecipientData(rId);
+                }
+
+                if (!activeRoomId && rId && session?.user?.id) {
+                    console.log("▶️ [ROOM] Шукаємо існуючу кімнату...");
+                    
+                    // ✨ ЗМІНА 1: Прибрали .single(), щоб уникнути жорстких помилок формату
+                    const { data: existingRooms, error: fetchError } = await supabase
+                        .from('chat_rooms')
+                        .select('id')
+                        .or(`and(participant1_id.eq.${session.user.id},participant2_id.eq.${rId}),and(participant1_id.eq.${rId},participant2_id.eq.${session.user.id})`);
+
+                    if (fetchError) {
+                        console.error("❌ [ROOM] Помилка пошуку кімнати в базі:", fetchError);
+                    }
+
+                    if (existingRooms && existingRooms.length > 0) {
+                        console.log("✅ [ROOM] Знайдено існуючу кімнату:", existingRooms[0].id);
+                        activeRoomId = existingRooms[0].id;
+                    } else {
+                        console.log("⚠️ [ROOM] Кімнати немає. Спробуємо створити нову...");
+                        
+                        // ✨ ЗМІНА 2: Безпечне створення кімнати з виведенням точної помилки
+                        const { data: newRoom, error: insertError } = await supabase
+                            .from('chat_rooms')
+                            .insert([{ participant1_id: session.user.id, participant2_id: rId }])
+                            .select('id');
+                            
+                        if (insertError) {
+                            console.error("❌ [ROOM] Помилка створення (INSERT) кімнати. Можливо, проблема в RLS (правилах безпеки)? Помилка:", insertError);
+                        } else if (newRoom && newRoom.length > 0) {
+                            console.log("✅ [ROOM] Успішно створено нову кімнату:", newRoom[0].id);
+                            activeRoomId = newRoom[0].id;
+                        }
+                    }
                 }
 
                 if (activeRoomId && isMounted) {
+                    console.log("✅ [INIT] Встановлюємо currentRoomId:", activeRoomId);
                     setCurrentRoomId(activeRoomId);
                     await fetchMessages(activeRoomId, 0); 
                     subscribeToChat(activeRoomId);
+                } else if (isMounted) {
+                    console.error("❌ [INIT] Не вдалося отримати/створити activeRoomId. Кімната = null");
                 }
+                
             } catch (e) { 
-                console.log("Chat init error:", e);
+                console.error("❌ [INIT] Catch error:", e);
             } finally { 
                 if (isMounted) {
                     setInitialLoading(false);
@@ -340,7 +421,17 @@ export default function IndividualChatScreen() {
         }
     };
 
-    const handleSendText = useCallback(async (text) => {
+const handleSendText = useCallback(async (text) => {
+        console.log("▶️ [CHAT] Спроба відправити текст:", text);
+        console.log("▶️ [CHAT] Поточна кімната (currentRoomId):", currentRoomId);
+        console.log("▶️ [CHAT] Мій ID (session.user.id):", session?.user?.id);
+
+        // Якщо ID кімнати ще немає, зупиняємо відправку
+        if (!currentRoomId) {
+            Alert.alert(t('common.error', 'Помилка'), "Не вдалося визначити ID кімнати чату. Спробуйте перезайти в чат.");
+            return;
+        }
+
         if (editingMessage) {
             const { error } = await supabase.from('messages').update({ content: text }).eq('id', editingMessage.id);
             if (!error) { setMessages(p => p.map(m => m.id === editingMessage.id ? { ...m, content: text } : m)); setEditingMessage(null); }
@@ -361,6 +452,7 @@ export default function IndividualChatScreen() {
             is_read: false 
         };
         
+        // Відображаємо повідомлення на екрані ще до відповіді сервера
         setMessages(p => [optimisticMsg, ...p]); 
         playSound(sentSoundRef);
         setReplyToMessage(null);
@@ -369,17 +461,23 @@ export default function IndividualChatScreen() {
         const payload = { content: text, room_id: currentRoomId, sender_id: session.user.id, client_id: cid };
         if (replyToMessage) payload.reply_to_message_id = replyToMessage.id;
 
+        console.log("▶️ [CHAT] Дані для бази (payload):", payload);
+
+        // Відправляємо в Supabase
         const { data, error } = await supabase.from('messages').insert([payload]).select().single();
+        
         if (!error) {
+            console.log("✅ [CHAT] Повідомлення успішно збережено в базі!");
             setMessages(p => p.map(m => m.client_id === cid ? data : m));
             
-            const recipientId = route.params?.recipientId || route.params?.driverId;
-            if (recipientId) {
+            const pushRecipientId = route.params?.recipientId || route.params?.driverId || route.params?.participant1_id || 'd691e54e-0f19-4aa9-b4c9-47183a798c06';
+            
+            if (pushRecipientId) {
                 supabase.functions.invoke('send-push-notification', { 
                     body: { 
-                        recipient_id: recipientId, 
+                        recipient_id: pushRecipientId, 
                         message_content: text, 
-                        sender_name: profile?.full_name,
+                        sender_name: profile?.full_name || "Користувач",
                         room_id: currentRoomId,      
                         sender_id: session.user.id   
                     } 
@@ -387,10 +485,12 @@ export default function IndividualChatScreen() {
             }
 
         } else {
-            setMessages(p => p.filter(m => m.client_id !== cid)); Alert.alert(t('common.error'), t('chat.sendError'));
+            console.error("❌ [CHAT] Помилка збереження повідомлення в Supabase:", error);
+            // Якщо сталася помилка - видаляємо повідомлення з екрану
+            setMessages(p => p.filter(m => m.client_id !== cid)); 
+            Alert.alert(t('common.error', 'Помилка'), `Не вдалося відправити повідомлення: ${error.message || t('chat.sendError')}`);
         }
     }, [currentRoomId, session, replyToMessage, editingMessage, route.params, profile, t, playSound]);
-
     const uploadFile = async (asset, type) => {
         setAttachmentModalVisible(false);
         const cid = uuidv4();

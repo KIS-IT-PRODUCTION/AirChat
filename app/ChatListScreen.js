@@ -387,7 +387,7 @@ export default function ChatListScreen() {
             <BlockReasonModal visible={isBlockModalVisible} onSubmit={handleBlockAndReportUser} onClose={() => { setIsBlockModalVisible(false); setUserToBlock(null); }} />
 
             <View style={styles.header}>
-                <Logo width={40} height={40} />
+                <Logo width={60} height={60} />
                 <Text style={styles.title}>{t('chatList.title')}</Text>
             </View>
 
@@ -450,8 +450,8 @@ export default function ChatListScreen() {
 
 const getStyles = (colors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1, marginLeft: -40 },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', flex: 1, position: 'absolute', left: 0, right: 0 },
     
     searchContainer: {
         flexDirection: 'row',

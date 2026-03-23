@@ -141,6 +141,47 @@ const BannedUserModal = memo(() => {
   );
 });
 
+const PendingDriverModal = memo(() => {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
+
+  const handleContactSupport = () => {
+    Linking.openURL(`mailto:airchat.app25@gmail.com?subject=${t('pendingModal.emailSubject', 'Перевірка профілю водія')}`);
+  };
+
+  const styles = useMemo(() => StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalContainer: { backgroundColor: colors.card, borderRadius: 20, padding: 30, alignItems: 'center', width: '100%', elevation: 5, shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity:0.25, shadowRadius:4 },
+    title: { fontSize: 24, fontWeight: 'bold', color: '#eab308', marginTop: 20, marginBottom: 10, textAlign: 'center' }, // Жовтий/Оранжевий колір попередження
+    message: { fontSize: 16, color: colors.secondaryText, textAlign: 'center', marginBottom: 15, lineHeight: 22 },
+    contactButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 30, width: '100%', alignItems: 'center', marginTop: 10 },
+    buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+    logoutButton: { marginTop: 20, padding: 10 },
+    logoutText: { color: colors.secondaryText, fontSize: 15, fontWeight: '500' },
+  }), [colors]);
+
+  return (
+    <Modal visible={true} transparent={true} animationType="fade">
+      <View style={styles.backdrop}>
+        <View style={styles.modalContainer}>
+          <Ionicons name="time-outline" size={80} color="#eab308" />
+          <Text style={styles.title}>{t('pendingModal.title', 'Профіль на перевірці')}</Text>
+          <Text style={styles.message}>
+            {t('pendingModal.message', 'Ваш акаунт водія наразі перевіряється адміністратором. Ми повідомимо вас, щойно перевірка завершиться.')}
+          </Text>
+          <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
+            <Text style={styles.buttonText}>{t('pendingModal.contactButton', "Зв'язатися з підтримкою")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
+            <Text style={styles.logoutText}>{t('bannedModal.logout', 'Вийти')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+});
+
 function AppContent({ navigationRef }) {
     const { session, profile, isLoading: isAuthLoading } = useAuth();
     const [isFirstLaunch, setIsFirstLaunch] = useState(null);
@@ -188,6 +229,15 @@ function AppContent({ navigationRef }) {
                 <BannedUserModal />
             </View>
         );
+    }
+
+    if (profile?.role === 'driver' && profile?.driverStatus !== 'approved') {
+         return (
+             <View style={{ flex: 1, backgroundColor: colors.background }}>
+                 <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
+                 <PendingDriverModal />
+             </View>
+         );
     }
 
    return (

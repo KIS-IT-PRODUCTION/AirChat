@@ -11,7 +11,7 @@ import 'moment/locale/uk';
 import { useTranslation } from 'react-i18next';
 import { MotiView } from 'moti';
 import Logo from '../assets/icon.svg';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Додано імпорт AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getDisplayStatus = (item, t) => {
   switch (item.status) {
@@ -21,7 +21,7 @@ const getDisplayStatus = (item, t) => {
       }
       return { title: t('transferStatus.pending.title'), text: t('transferStatus.pending.text'), color: '#0288D1', icon: 'hourglass-outline' };
     case 'accepted':
-      return { title: t('transferStatus.accepted.title'), text: t('transferStatus.accepted.text'), color: '#2E7D32', icon: 'shield-checkmark-outline' };
+      return { title: t('transferStatus.accepted.title'), text: t('transferStatus.accepted.text'), color: '#0288D1', icon: 'shield-checkmark-outline' };
     case 'completed':
       return { title: t('transferStatus.completed.title'), text: t('transferStatus.completed.text'), color: '#4CAF50', icon: 'checkmark-done-outline' };
     case 'cancelled':
@@ -94,7 +94,8 @@ const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, sele
       {item.status === 'pending' && item.offers_count > 0 ? (
         <TouchableOpacity style={styles.viewOffersButton} onPress={handlePress}>
           <View style={styles.viewOffersContent}>
-            <Ionicons name="sparkles-outline" size={24} color="#FFFFFF" />
+            {/* Змінено іконку на темну для жовтого фону */}
+            <Ionicons name="sparkles-outline" size={24} color="#121212" />
             <Text style={styles.viewOffersText}>{t('transferStatus.offersAvailable.buttonText')}</Text>
           </View>
           <View style={[styles.badgeBase, item.unread_offers_count > 0 ? styles.badgeUnread : styles.badgeViewed]}>
@@ -121,7 +122,6 @@ const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, sele
           )}
 
           <View style={[styles.driverInfo, !hasCarInfo && styles.driverInfoCentered]}>
-            {/* Аватарки вже мають cachePolicy="disk", тому вони автоматично кешуються! */}
             <Image 
                 source={item.driver_avatar_url ? { uri: item.driver_avatar_url } : require('../assets/default-avatar.png')} 
                 style={[styles.driverAvatar, !hasCarInfo && styles.driverAvatarCentered]}
@@ -137,14 +137,16 @@ const TransferCard = React.memo(({ item, onSelect, onLongPress, isSelected, sele
 
           {item.status === 'accepted' && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.callButton} onPress={() => handleCall(item.driver_phone)}><Ionicons name="call" size={20} color="#FFFFFF" /></TouchableOpacity>
-              <TouchableOpacity style={styles.messageButton} onPress={handleMessage} disabled={isCreatingChat}>{isCreatingChat ? <ActivityIndicator size="small" color={colors.primary} /> : <><Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} /><Text style={styles.messageButtonText}>{t('transfersScreen.writeButton')}</Text></> }</TouchableOpacity>
+              {/* Змінено іконку дзвінка на темну */}
+              <TouchableOpacity style={styles.callButton} onPress={() => handleCall(item.driver_phone)}><Ionicons name="call" size={20} color="#121212" /></TouchableOpacity>
+              <TouchableOpacity style={styles.messageButton} onPress={handleMessage} disabled={isCreatingChat}>{isCreatingChat ? <ActivityIndicator size="small" color={colors.primary} /> : <><Ionicons name="chatbubble-ellipses" size={20} color={colors.text} /><Text style={styles.messageButtonText}>{t('transfersScreen.writeButton')}</Text></> }</TouchableOpacity>
             </View>
           )}
         </View>
       )}
 
-      {isSelected && (<View style={styles.selectionOverlay}><Ionicons name="checkmark-circle" size={32} color={'#fff'} /></View>)}
+      {/* Змінено колір іконки виділення */}
+      {isSelected && (<View style={styles.selectionOverlay}><Ionicons name="checkmark-circle" size={40} color={colors.primary} /></View>)}
     </TouchableOpacity>
   );
 });
@@ -166,7 +168,6 @@ export default function TransfersScreen() {
 
   const isInitialLoad = useRef(true);
 
-  // ✨ Оновлена функція завантаження з підтримкою кешу
   const fetchTransfers = useCallback(async (showLoading = false) => {
     if (!session?.user) { 
       setLoading(false); 
@@ -175,13 +176,12 @@ export default function TransfersScreen() {
     
     const CACHE_KEY = `PASSENGER_TRANSFERS_CACHE_${session.user.id}`;
 
-    // Спершу пробуємо дістати дані з кешу для миттєвого відображення
     if (showLoading) {
       try {
         const cachedData = await AsyncStorage.getItem(CACHE_KEY);
         if (cachedData) {
             setTransfers(JSON.parse(cachedData));
-            setLoading(false); // Якщо є кеш, відключаємо лоадер на весь екран
+            setLoading(false); 
         } else {
             setLoading(true);
         }
@@ -197,11 +197,9 @@ export default function TransfersScreen() {
       if (fetchError) throw fetchError;
       
       setTransfers(data || []);
-      // Зберігаємо свіжі дані в кеш
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data || []));
     } catch (err) {
         console.error("Error fetching transfers:", err.message);
-        // Показуємо помилку ТІЛЬКИ якщо немає збережених даних
         setTransfers(prev => {
             if (prev.length === 0) {
                 setError(err.message);
@@ -305,14 +303,12 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
     }
   }, [viewMode, handleToggleSelection]);
 
-  // ✨ Оновлена функція видалення, щоб синхронізувати кеш
   const handleDeleteSelected = useCallback(() => {
     Alert.alert( t('transfersScreen.deleteConfirmTitle'), t('transfersScreen.deleteConfirmBody', { count: selectedItems.size }), [ { text: t('common.cancel'), style: 'cancel' }, { text: t('common.delete'), style: 'destructive', onPress: async () => {
             const { error } = await supabase.from('transfers').delete().in('id', Array.from(selectedItems));
             if (error) { Alert.alert(t('common.error'), error.message); } else {
               setTransfers(prev => {
                   const updatedTransfers = prev.filter(t => !selectedItems.has(t.id));
-                  // Оновлюємо кеш після видалення, щоб вони не з'явилися знову в оффлайні
                   if (session?.user?.id) {
                       AsyncStorage.setItem(`PASSENGER_TRANSFERS_CACHE_${session.user.id}`, JSON.stringify(updatedTransfers)).catch(console.error);
                   }
@@ -326,15 +322,21 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
     );
   }, [selectedItems, session, t]);
   
-  const Header = () => (
-    <View style={styles.header}>
-      <Logo width={40} height={40} />
-        <Text style={styles.title}>{viewMode === 'active' ? t('transfersScreen.title') : t('transfersScreen.archiveTitle')}</Text>
-        <TouchableOpacity onPress={() => { setViewMode(prev => prev === 'active' ? 'archived' : 'active'); setSelectionMode(false); setSelectedItems(new Set()); }}>
-            <Ionicons name={viewMode === 'active' ? "archive-outline" : "file-tray-full-outline"} size={26} color={colors.text} />
-        </TouchableOpacity>
-    </View>
-  );
+const Header = () => (
+  <View style={styles.header}>
+    <Logo width={60} height={60} />
+    <Text style={styles.title}>
+      {viewMode === 'active' ? t('transfersScreen.title') : t('transfersScreen.archiveTitle')}
+    </Text>
+    <TouchableOpacity onPress={() => { 
+      setViewMode(prev => prev === 'active' ? 'archived' : 'active'); 
+      setSelectionMode(false); 
+      setSelectedItems(new Set()); 
+    }}>
+      <Ionicons name={viewMode === 'active' ? "archive-outline" : "file-tray-full-outline"} size={26} color={colors.text} />
+    </TouchableOpacity>
+  </View>
+);
 
   const renderItem = useCallback(({ item, index }) => (
     <MotiView
@@ -396,12 +398,18 @@ const { activeTransfers, archivedTransfers } = useMemo(() => {
 
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
+  header: { 
+    flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between', 
+  paddingHorizontal: 12,
+   },
+  title: { fontSize: 24, fontWeight: 'bold', color: colors.text, position: 'absolute', left: 0, right: 0, textAlign: 'center' },
   card: { backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
   archivedCard: { opacity: 0.7 },
   selectedCard: { borderColor: colors.primary, borderWidth: 2, transform: [{ scale: 0.98 }] },
-  selectionOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10, 132, 255, 0.3)', borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  // Змінено синій оверлей на напівпрозорий жовтий
+  selectionOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(247, 196, 21, 0.15)', borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   dateText: { fontSize: 14, color: colors.secondaryText },
   routeContainer: {},
@@ -411,8 +419,8 @@ const getStyles = (colors) => StyleSheet.create({
   dottedLine: { height: 24, width: 2, backgroundColor: colors.border, marginLeft: 14, marginVertical: 4 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   badgeBase: { borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
-  badgeUnread: { backgroundColor: '#D32F2F' },
-  badgeViewed: { backgroundColor: '#FFA000' },
+  badgeUnread: { backgroundColor: '#001F3F' },
+  badgeViewed: { backgroundColor: '#001F3F' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100, paddingHorizontal: 20 },
   emptyText: { color: colors.secondaryText, fontSize: 16, marginTop: 16, textAlign: 'center' },
   driverFooter: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
@@ -426,8 +434,9 @@ const getStyles = (colors) => StyleSheet.create({
   carPlate: { color: colors.text, fontWeight: '600' },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   callButton: { backgroundColor: colors.primary, borderRadius: 12, flex: 1, marginRight: 8, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' },
-  messageButton: { backgroundColor: `${colors.primary}20`, borderRadius: 12, flex: 2, marginLeft: 8, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  messageButtonText: { color: colors.primary, fontSize: 16, fontWeight: 'bold' },
+  // Кнопка "Написати" тепер прозора з жовтим контуром, щоб був контраст
+  messageButton: { backgroundColor: 'transparent', borderColor: colors.primary, borderWidth: 1.5, borderRadius: 12, flex: 2, marginLeft: 8, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  messageButtonText: { color: colors.text, fontSize: 16, fontWeight: 'bold' }, // Змінено на темний текст
   footerActions: { flexDirection: 'row', padding: 16, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
   footerButton: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: colors.background },
   footerButtonText: { color: colors.text, fontSize: 16, fontWeight: 'bold' },
@@ -440,11 +449,11 @@ const getStyles = (colors) => StyleSheet.create({
   errorTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginTop: 16, textAlign: 'center' },
   errorText: { color: colors.secondaryText, fontSize: 16, marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
   retryButton: { marginTop: 20, backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 30, borderRadius: 10 },
-  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  retryButtonText: { color: '#121212', fontSize: 16, fontWeight: 'bold' }, // Змінено на темний текст
   priceFooter: { marginBottom: 16, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   priceLabel: { fontSize: 14, color: colors.secondaryText },
   priceValue: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   viewOffersButton: { marginTop: 16, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   viewOffersContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  viewOffersText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  viewOffersText: { color: '#121212', fontSize: 16, fontWeight: 'bold' }, // Змінено на темний текст
 });

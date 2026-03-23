@@ -20,8 +20,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage'; // ✨ Д�
 const shadowStyle = { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 };
 const getStyles = (colors, theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 25 : 0 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-    profilePic: { width: 40, height: 40, borderRadius: 20 },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+    },
+    headerSide: {
+        flex: 1,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+    },
+    headerCenter: {
+        alignItems: 'center',
+        justifyContent: 'center',
+
+    },     profilePic: { width: 40, height: 40, borderRadius: 20 },
     profilePlaceholder: { backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border, width: 40, height: 40, borderRadius: 20 },
     roleSwitcher: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 20, padding: 4, ...shadowStyle, position: 'relative' },
     roleOption: { padding: 8, borderRadius: 16, zIndex: 1, width: 40, alignItems: 'center', justifyContent: 'center' },
@@ -349,26 +363,37 @@ const DriverHomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
         <AnimatedBlock delay={0}>
-            <View style={styles.header}>
-                <Logo width={40} height={40} />
-                {profile?.is_driver && (
-                    <RoleSwitcher
-                        role={profile.role}
-                        onSwitch={handleRoleSwitch}
-                        isSwitching={isSwitchingRole}
-                    />
-                )}
-                <TouchableOpacity onPress={handleProfilePress}>
-                    {/* ✨ Тут аватарка з провайдера, якщо треба можна додати cachePolicy і туди */}
-                    {profile?.avatar_url ? (
-                        <Image source={{ uri: profile.avatar_url }} style={styles.profilePic} cachePolicy="disk" />
-                    ) : (
-                        <View style={[styles.profilePic, styles.profilePlaceholder]}>
-                            <Ionicons name="person-outline" size={22} color={colors.secondaryText} />
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
+        <View style={styles.header}>
+    {/* Ліва частина - Логотип */}
+    <View style={styles.headerSide}>
+        <Logo width={60} height={60} />
+    </View>
+
+    {/* Центральна частина - Перемикач ролей */}
+    <View style={styles.headerCenter}>
+        {profile?.is_driver && (
+            <RoleSwitcher
+                role={profile.role}
+                onSwitch={handleRoleSwitch}
+                isSwitching={isSwitchingRole}
+            />
+        )}
+    </View>
+
+    {/* Права частина - Аватар */}
+    <View style={[styles.headerSide, { alignItems: 'flex-end' }]}>
+        <TouchableOpacity onPress={handleProfilePress}>
+            {/* ✨ Тут аватарка з провайдера, якщо треба можна додати cachePolicy і туди */}
+            {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.profilePic} cachePolicy="disk" />
+            ) : (
+                <View style={[styles.profilePic, styles.profilePlaceholder]}>
+                    <Ionicons name="person-outline" size={22} color={colors.secondaryText} />
+                </View>
+            )}
+        </TouchableOpacity>
+    </View>
+</View>
         </AnimatedBlock>
         
         {loading ? (

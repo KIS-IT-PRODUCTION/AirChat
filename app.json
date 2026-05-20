@@ -20,10 +20,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": [
-          "tel",
-          "sms"
-        ],
+        "LSApplicationQueriesSchemes": ["tel", "sms"],
         "NSPhotoLibraryUsageDescription": "Додатку потрібен доступ до галереї для вибору фото."
       },
       "appleTeamId": "TX8D8AZ8N5",
@@ -61,6 +58,12 @@
     "plugins": [
       "expo-localization",
       "expo-dev-client",
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "AIzaSyAKwWqSjapoyrIBnAxnbByX6PMJZWGgzlo"
+        }
+      ],
       [
         "expo-image-picker",
         {

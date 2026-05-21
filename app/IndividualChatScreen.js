@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffe
 import { View, SafeAreaView, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal, Pressable, StatusBar, Text, AppState, InteractionManager } from 'react-native';
 import { useUnreadCount } from '../provider/Unread Count Context';
 import { Image } from 'expo-image';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import { useTheme } from './ThemeContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,8 +140,10 @@ export default function IndividualChatScreen() {
     const flatListRef = useRef(null);
     const channelRef = useRef(null);
     const typingTimeoutRef = useRef(null);
-    const sentSoundRef = useRef(new Audio.Sound());
-    const receivedSoundRef = useRef(new Audio.Sound());
+
+    // ✅ ЗАМІНЕНО: Audio.Sound refs → useAudioPlayer (керує завантаженням автоматично)
+    const sentSoundPlayer = useAudioPlayer(require('../assets/sound/send_massege.mp3'));
+    const receivedSoundPlayer = useAudioPlayer(require('../assets/sound/get_massege.mp3'));
 
     // Створюємо єдиний правильний ID для всіх частин екрану
     const EUROBUS_ID = '7ea1ba14-76c8-4f31-ad16-c7592290d4af';
@@ -179,7 +181,8 @@ export default function IndividualChatScreen() {
             console.error("Catch error fetchRecipientData:", e);
         }
     };
-useLayoutEffect(() => {
+
+    useLayoutEffect(() => {
         if (selectionMode) {
             navigation.setOptions({
                 headerShown: true,
@@ -239,17 +242,22 @@ useLayoutEffect(() => {
                 }
             });
         }
-  }, [navigation, resolvedRecipientId, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, recipientProfile, handleDeleteSelected, isRecipientTyping]);
+    }, [navigation, resolvedRecipientId, lastSeen, colors, selectionMode, selectedMessages.size, recipientInfo, recipientProfile, handleDeleteSelected, isRecipientTyping]);
+
+    // ✅ ЗАМІНЕНО: Прибрано loadSounds/unloadAsync — useAudioPlayer керує цим сам
     useEffect(() => {
         if (i18n?.language) moment.locale(i18n.language);
-        const loadSounds = async () => { try { await sentSoundRef.current.loadAsync(require('../assets/sound/send_massege.mp3')); await receivedSoundRef.current.loadAsync(require('../assets/sound/get_massege.mp3')); } catch (e) {} };
-        loadSounds();
-        return () => { sentSoundRef.current.unloadAsync(); receivedSoundRef.current.unloadAsync(); };
     }, [i18n?.language]);
 
-    const playSound = useCallback(async (ref) => { try { await ref.current.replayAsync(); } catch (e) {} }, []);
+    // ✅ ЗАМІНЕНО: playSound тепер приймає player (об'єкт useAudioPlayer), не ref
+    const playSound = useCallback((player) => {
+        try {
+            player.seekTo(0);
+            player.play();
+        } catch (e) {}
+    }, []);
 
-useEffect(() => {
+    useEffect(() => {
         let isMounted = true;
         const initChat = async () => {
             try {
@@ -366,7 +374,7 @@ useEffect(() => {
                     if (p.some(m => m.id === pl.new.id)) return p;
                     return [pl.new, ...p];
                 });
-                playSound(receivedSoundRef); 
+                playSound(receivedSoundPlayer); // ✅ ЗАМІНЕНО
                 markMessagesAsRead();
             }
             setTimeout(() => scrollToBottom(true), 200);
@@ -421,7 +429,7 @@ useEffect(() => {
         }
     };
 
-const handleSendText = useCallback(async (text) => {
+    const handleSendText = useCallback(async (text) => {
         console.log("▶️ [CHAT] Спроба відправити текст:", text);
         console.log("▶️ [CHAT] Поточна кімната (currentRoomId):", currentRoomId);
         console.log("▶️ [CHAT] Мій ID (session.user.id):", session?.user?.id);
@@ -454,7 +462,7 @@ const handleSendText = useCallback(async (text) => {
         
         // Відображаємо повідомлення на екрані ще до відповіді сервера
         setMessages(p => [optimisticMsg, ...p]); 
-        playSound(sentSoundRef);
+        playSound(sentSoundPlayer); // ✅ ЗАМІНЕНО
         setReplyToMessage(null);
         scrollToBottom(true);
 
@@ -491,6 +499,7 @@ const handleSendText = useCallback(async (text) => {
             Alert.alert(t('common.error', 'Помилка'), `Не вдалося відправити повідомлення: ${error.message || t('chat.sendError')}`);
         }
     }, [currentRoomId, session, replyToMessage, editingMessage, route.params, profile, t, playSound]);
+
     const uploadFile = async (asset, type) => {
         setAttachmentModalVisible(false);
         const cid = uuidv4();
@@ -510,7 +519,7 @@ const handleSendText = useCallback(async (text) => {
         else msg.location = asset;
         
         setMessages(p => [msg, ...p]); 
-        playSound(sentSoundRef);
+        playSound(sentSoundPlayer); // ✅ ЗАМІНЕНО
         scrollToBottom(true);
 
         try {
@@ -684,7 +693,7 @@ const handleSendText = useCallback(async (text) => {
 
         return (
             <View>
-=                {isNewDay && <DateHeader date={item.created_at} t={t} colors={colors} />}
+                {isNewDay && <DateHeader date={item.created_at} t={t} colors={colors} />}
                 
                 <MessageBubble 
                     message={item} 
@@ -739,7 +748,7 @@ const handleSendText = useCallback(async (text) => {
                         maxToRenderPerBatch={10}
                         windowSize={10} 
                         removeClippedSubviews={true}
-                        extraData={messages} // Важливо для оновлення дат
+                        extraData={messages}
                         maintainVisibleContentPosition={null} 
                         onScrollToIndexFailed={onScrollToIndexFailed}
                     />
